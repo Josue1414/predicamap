@@ -1,0 +1,20 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Asegurar que el contenedor del mapa ocupe todo el espacio asignado */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+}
+
+/* Custom scrollbar minimalista para menús móviles */
+.scroll-limpio::-webkit-scrollbar {
+  width: 4px;
+}
+.scroll-limpio::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 2px;
+}
