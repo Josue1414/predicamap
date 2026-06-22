@@ -42,8 +42,6 @@ export default function useMapa() {
 
   const [listaCongregaciones, setListaCongregaciones] = useState([]);
   const [congregacionContextoId, setCongregacionContextoId] = useState(null);
-  
-  // NUEVO: Almacena los datos de la congregación activa (nombre, ID, etc.)
   const [congregacionActiva, setCongregacionActiva] = useState(null);
 
   const inicializarEcosistema = async () => {
@@ -74,10 +72,17 @@ export default function useMapa() {
         const { data: cong } = await supabase.from('congregaciones').select('*').eq('id', targetCongId).single();
         setCongregacionActiva(cong);
 
-        // B) Territorios
+        // B) Territorios (AHORA CON "asignado_a")
         const { data: secs } = await supabase.from('secciones').select('*').eq('congregacion_id', targetCongId).order('creado_en', { ascending: true });
         const seccionesFormateadas = secs || [];
-        setSecciones(seccionesFormateadas.map(item => ({ id: item.id, nombre: item.nombre, colorHex: item.color_hex, coordenadas: item.coordenadas, notas: item.notas })));
+        setSecciones(seccionesFormateadas.map(item => ({ 
+          id: item.id, 
+          nombre: item.nombre, 
+          colorHex: item.color_hex, 
+          coordenadas: item.coordenadas, 
+          notas: item.notas, 
+          asignado_a: item.asignado_a 
+        })));
 
         if (seccionesFormateadas.length > 0 && congregacionContextoId) {
           let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
@@ -155,6 +160,36 @@ export default function useMapa() {
     try { setCargando(true); const { error } = await supabase.from('secciones').delete().eq('id', idSeccion); if (error) throw error; await cargarDatosContexto(); } catch (error) { alert("Error: " + error.message); } finally { setCargando(false); }
   };
 
+  // =========================================================
+  // FUNCIONES OPERATIVAS: CAPITÁN / PRECURSOR
+  // =========================================================
+  const asignarTerritorioEnBD = async (idSeccion, idUsuarioAsignado) => {
+    try {
+      setCargando(true);
+      const { error } = await supabase.from('secciones').update({ asignado_a: idUsuarioAsignado || null }).eq('id', idSeccion);
+      if (error) throw error;
+      await cargarDatosContexto();
+    } catch (error) { alert("Error al asignar: " + error.message); } finally { setCargando(false); }
+  };
+
+  const reiniciarTerritorioEnBD = async (idSeccion) => {
+    if (!window.confirm("¿Estás seguro? Esto regresará todas las casas de este territorio a color rojo (Pendiente).")) return;
+    try {
+      setCargando(true);
+      const { error } = await supabase.from('edificios').update({ estado: 'pendiente' }).eq('seccion_id', idSeccion);
+      if (error) throw error;
+      await cargarDatosContexto();
+    } catch (error) { alert("Error al reiniciar: " + error.message); } finally { setCargando(false); }
+  };
+
+  const actualizarNotasSeccionEnBD = async (idSeccion, nuevasNotas) => {
+    try {
+      const { error } = await supabase.from('secciones').update({ notas: nuevasNotas }).eq('id', idSeccion);
+      if (error) throw error;
+      setSecciones(prev => prev.map(s => s.id === idSeccion ? { ...s, notas: nuevasNotas } : s));
+    } catch (error) { alert("Error al guardar notas: " + error.message); }
+  };
+
   const manejarClickMapa = (coordenada) => {
     const [lat, lng] = coordenada;
     if (enModoTrazado) { registrarPuntoTrazado(coordenada); } else if (enModoEdificios) {
@@ -203,7 +238,6 @@ export default function useMapa() {
     try { setCargando(true); const { error } = await supabase.from('perfiles').delete().eq('id', idMiembro); if (error) throw error; await cargarDatosContexto(); } catch (error) { alert("Error: " + error.message); } finally { setCargando(false); }
   };
 
-  // NUEVA FUNCIÓN: Actualizar el nombre de la congregación en la BD
   const guardarNombreCongregacionBD = async (nuevoNombre) => {
     if (!congregacionActiva || nuevoNombre === congregacionActiva.nombre) return;
     try {
@@ -213,7 +247,6 @@ export default function useMapa() {
       
       setCongregacionActiva(prev => ({ ...prev, nombre: nuevoNombre }));
       
-      // Actualizar lista global en tiempo real si el admin mayor cambia un nombre
       if (perfilUsuario?.rol === 'Administrador Mayor') {
         setListaCongregaciones(prev => prev.map(c => c.id === congregacionActiva.id ? { ...c, nombre: nuevoNombre } : c));
       }
@@ -224,18 +257,30 @@ export default function useMapa() {
     }
   };
 
+  // =========================================================
+  // ENLACES INTELIGENTES (ENCRIPTADOS Y PÚBLICOS)
+  // =========================================================
   const crearLinkInvitacion = (rolDestino, esNuevaCongregacion = false) => {
     if (!perfilUsuario) return '';
     const urlBase = window.location.origin;
-    let linkCompleto = '';
-    
-    if (esNuevaCongregacion) {
-      linkCompleto = `${urlBase}/registro?rol=${rolDestino}&crear_congregacion=true`;
-    } else {
-      const targetCong = congregacionContextoId || perfilUsuario.congregacion_id;
-      linkCompleto = `${urlBase}/registro?congregacion=${targetCong}&rol=${rolDestino}`;
-    }
 
+    // CASO 1: Es un Publicador. No requiere login, le damos la ruta pública directa al Visor.
+    if (rolDestino === 'Publicador') {
+      const enlaceCorto = congregacionActiva?.enlace_corto || 'central-demo';
+      const linkPublico = `${urlBase}/v/${enlaceCorto}`;
+      const msjPublico = `Hola hermano, aquí tienes el enlace para ver y trabajar los territorios de la congregación:\n\n${linkPublico}`;
+      return `https://api.whatsapp.com/send?text=${encodeURIComponent(msjPublico)}`;
+    }
+    
+    // CASO 2: Es Admin, Capitán o Precursor. Empaquetamos y encriptamos la URL.
+    const targetCong = congregacionContextoId || perfilUsuario.congregacion_id;
+    const payloadCifrado = btoa(JSON.stringify({
+      r: rolDestino,
+      nc: esNuevaCongregacion ? 1 : 0,
+      c: esNuevaCongregacion ? null : targetCong
+    }));
+
+    const linkCompleto = `${urlBase}/registro?key=${payloadCifrado}`;
     const mensajeWhatsApp = `Hola hermano, te invito a PredicaMap como *${rolDestino}*. Regístrate en este enlace seguro:\n\n${linkCompleto}`;
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(mensajeWhatsApp)}`;
   };
@@ -243,7 +288,8 @@ export default function useMapa() {
   return {
     secciones, edificios, cargando, textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad, coordenadasActuales, zoomActual, enModoTrazado, setEnModoTrazado, enModoEdificios, setEnModoEdificios, nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio, puntosTrazadoActual, registrarPuntoTrazado, deshacerUltimoPunto, limpiarTrazadoCompleto, cancelarTrazadoYSalir, guardarNuevaSeccionEnBD, eliminarSeccionEnBD, edificioSeleccionado, setEdificioSeleccionado, notesEdificioTemp, setNotasEdificioTemp, manejarClickMapa, cambiarEstadoEdificioTemp, guardarEdificioEnBD, eliminarEdificioEnBD, volarATerritorio, completarTerritorioEntero, mostrarCalles, setMostrarCalles, mostrarLugares, setMostrarLugares, perfilUsuario, usuariosEquipo, eliminarMiembroEquipo, crearLinkInvitacion,
     listaCongregaciones, congregacionContextoId, alSeleccionarCongregacionContexto: setCongregacionContextoId,
-    // EXPORTS DE CONFIGURACIÓN
-    congregacionActiva, guardarNombreCongregacionBD
+    congregacionActiva, guardarNombreCongregacionBD,
+    // EXPORTS NUEVOS DE ASIGNACIÓN
+    asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD
   };
 }

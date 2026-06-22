@@ -24,7 +24,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Pantalla de carga mientras Supabase verifica el token
   if (cargando) {
     return (
       <div className="w-screen h-screen bg-slate-900 flex items-center justify-center flex-col gap-3">
@@ -37,19 +36,25 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* RUTA DE LOGIN: Si ya hay sesión, lo patea al mapa */}
+        {/* RUTA DE LOGIN */}
         <Route 
           path="/login" 
           element={!sesion ? <VistaLogin /> : <Navigate to="/" replace />} 
         />
 
-        {/* RUTA PRINCIPAL (MAPA): Si no hay sesión, lo patea al login */}
+        {/* NUEVA RUTA: REGISTRO PARA ATRAPAR INVITACIONES */}
+        <Route 
+          path="/registro" 
+          element={!sesion ? <VistaLogin /> : <Navigate to="/" replace />} 
+        />
+
+        {/* RUTA PRINCIPAL (MAPA) */}
         <Route 
           path="/" 
           element={sesion ? <VistaDashboard /> : <Navigate to="/login" replace />} 
         />
 
-        {/* RUTA COMODÍN (Error 404): Redirige a la raíz si escribe una URL que no existe */}
+        {/* RUTA COMODÍN (Error 404) */}
         <Route 
           path="*" 
           element={<Navigate to="/" replace />} 
