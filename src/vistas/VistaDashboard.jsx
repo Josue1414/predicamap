@@ -10,9 +10,8 @@ import useMapa from '../hooks/useMapa';
 export default function VistaDashboard() {
   const [modoOscuro, setModoOscuro] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
-  const [rolUsuario] = useState('Administrador'); 
   
-  // NUEVO ESTADO: Nombre de la congregación editable
+  // NUEVO ESTADO: Nombre de la congregación editable por el momento en la UI
   const [nombreCongregacion, setNombreCongregacion] = useState('Congregación Central');
 
   const {
@@ -26,7 +25,15 @@ export default function VistaDashboard() {
     guardarNuevaSeccionEnBD, eliminarSeccionEnBD,
     edificioSeleccionado, setEdificioSeleccionado, notasEdificioTemp, setNotasEdificioTemp, cambiarEstadoEdificioTemp, guardarEdificioEnBD, eliminarEdificioEnBD, volarATerritorio,
     completarTerritorioEntero,
-    mostrarCalles, setMostrarCalles, mostrarLugares, setMostrarLugares // <-- Inyectamos los estados de las capas
+    mostrarCalles, setMostrarCalles, mostrarLugares, setMostrarLugares,
+    perfilUsuario,
+    usuariosEquipo,
+    eliminarMiembroEquipo,
+    crearLinkInvitacion,
+    // ¡AQUÍ ESTÁ EL PUENTE REPARADO! Extraemos las props de multi-congregación
+    listaCongregaciones, 
+    congregacionContextoId, 
+    alSeleccionarCongregacionContexto
   } = useMapa();
 
   useEffect(() => {
@@ -37,7 +44,6 @@ export default function VistaDashboard() {
   return (
     <div className="w-screen h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
       
-      {/* Cabecera ahora recibe la variable dinámica */}
       <CabeceraCongregacion 
         nombreCongregacion={nombreCongregacion} 
         modoOscuro={modoOscuro}
@@ -46,7 +52,6 @@ export default function VistaDashboard() {
 
       <MenuLateral 
         abierto={menuAbierto} alCerrar={() => setMenuAbierto(false)}
-        // Props para editar el nombre desde el menú
         nombreCongregacion={nombreCongregacion} 
         alCambiarNombreCongregacion={setNombreCongregacion} 
         seccionesGuardadas={secciones} 
@@ -61,9 +66,16 @@ export default function VistaDashboard() {
         notasTerritorio={notasNuevoTerritorio} alCambiarNotas={setNotasNuevoTerritorio}
         alEmpezarATrazar={() => { setEnModoTrazado(true); setEnModoEdificios(false); }}
         alActivarModoEdificios={() => { setEnModoEdificios(true); setEnModoTrazado(false); }}
-        // Props para los interruptores del mapa
         mostrarCalles={mostrarCalles} alCambiarMostrarCalles={setMostrarCalles}
         mostrarLugares={mostrarLugares} alCambiarMostrarLugares={setMostrarLugares}
+        perfilUsuario={perfilUsuario}
+        usuariosEquipo={usuariosEquipo}
+        alEliminarMiembro={eliminarMiembroEquipo}
+        alCrearLinkInvitacion={crearLinkInvitacion}
+        // ¡Y SE LAS INYECTAMOS AL MENÚ!
+        listaCongregaciones={listaCongregaciones}
+        congregacionContextoId={congregacionContextoId}
+        alSeleccionarCongregacionContexto={alSeleccionarCongregacionContexto}
       />
 
       <MenuEdificio 
@@ -103,7 +115,7 @@ export default function VistaDashboard() {
           enModoTrazado={enModoTrazado} enModoEdificios={enModoEdificios}
           puntosTrazadoActual={puntosTrazadoActual} colorTrazadoActual={colorNuevoTerritorio}
           alRegistrarPuntoTrazado={manejarClickMapa} 
-          mostrarCalles={mostrarCalles} mostrarLugares={mostrarLugares} // <-- Pasamos los estados al mapa
+          mostrarCalles={mostrarCalles} mostrarLugares={mostrarLugares}
         />
 
         <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-lg text-[10px] font-semibold text-slate-700 dark:text-slate-300 pointer-events-none border border-slate-200 dark:border-slate-800">
@@ -112,7 +124,7 @@ export default function VistaDashboard() {
           ) : enModoEdificios ? (
             <span className="text-emerald-500 animate-pulse font-bold">🏠 Toca los techos en el mapa</span>
           ) : (
-            <>Rol: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{rolUsuario}</span></>
+            <>Rol: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{perfilUsuario?.rol || 'Cargando...'}</span></>
           )}
         </div>
       </main>
