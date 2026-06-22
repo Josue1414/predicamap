@@ -257,14 +257,13 @@ export default function useMapa() {
     }
   };
 
-  // =========================================================
-  // ENLACES INTELIGENTES (ENCRIPTADOS Y PÚBLICOS)
+ // =========================================================
+  // ENLACES INTELIGENTES (ENCRIPTADOS Y PÚBLICOS) SEGUROS
   // =========================================================
   const crearLinkInvitacion = (rolDestino, esNuevaCongregacion = false) => {
     if (!perfilUsuario) return '';
     const urlBase = window.location.origin;
 
-    // CASO 1: Es un Publicador. No requiere login, le damos la ruta pública directa al Visor.
     if (rolDestino === 'Publicador') {
       const enlaceCorto = congregacionActiva?.enlace_corto || 'central-demo';
       const linkPublico = `${urlBase}/v/${enlaceCorto}`;
@@ -272,24 +271,17 @@ export default function useMapa() {
       return `https://api.whatsapp.com/send?text=${encodeURIComponent(msjPublico)}`;
     }
     
-    // CASO 2: Es Admin, Capitán o Precursor. Empaquetamos y encriptamos la URL.
     const targetCong = congregacionContextoId || perfilUsuario.congregacion_id;
-    const payloadCifrado = btoa(JSON.stringify({
+    
+    // NUEVO: encodeURIComponent protege las tildes ("á" de Capitán) antes de encriptar en Base64
+    const payloadCifrado = btoa(encodeURIComponent(JSON.stringify({
       r: rolDestino,
       nc: esNuevaCongregacion ? 1 : 0,
       c: esNuevaCongregacion ? null : targetCong
-    }));
+    })));
 
     const linkCompleto = `${urlBase}/registro?key=${payloadCifrado}`;
     const mensajeWhatsApp = `Hola hermano, te invito a PredicaMap como *${rolDestino}*. Regístrate en este enlace seguro:\n\n${linkCompleto}`;
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(mensajeWhatsApp)}`;
-  };
-
-  return {
-    secciones, edificios, cargando, textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad, coordenadasActuales, zoomActual, enModoTrazado, setEnModoTrazado, enModoEdificios, setEnModoEdificios, nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio, puntosTrazadoActual, registrarPuntoTrazado, deshacerUltimoPunto, limpiarTrazadoCompleto, cancelarTrazadoYSalir, guardarNuevaSeccionEnBD, eliminarSeccionEnBD, edificioSeleccionado, setEdificioSeleccionado, notesEdificioTemp, setNotasEdificioTemp, manejarClickMapa, cambiarEstadoEdificioTemp, guardarEdificioEnBD, eliminarEdificioEnBD, volarATerritorio, completarTerritorioEntero, mostrarCalles, setMostrarCalles, mostrarLugares, setMostrarLugares, perfilUsuario, usuariosEquipo, eliminarMiembroEquipo, crearLinkInvitacion,
-    listaCongregaciones, congregacionContextoId, alSeleccionarCongregacionContexto: setCongregacionContextoId,
-    congregacionActiva, guardarNombreCongregacionBD,
-    // EXPORTS NUEVOS DE ASIGNACIÓN
-    asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD
   };
 }

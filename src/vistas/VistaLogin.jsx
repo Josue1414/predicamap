@@ -17,18 +17,24 @@ export default function VistaLogin() {
   const [requiereNuevaCongregacion, setRequiereNuevaCongregacion] = useState(false);
 
   useEffect(() => {
-    // Leemos los parámetros incrustados en el enlace de WhatsApp
     const parametros = new URLSearchParams(window.location.search);
-    const rol = parametros.get('rol');
-    const congId = parametros.get('congregacion');
-    const crearCong = parametros.get('crear_congregacion');
+    const key = parametros.get('key');
 
-    if (rol) {
-      setRolInvitado(rol);
-      setEsRegistro(true); // Si viene con invitación, lo dirigimos directo a registrarse
+    // Desencriptación Segura del Payload de la URL
+    if (key) {
+      try {
+        // NUEVO: decodeURIComponent recupera las tildes después de desencriptar el Base64
+        const decoded = JSON.parse(decodeURIComponent(atob(key))); 
+        if (decoded.r) {
+          setRolInvitado(decoded.r);
+          setEsRegistro(true); 
+        }
+        if (decoded.c) setCongregacionInvitadaId(decoded.c);
+        if (decoded.nc === 1) setRequiereNuevaCongregacion(true);
+      } catch (error) {
+        console.error("El enlace de invitación está corrupto o es inválido.");
+      }
     }
-    if (congId) setCongregacionInvitadaId(congId);
-    if (crearCong === 'true') setRequiereNuevaCongregacion(true);
   }, []);
 
   const manejarAutenticacion = async (evento) => {
