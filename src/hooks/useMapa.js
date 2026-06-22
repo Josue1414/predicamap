@@ -284,4 +284,23 @@ export default function useMapa() {
     const mensajeWhatsApp = `Hola hermano, te invito a PredicaMap como *${rolDestino}*. Regístrate en este enlace seguro:\n\n${linkCompleto}`;
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(mensajeWhatsApp)}`;
   };
+
+  // ESTE RETURN DEBE ESTAR AL FINAL DEL HOOK
+  return {
+    secciones, edificios, cargando, textoBusqueda, setTextoBusqueda, resultadosCiudades, 
+    buscarCiudadEnServidor, seleccionarCiudad, coordenadasActuales, zoomActual, 
+    enModoTrazado, setEnModoTrazado, enModoEdificios, setEnModoEdificios, 
+    nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, 
+    setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio, 
+    puntosTrazadoActual, registrarPuntoTrazado, deshacerUltimoPunto, 
+    limpiarTrazadoCompleto, cancelarTrazadoYSalir, guardarNuevaSeccionEnBD, 
+    eliminarSeccionEnBD, edificioSeleccionado, setEdificioSeleccionado, 
+    notesEdificioTemp, setNotasEdificioTemp, manejarClickMapa, cambiarEstadoEdificioTemp, 
+    guardarEdificioEnBD, eliminarEdificioEnBD, volarATerritorio, completarTerritorioEntero, 
+    mostrarCalles, setMostrarCalles, mostrarLugares, setMostrarLugares, perfilUsuario, 
+    usuariosEquipo, eliminarMiembroEquipo, crearLinkInvitacion, listaCongregaciones, 
+    congregacionContextoId, alSeleccionarCongregacionContexto: setCongregacionContextoId, 
+    congregacionActiva, guardarNombreCongregacionBD, asignarTerritorioEnBD, 
+    reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD
+  };
 }
