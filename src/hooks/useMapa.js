@@ -40,22 +40,20 @@ export default function useMapa() {
   const [perfilUsuario, setPerfilUsuario] = useState(null); 
   const [usuariosEquipo, setUsuariosEquipo] = useState([]); 
 
-  // CONTROL MULTI-CONGREGACIÓN Fresh 2026
   const [listaCongregaciones, setListaCongregaciones] = useState([]);
   const [congregacionContextoId, setCongregacionContextoId] = useState(null);
+  
+  // NUEVO: Almacena los datos de la congregación activa (nombre, ID, etc.)
+  const [congregacionActiva, setCongregacionActiva] = useState(null);
 
-  // CEREBRO DE ENTRADA: Descarga el perfil y la lista maestra de congregaciones de inmediato
   const inicializarEcosistema = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Descargamos el perfil del usuario logueado
       const { data: perfil } = await supabase.from('perfiles').select('*').eq('id', user.id).single();
       if (perfil) {
         setPerfilUsuario(perfil);
-        
-        // 2. Si es Administrador Mayor, traemos todas las congregaciones sin condiciones cruzadas
         if (perfil.rol === 'Administrador Mayor') {
           const { data: congs } = await supabase.from('congregaciones').select('*').order('creado_en', { ascending: true });
           setListaCongregaciones(congs || []);
@@ -66,19 +64,21 @@ export default function useMapa() {
     }
   };
 
-  // CARGA OPERATIVA DE MAPAS Y EQUIPOS: Se activa al iniciar o al cambiar de congregación activa
   const cargarDatosContexto = async () => {
     try {
       setCargando(true);
       const targetCongId = congregacionContextoId || perfilUsuario?.congregacion_id;
 
       if (targetCongId) {
-        // A) Territorios
+        // A) Obtener información general de la Congregación
+        const { data: cong } = await supabase.from('congregaciones').select('*').eq('id', targetCongId).single();
+        setCongregacionActiva(cong);
+
+        // B) Territorios
         const { data: secs } = await supabase.from('secciones').select('*').eq('congregacion_id', targetCongId).order('creado_en', { ascending: true });
         const seccionesFormateadas = secs || [];
         setSecciones(seccionesFormateadas.map(item => ({ id: item.id, nombre: item.nombre, colorHex: item.color_hex, coordenadas: item.coordenadas, notas: item.notas })));
 
-        // Volar la cámara automáticamente si estamos simulando otra congregación con territorios
         if (seccionesFormateadas.length > 0 && congregacionContextoId) {
           let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
           seccionesFormateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
@@ -88,7 +88,7 @@ export default function useMapa() {
           setCoordenadasActuales([(minLat + maxLat) / 2, (minLng + maxLng) / 2]);
         }
 
-        // B) Casas/Checks
+        // C) Casas/Checks
         const secIds = seccionesFormateadas.map(s => s.id);
         if (secIds.length > 0) {
           const { data: edis } = await supabase.from('edificios').select('*').in('seccion_id', secIds);
@@ -97,13 +97,13 @@ export default function useMapa() {
           setEdificios([]);
         }
 
-        // C) Equipo autorizado
+        // D) Equipo autorizado
         const { data: equipo } = await supabase.from('perfiles').select('*').eq('congregacion_id', targetCongId).order('nombre', { ascending: true });
         setUsuariosEquipo(equipo ? equipo.filter(u => u.rol !== 'Publicador') : []);
       }
     } catch (error) {
       console.error("Error al refrescar mapas de la congregación:", error.message);
-    } finally {
+    } finally { 
       setCargando(false);
     }
   };
@@ -203,7 +203,27 @@ export default function useMapa() {
     try { setCargando(true); const { error } = await supabase.from('perfiles').delete().eq('id', idMiembro); if (error) throw error; await cargarDatosContexto(); } catch (error) { alert("Error: " + error.message); } finally { setCargando(false); }
   };
 
-  // ACTUALIZADO: Permite recibir un flag para invitaciones a congregaciones desde cero
+  // NUEVA FUNCIÓN: Actualizar el nombre de la congregación en la BD
+  const guardarNombreCongregacionBD = async (nuevoNombre) => {
+    if (!congregacionActiva || nuevoNombre === congregacionActiva.nombre) return;
+    try {
+      setCargando(true);
+      const { error } = await supabase.from('congregaciones').update({ nombre: nuevoNombre }).eq('id', congregacionActiva.id);
+      if (error) throw error;
+      
+      setCongregacionActiva(prev => ({ ...prev, nombre: nuevoNombre }));
+      
+      // Actualizar lista global en tiempo real si el admin mayor cambia un nombre
+      if (perfilUsuario?.rol === 'Administrador Mayor') {
+        setListaCongregaciones(prev => prev.map(c => c.id === congregacionActiva.id ? { ...c, nombre: nuevoNombre } : c));
+      }
+    } catch (error) {
+      console.error("Error al actualizar nombre:", error.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
   const crearLinkInvitacion = (rolDestino, esNuevaCongregacion = false) => {
     if (!perfilUsuario) return '';
     const urlBase = window.location.origin;
@@ -222,6 +242,8 @@ export default function useMapa() {
 
   return {
     secciones, edificios, cargando, textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad, coordenadasActuales, zoomActual, enModoTrazado, setEnModoTrazado, enModoEdificios, setEnModoEdificios, nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio, puntosTrazadoActual, registrarPuntoTrazado, deshacerUltimoPunto, limpiarTrazadoCompleto, cancelarTrazadoYSalir, guardarNuevaSeccionEnBD, eliminarSeccionEnBD, edificioSeleccionado, setEdificioSeleccionado, notesEdificioTemp, setNotasEdificioTemp, manejarClickMapa, cambiarEstadoEdificioTemp, guardarEdificioEnBD, eliminarEdificioEnBD, volarATerritorio, completarTerritorioEntero, mostrarCalles, setMostrarCalles, mostrarLugares, setMostrarLugares, perfilUsuario, usuariosEquipo, eliminarMiembroEquipo, crearLinkInvitacion,
-    listaCongregaciones, congregacionContextoId, alSeleccionarCongregacionContexto: setCongregacionContextoId
+    listaCongregaciones, congregacionContextoId, alSeleccionarCongregacionContexto: setCongregacionContextoId,
+    // EXPORTS DE CONFIGURACIÓN
+    congregacionActiva, guardarNombreCongregacionBD
   };
 }
