@@ -72,7 +72,7 @@ export default function useMapa() {
         const { data: cong } = await supabase.from('congregaciones').select('*').eq('id', targetCongId).single();
         setCongregacionActiva(cong);
 
-        // B) Territorios (AHORA CON "asignado_a")
+        // B) Territorios
         const { data: secs } = await supabase.from('secciones').select('*').eq('congregacion_id', targetCongId).order('creado_en', { ascending: true });
         const seccionesFormateadas = secs || [];
         setSecciones(seccionesFormateadas.map(item => ({ 
@@ -257,7 +257,24 @@ export default function useMapa() {
     }
   };
 
- // =========================================================
+  // =========================================================
+  // EXCLUSIVO ADMINISTRADOR MÁSTER: BORRAR CONGREGACIÓN
+  // =========================================================
+  const eliminarCongregacionMasterBD = async (idCongregacion) => {
+    if (!window.confirm("⚠️ ATENCIÓN MÁSTER:\n\n¿Estás absolutamente seguro de eliminar esta congregación? Esto borrará permanentemente todos sus territorios, casas asociadas y perfiles de usuarios vinculados de forma irreversible.")) return;
+    try {
+      setCargando(true);
+      const { error } = await supabase.from('congregaciones').delete().eq('id', idCongregacion);
+      if (error) throw error;
+      
+      setListaCongregaciones(prev => prev.filter(c => c.id !== idCongregacion));
+      if (congregacionContextoId === idCongregacion) {
+        setCongregacionContextoId(null);
+      }
+    } catch (error) { alert("Error al eliminar congregación: " + error.message); } finally { setCargando(false); }
+  };
+
+  // =========================================================
   // ENLACES INTELIGENTES (ENCRIPTADOS Y PÚBLICOS) SEGUROS
   // =========================================================
   const crearLinkInvitacion = (rolDestino, esNuevaCongregacion = false) => {
@@ -273,7 +290,7 @@ export default function useMapa() {
     
     const targetCong = congregacionContextoId || perfilUsuario.congregacion_id;
     
-    // NUEVO: encodeURIComponent protege las tildes ("á" de Capitán) antes de encriptar en Base64
+    // encodeURIComponent protege las tildes ("á" de Capitán) antes de encriptar en Base64
     const payloadCifrado = btoa(encodeURIComponent(JSON.stringify({
       r: rolDestino,
       nc: esNuevaCongregacion ? 1 : 0,
@@ -301,6 +318,8 @@ export default function useMapa() {
     usuariosEquipo, eliminarMiembroEquipo, crearLinkInvitacion, listaCongregaciones, 
     congregacionContextoId, alSeleccionarCongregacionContexto: setCongregacionContextoId, 
     congregacionActiva, guardarNombreCongregacionBD, asignarTerritorioEnBD, 
-    reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD
+    reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD,
+    // LA NUEVA FUNCION MÁSTER AHORA SÍ ESTÁ EXPORTADA
+    eliminarCongregacionMasterBD
   };
 }
