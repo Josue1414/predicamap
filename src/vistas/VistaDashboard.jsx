@@ -3,26 +3,26 @@ import React, { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import CabeceraCongregacion from '../componentes/CabeceraCongregacion';
 import VisorMapa from '../componentes/VisorMapa';
-//import MenuLateral from '../componentes/MenuLateral';
 import MenuLateral from '../componentes/menu-lateral';
 import ControlesTrazado from '../componentes/ControlesTrazado';
 import MenuEdificio from '../componentes/MenuEdificio';
+import MenuTerritorio from '../componentes/MenuTerritorio'; // <-- IMPORTACIÓN NUEVA
 import useMapa from '../hooks/useMapa';
 
 export default function VistaDashboard() {
   const [modoOscuro, setModoOscuro] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
   
-  // Estado local para la UI del nombre de la congregación
   const [nombreCongregacionUI, setNombreCongregacionUI] = useState('Cargando...');
-  
-  // Estado local para el formulario de bienvenida
   const [nombreNuevoSetup, setNombreNuevoSetup] = useState('');
+  
+  // ESTADO NUEVO PARA VENTANA DE TERRITORIO
+  const [territorioSeleccionado, setTerritorioSeleccionado] = useState(null);
 
   const {
     secciones, edificios, cargando,
     textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad,
-    coordenadasActuales, zoomActual,
+    coordenadasActuales, zoomActual,setZoomActual,
     enModoTrazado, setEnModoTrazado,
     enModoEdificios, setEnModoEdificios,
     nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio,
@@ -39,7 +39,11 @@ export default function VistaDashboard() {
     congregacionContextoId, 
     alSeleccionarCongregacionContexto,
     congregacionActiva, 
-    guardarNombreCongregacionBD
+    guardarNombreCongregacionBD,
+    asignarTerritorioEnBD, 
+    reiniciarTerritorioEnBD, 
+    actualizarNotasSeccionEnBD,
+    eliminarCongregacionMasterBD
   } = useMapa();
 
   useEffect(() => {
@@ -47,14 +51,12 @@ export default function VistaDashboard() {
     else document.documentElement.classList.remove('dark');
   }, [modoOscuro]);
 
-  // Sincronizar el estado local con la base de datos cuando se descarga
   useEffect(() => {
     if (congregacionActiva) {
       setNombreCongregacionUI(congregacionActiva.nombre);
     }
   }, [congregacionActiva]);
 
-  // AUTO-GUARDADO INTELIGENTE: Si editas el nombre en el menú, se guarda 1 segundo después de dejar de escribir
   useEffect(() => {
     const timer = setTimeout(() => {
       if (nombreCongregacionUI && congregacionActiva && nombreCongregacionUI !== congregacionActiva.nombre && nombreCongregacionUI !== 'Nueva Congregación') {
@@ -64,8 +66,6 @@ export default function VistaDashboard() {
     return () => clearTimeout(timer);
   }, [nombreCongregacionUI]);
 
-
-  // Lógica para mostrar la pantalla de bienvenida al nuevo administrador
   const mostrarModalBienvenida = congregacionActiva?.nombre === 'Nueva Congregación';
 
   return (
@@ -116,7 +116,6 @@ export default function VistaDashboard() {
         </div>
       )}
 
-
       <CabeceraCongregacion 
         nombreCongregacion={nombreCongregacionUI} 
         modoOscuro={modoOscuro}
@@ -148,16 +147,33 @@ export default function VistaDashboard() {
         listaCongregaciones={listaCongregaciones}
         congregacionContextoId={congregacionContextoId}
         alSeleccionarCongregacionContexto={alSeleccionarCongregacionContexto}
+        asignarTerritorioEnBD={asignarTerritorioEnBD}
+        reiniciarTerritorioEnBD={reiniciarTerritorioEnBD}
+        actualizarNotasSeccionEnBD={actualizarNotasSeccionEnBD}
+        alEliminarCongregacion={eliminarCongregacionMasterBD}
       />
 
       <MenuEdificio 
         edificio={edificioSeleccionado}
+        perfilUsuario={perfilUsuario}
         alCerrar={() => setEdificioSeleccionado(null)}
         alCambiarEstado={cambiarEstadoEdificioTemp}
+        alCambiarDireccion={(nuevaDir) => setEdificioSeleccionado(prev => ({ ...prev, direccion: nuevaDir }))}
         notasTemp={notasEdificioTemp}
         alCambiarNotasTemp={setNotasEdificioTemp}
         alGuardar={guardarEdificioEnBD}
         alEliminar={eliminarEdificioEnBD}
+      />
+
+      {/* NUEVA VENTANA: DETALLES DEL TERRITORIO */}
+      <MenuTerritorio 
+        territorio={territorioSeleccionado}
+        edificios={edificios}
+        perfilUsuario={perfilUsuario}
+        alCerrar={() => setTerritorioSeleccionado(null)}
+        alCompletar={completarTerritorioEntero}
+        alReiniciar={reiniciarTerritorioEnBD}
+        alGuardarNotas={actualizarNotasSeccionEnBD}
       />
 
       {enModoTrazado && !mostrarModalBienvenida && (
@@ -181,13 +197,16 @@ export default function VistaDashboard() {
       <main className="w-full h-full pt-14 relative z-10">
         <VisorMapa 
           centroInicial={[25.6565, -100.2930]} zoomInicial={15}
-          centroActual={coordenadasActuales} zoomActual={zoomActual}
+          centroActual={coordenadasActuales} 
+          zoomActual={zoomActual} 
+          setZoomActual={setZoomActual} // <-- NUEVA LÍNEA CLAVE
           secciones={secciones} edificios={edificios}
           alSeleccionarEdificio={setEdificioSeleccionado}
           enModoTrazado={enModoTrazado} enModoEdificios={enModoEdificios}
           puntosTrazadoActual={puntosTrazadoActual} colorTrazadoActual={colorNuevoTerritorio}
           alRegistrarPuntoTrazado={manejarClickMapa} 
           mostrarCalles={mostrarCalles} mostrarLugares={mostrarLugares}
+          alSeleccionarTerritorio={setTerritorioSeleccionado}
         />
 
         {!mostrarModalBienvenida && (

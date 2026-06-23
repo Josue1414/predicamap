@@ -40,13 +40,29 @@ export default function SeccionTerritorios({
               const casasDeEstaSeccion = edificiosGuardados?.filter(e => e.seccion_id === sec.id) || [];
               const totalCasas = casasDeEstaSeccion.length;
               const casasCompletadas = casasDeEstaSeccion.filter(e => e.estado === 'completado').length;
-              const porcentaje = totalCasas === 0 ? 0 : Math.round((casasCompletadas / totalCasas) * 100);
+              
+              // 1. CORRECCIÓN MATEMÁTICA: Soporte para territorios sin casas
+              let porcentaje = 0;
+              if (totalCasas > 0) {
+                porcentaje = Math.round((casasCompletadas / totalCasas) * 100);
+              } else {
+                porcentaje = sec.estado === 'completado' ? 100 : 0;
+              }
               
               const esMio = sec.asignado_a === perfilUsuario?.id;
 
+              // 2. FILTRO DE JERARQUÍA PARA ASIGNACIONES
+              const usuariosAsignables = usuariosEquipo.filter(u => {
+                if (esAdminOperativo) return true; // El admin ve a todos
+                if (esCapitanYSuperior) {
+                  // El capitán solo se ve a sí mismo o a los precursores
+                  return u.id === perfilUsuario?.id || u.rol === 'Precursor';
+                }
+                return false;
+              });
+
               return (
                 <div key={sec.id} className={`border rounded-lg overflow-hidden shadow-sm transition-colors ${esMio ? 'border-amber-400 dark:border-amber-600/50' : 'border-slate-100 dark:border-slate-800'}`}>
-                  {/* CABECERA DEL TERRITORIO */}
                   <div onClick={() => setTerritorioExpandido(territorioExpandido === sec.id ? null : sec.id)} className={`p-2.5 flex items-center justify-between cursor-pointer ${esMio ? 'bg-amber-50/50 dark:bg-amber-900/10 hover:bg-amber-100/50 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-900'}`}>
                     <div className="flex items-center gap-2 w-full pr-3">
                       <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: sec.colorHex }} />
@@ -63,11 +79,9 @@ export default function SeccionTerritorios({
                     <ChevronDown size={14} className={`text-slate-400 flex-shrink-0 transition-transform ${territorioExpandido === sec.id ? 'rotate-180' : ''}`} />
                   </div>
                   
-                  {/* DETALLES DEL TERRITORIO EXPANDIDO */}
                   {territorioExpandido === sec.id && (
                     <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
                       
-                      {/* NOTAS EDITABLES */}
                       {esPrecursorYSuperior ? (
                         <textarea 
                           defaultValue={sec.notas}
@@ -81,11 +95,11 @@ export default function SeccionTerritorios({
                       )}
                       
                       <div className="flex justify-between text-[10px] text-slate-600 dark:text-slate-400 font-bold mb-3">
-                        <span>{casasCompletadas} de {totalCasas} completadas</span>
+                        <span>{totalCasas > 0 ? `${casasCompletadas} de ${totalCasas} completadas` : 'Sin puntos dibujados'}</span>
                         <span className={porcentaje === 100 ? 'text-emerald-500' : ''}>{porcentaje}% Listo</span>
                       </div>
 
-                      {/* ASIGNACIÓN DE TERRITORIO (Capitán y Superior) */}
+                      {/* ASIGNACIÓN DE TERRITORIO (Exclusivo Capitán y Superior) */}
                       {esCapitanYSuperior && (
                         <div className="mb-3">
                           <label className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1"><UserCheck size={12}/> Asignar a:</label>
@@ -94,8 +108,8 @@ export default function SeccionTerritorios({
                             onChange={(e) => asignarTerritorioEnBD(sec.id, e.target.value)}
                             className="w-full p-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none"
                           >
-                            <option value="">-- Sin asignar --</option>
-                            {usuariosEquipo.map(u => (
+                            <option value="">-- Opcional: Sin asignar --</option>
+                            {usuariosAsignables.map(u => (
                               <option key={u.id} value={u.id}>{u.nombre} ({u.rol})</option>
                             ))}
                           </select>
@@ -108,8 +122,8 @@ export default function SeccionTerritorios({
                           <Navigation size={14} /> Volar al Territorio
                         </button>
                         
-                        <button disabled={totalCasas === 0 || porcentaje === 100} onClick={() => alCompletarTerritorio(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg font-bold text-xs hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                          <CheckCircle2 size={14} /> {porcentaje === 100 ? 'Territorio Terminado' : 'Marcar TODO Completado'}
+                        <button disabled={porcentaje === 100} onClick={() => alCompletarTerritorio(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg font-bold text-xs hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                          <CheckCircle2 size={14} /> {porcentaje === 100 ? 'Territorio Terminado' : (totalCasas === 0 ? 'Marcar Territorio Completado' : 'Marcar TODO Completado')}
                         </button>
                         
                         {/* REINICIAR (Exclusivo Capitán y Superior) */}
