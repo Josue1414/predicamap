@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './utilidades/clienteSupabase';
 import VistaLogin from './vistas/VistaLogin';
 import VistaDashboard from './vistas/VistaDashboard';
+import VistaPublicador from './vistas/VistaPublicador'; // <-- IMPORTAMOS LA NUEVA VISTA
 
 export default function App() {
   const [sesion, setSesion] = useState(null);
@@ -36,25 +37,33 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        
+        {/* ★ NUEVA RUTA PÚBLICA (PUBLICADOR) ★ */}
+        {/* Esta ruta es libre, no exige sesión y atrapa cualquier enlace que empiece con /v/ */}
+        <Route 
+          path="/v/:enlaceCorto" 
+          element={<VistaPublicador />} 
+        />
+
         {/* RUTA DE LOGIN */}
         <Route 
           path="/login" 
           element={!sesion ? <VistaLogin /> : <Navigate to="/" replace />} 
         />
 
-        {/* NUEVA RUTA: REGISTRO PARA ATRAPAR INVITACIONES */}
+        {/* RUTA: REGISTRO PARA ATRAPAR INVITACIONES */}
         <Route 
           path="/registro" 
           element={!sesion ? <VistaLogin /> : <Navigate to="/" replace />} 
         />
 
-        {/* RUTA PRINCIPAL (MAPA) */}
+        {/* RUTA PRINCIPAL (MAPA DASHBOARD ADMINISTRATIVO) */}
         <Route 
           path="/" 
           element={sesion ? <VistaDashboard /> : <Navigate to="/login" replace />} 
         />
 
-        {/* RUTA COMODÍN (Error 404) */}
+        {/* RUTA COMODÍN (Error 404 - Redirige al inicio) */}
         <Route 
           path="*" 
           element={<Navigate to="/" replace />} 

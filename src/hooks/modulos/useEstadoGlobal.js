@@ -78,11 +78,16 @@ export default function useEstadoGlobal() {
   const crearLinkInvitacion = (rolDestino, esNuevaCongregacion = false) => {
     if (!perfilUsuario) return '';
     const urlBase = window.location.origin;
+    
+    // ★ USANDO NUESTRO ESTÁNDAR DE ENCRIPTACIÓN DEL PROYECTO ★
     if (rolDestino === 'Publicador') {
       const enlaceCorto = congregacionActiva?.enlace_corto || 'central-demo';
-      const linkPublico = `${urlBase}/v/${enlaceCorto}`;
+      const payloadCifrado = btoa(encodeURIComponent(JSON.stringify({ v: enlaceCorto })));
+      const linkPublico = `${urlBase}/v/${payloadCifrado}`;
       return `https://api.whatsapp.com/send?text=${encodeURIComponent(`Hola hermano, aquí tienes el enlace para ver y trabajar los territorios:\n\n${linkPublico}`)}`;
     }
+    
+    // Encriptación para registro y nuevas congregaciones
     const payloadCifrado = btoa(encodeURIComponent(JSON.stringify({
       r: rolDestino, nc: esNuevaCongregacion ? 1 : 0, c: esNuevaCongregacion ? null : targetCongId
     })));
