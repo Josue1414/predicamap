@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utilidades/clienteSupabase';
 import VisorMapa from '../componentes/VisorMapa';
 import MenuLateralPublicador from '../componentes/menu-lateral/MenuLateralPublicador';
-import { Menu, MapPin, Moon, Sun, Home, Map as MapIcon, X } from 'lucide-react';
+import { Menu, MapPin, Moon, Sun, Home, Map as MapIcon, X, BookmarkPlus } from 'lucide-react';
+import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 
 export default function VistaPublicador() {
   const [cargando, setCargando] = useState(true);
@@ -30,6 +31,13 @@ export default function VistaPublicador() {
   const [territorioLeido, setTerritorioLeido] = useState(null);
   const [casaLeida, setCasaLeida] = useState(null);
 
+  // ★ ESTADOS PARA LAS REVISITAS PERSONALES ★
+  const gestorRevisitas = useMarcadoresPersonales();
+  const [enModoRevisita, setEnModoRevisita] = useState(false);
+  const [marcadorTemporal, setMarcadorTemporal] = useState(null); 
+  const [revisitaEditando, setRevisitaEditando] = useState(null); 
+  const [revisitaLectura, setRevisitaLectura] = useState(null);   
+
   useEffect(() => {
     if (modoOscuro) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
@@ -49,7 +57,6 @@ export default function VistaPublicador() {
           const datosDecodificados = JSON.parse(decodeURIComponent(atob(payloadCifrado)));
           enlaceCorto = datosDecodificados.v;
         } catch (e) {
-          // Fallback de seguridad por si es un link viejo sin encriptar
           enlaceCorto = payloadCifrado;
         }
 
@@ -109,11 +116,16 @@ export default function VistaPublicador() {
     setZoomActual(18); 
   };
 
+  const volarARevisita = (marcador) => {
+    setCoordenadasActuales([marcador.lat, marcador.lng]); 
+    setZoomActual(19);
+  };
+
   if (cargando) return <div className="w-screen h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-indigo-500 font-bold">Cargando Territorios...</div>;
   if (error) return <div className="w-screen h-screen flex items-center justify-center bg-slate-900 text-rose-500 font-bold p-6 text-center">Error: {error}</div>;
 
   return (
-    <div className="w-screen h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col">
+    <div className="w-screen h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col relative">
       
       {/* CABECERA PÚBLICA */}
       <header className="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-3 sm:px-4 z-[2000] relative shadow-sm">
@@ -138,46 +150,146 @@ export default function VistaPublicador() {
         mostrarLugares={mostrarLugares} alCambiarMostrarLugares={setMostrarLugares}
         textoBusqueda={textoBusqueda} alCambiarTextoBusqueda={setTextoBusqueda} alBuscar={buscarCiudadEnServidor}
         resultadosCiudades={resultadosCiudades} alSeleccionarCiudad={seleccionarCiudad}
+        // ★ PROPS PARA EL MENÚ DE REVISITAS ★
+        marcadoresPersonales={gestorRevisitas.marcadores}
+        alVolarARevisita={volarARevisita}
+        alEliminarRevisita={gestorRevisitas.eliminarMarcador}
+        alCompartirRevisita={gestorRevisitas.compartirMarcador}
+        alExportarBackup={gestorRevisitas.exportarBackup}
+        alImportarBackup={gestorRevisitas.importarBackup}
+        alEditarRevisita={(m) => setRevisitaEditando(m)}
       />
 
       <main className="flex-1 relative z-10">
+        
+        {/* BANNER INDICADOR DE MODO REVISITA */}
+        {enModoRevisita && !marcadorTemporal && (
+          <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-5 py-3 rounded-full shadow-2xl border-2 border-purple-500 text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-4 animate-slide-up">
+            <span className="flex items-center gap-2"><BookmarkPlus size={16} className="text-purple-500 animate-pulse"/> Toca el mapa para ubicar</span>
+            <button onClick={() => setEnModoRevisita(false)} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-3 py-1 rounded-lg text-xs hover:bg-rose-200 transition-colors">Cancelar</button>
+          </div>
+        )}
+
         <VisorMapa 
           centroInicial={[25.6565, -100.2930]} zoomInicial={15}
           centroActual={coordenadasActuales} zoomActual={zoomActual} setZoomActual={setZoomActual}
           secciones={secciones} edificios={edificios}
           alSeleccionarEdificio={setCasaLeida}
           alSeleccionarTerritorio={setTerritorioLeido}
-          enModoTrazado={false} enModoEdificios={false} puntosTrazadoActual={[]} colorTrazadoActual="#000" alRegistrarPuntoTrazado={() => {}}
+          enModoTrazado={false} enModoEdificios={false} puntosTrazadoActual={[]} colorTrazadoActual="#000" 
+          // En modo revisita registramos el click para poner el pin morado
+          alRegistrarPuntoTrazado={(coords) => {
+            if (enModoRevisita) setMarcadorTemporal({ lat: coords[0], lng: coords[1] });
+          }}
           mostrarCalles={mostrarCalles} mostrarLugares={mostrarLugares}
+          // ★ CONEXIÓN DE LOS PINES AL MAPA ★
+          enModoRevisita={enModoRevisita}
+          marcadoresPersonales={gestorRevisitas.marcadores}
+          alSeleccionarRevisita={setRevisitaLectura}
+          marcadorTemporal={marcadorTemporal}
         />
+        
+        {/* BOTÓN FLOTANTE NUEVA REVISITA */}
+        {!enModoRevisita && !revisitaEditando && !revisitaLectura && !casaLeida && !territorioLeido && (
+          <button 
+            onClick={() => setEnModoRevisita(true)} 
+            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[2000] bg-purple-600 text-white px-6 py-3.5 rounded-full font-black text-sm shadow-xl shadow-purple-600/30 flex items-center gap-2 hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all"
+          >
+            <BookmarkPlus size={20} /> + Nueva Revisita
+          </button>
+        )}
       </main>
 
-      {/* MODAL LECTURA TERRITORIO */}
-      {territorioLeido && (
-        <ModalInfoLectura 
-          icono={<MapIcon size={24} className="text-indigo-500" />} titulo={territorioLeido.nombre} 
-          notas={territorioLeido.notas} alCerrar={() => setTerritorioLeido(null)} 
-        />
-      )}
+      {/* MODALES DE LECTURA */}
+      {territorioLeido && <ModalInfoLectura icono={<MapIcon size={24} className="text-indigo-500" />} titulo={territorioLeido.nombre} notas={territorioLeido.notas} alCerrar={() => setTerritorioLeido(null)} />}
+      {casaLeida && <ModalInfoLectura icono={<Home size={24} className="text-emerald-500" />} titulo={casaLeida.direccion} estado={casaLeida.estado} notas={casaLeida.notas} alCerrar={() => setCasaLeida(null)} />}
+      {revisitaLectura && <ModalInfoLectura icono={<BookmarkPlus size={24} className="text-purple-500" />} titulo={revisitaLectura.titulo} estado={revisitaLectura.fechaProgramada ? `Agendado: ${revisitaLectura.fechaProgramada}` : 'Sin fecha específica'} estadoColor="text-purple-500" notas={revisitaLectura.notas} alCerrar={() => setRevisitaLectura(null)} />}
 
-      {/* MODAL LECTURA CASA */}
-      {casaLeida && (
-        <ModalInfoLectura 
-          icono={<Home size={24} className="text-emerald-500" />} titulo={casaLeida.direccion} 
-          estado={casaLeida.estado} notas={casaLeida.notas} alCerrar={() => setCasaLeida(null)} 
+      {/* ★ MODAL FORMULARIO DE REVISITA ★ */}
+      {(marcadorTemporal || revisitaEditando) && (
+        <ModalFormularioRevisita
+          marcadorEditando={revisitaEditando}
+          alGuardar={(datos) => {
+            if (revisitaEditando) {
+              gestorRevisitas.editarMarcador(revisitaEditando.id, datos);
+              setRevisitaEditando(null);
+            } else {
+              gestorRevisitas.agregarMarcador(marcadorTemporal.lat, marcadorTemporal.lng, datos.titulo, datos.fechaProgramada, datos.notas);
+              setMarcadorTemporal(null);
+              setEnModoRevisita(false);
+            }
+          }}
+          alCancelar={() => { setMarcadorTemporal(null); setRevisitaEditando(null); setEnModoRevisita(false); }}
         />
       )}
     </div>
   );
 }
 
-// Mini-Componente interno para mostrar la información en lectura
-function ModalInfoLectura({ icono, titulo, estado, notas, alCerrar }) {
-  let colorEstado = 'text-slate-500';
-  let textoEstado = '';
-  if (estado === 'pendiente') { colorEstado = 'text-orange-500'; textoEstado = 'Faltante / Pendiente'; }
-  if (estado === 'completado') { colorEstado = 'text-emerald-500'; textoEstado = 'Completado'; }
-  if (estado === 'no_responde') { colorEstado = 'text-rose-500'; textoEstado = 'Alerta / No Visitar'; }
+// --------------------------------------------------------
+// COMPONENTE INTERNO: FORMULARIO DE REVISITA
+// --------------------------------------------------------
+function ModalFormularioRevisita({ marcadorEditando, alGuardar, alCancelar }) {
+  const [titulo, setTitulo] = useState(marcadorEditando?.titulo || '');
+  const [fecha, setFecha] = useState(marcadorEditando?.fechaProgramada || '');
+  const [notas, setNotas] = useState(marcadorEditando?.notas || '');
+
+  const manejarSubmit = (e) => {
+    e.preventDefault();
+    if (!titulo.trim()) return alert("El título o nombre es obligatorio");
+    alGuardar({ titulo, fechaProgramada: fecha, notas });
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[4000] transition-opacity" onClick={alCancelar} />
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl z-[4001] animate-slide-up overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800">
+        <div className="p-6">
+          <div className="flex justify-between items-start mb-5">
+            <h3 className="font-black text-xl text-purple-700 dark:text-purple-400 flex items-center gap-2">
+              <BookmarkPlus size={24} /> {marcadorEditando ? 'Editar Revisita' : 'Guardar Revisita'}
+            </h3>
+            <button onClick={alCancelar} className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors"><X size={18} /></button>
+          </div>
+          
+          <form onSubmit={manejarSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 mb-1">Nombre / Título *</label>
+              <input type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ej: Familia López, Casa Azul..." autoFocus className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 text-slate-800 dark:text-slate-100" />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 mb-1">Día programado (Opcional)</label>
+              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 text-slate-800 dark:text-slate-100" />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 mb-1">Observaciones / Hora</label>
+              <textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Ej: Visitar por la tarde a las 5:00 PM, llevar folleto..." rows="3" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 resize-none text-slate-800 dark:text-slate-100" />
+            </div>
+
+            <button type="submit" className="w-full mt-2 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow-lg shadow-purple-600/20 active:scale-95 transition-all">
+              {marcadorEditando ? 'Actualizar Datos' : 'Guardar en mi Mapa'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// --------------------------------------------------------
+// COMPONENTE INTERNO: MODAL INFO LECTURA 
+// --------------------------------------------------------
+function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, alCerrar }) {
+  let color = estadoColor || 'text-slate-500';
+  let textoEstado = estado || '';
+  
+  if (!estadoColor) {
+    if (estado === 'pendiente') { color = 'text-orange-500'; textoEstado = 'Faltante / Pendiente'; }
+    if (estado === 'completado') { color = 'text-emerald-500'; textoEstado = 'Completado'; }
+    if (estado === 'no_responde') { color = 'text-rose-500'; textoEstado = 'Alerta / No Visitar'; }
+  }
 
   return (
     <>
@@ -193,16 +305,16 @@ function ModalInfoLectura({ icono, titulo, estado, notas, alCerrar }) {
             </button>
           </div>
           
-          {estado && (
+          {textoEstado && (
             <div className="mb-4">
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Estado de Visita</label>
-              <div className={`font-black text-sm uppercase ${colorEstado}`}>{textoEstado}</div>
+              <div className={`font-black text-sm uppercase ${color}`}>{textoEstado}</div>
             </div>
           )}
 
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Notas u Observaciones</label>
-            <div className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-700 dark:text-slate-200 min-h-[80px]">
+            <div className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-700 dark:text-slate-200 min-h-[80px] whitespace-pre-wrap">
               {notas ? notas : <span className="italic text-slate-400">Sin detalles registrados...</span>}
             </div>
           </div>
