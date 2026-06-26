@@ -6,7 +6,6 @@ import { supabase } from '../../utilidades/clienteSupabase';
 import SeccionMasterCongregaciones from './SeccionMasterCongregaciones';
 import SeccionMasterNuevaCongregacion from './SeccionMasterNuevaCongregacion';
 import SeccionBuscarMapa from './SeccionBuscarMapa';
-// ★ IMPORTAMOS LA NUEVA SECCIÓN DE REVISITAS ★
 import SeccionMisRevisitas from './SeccionMisRevisitas'; 
 import SeccionTerritorios from './SeccionTerritorios';
 import SeccionDibujarTerritorio from './SeccionDibujarTerritorio';
@@ -29,21 +28,14 @@ export default function MenuLateral({
   asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD,
   alEliminarCongregacion,
   
-  // ★ PROPS PARA REVISITAS PERSONALES ★
-  marcadoresPersonales,
-  alVolarARevisita,
-  alEditarRevisita,
-  alEliminarRevisita,
-  alCompartirRevisita,
-  alExportarBackup,
-  alImportarBackup,
-  revisitaExpandida,
-  setRevisitaExpandida,
+  marcadoresPersonales, alVolarARevisita, alEditarRevisita, alEliminarRevisita, alCompartirRevisita, alExportarBackup, alImportarBackup,
+  revisitaExpandida, setRevisitaExpandida,
 
-  // ★ NUEVAS PROPS: HISTORIAL DE LOGS ★
-  logs,
-  cargandoLogs,
-  recargarLogs
+  logs, cargandoLogs, recargarLogs,
+  actualizarNombrePerfilBD,
+
+  // ★ PROP FALTANTE PARA REORDENAR ★
+  alReordenarTerritorio
 }) {
   const [acordeonActivo, setAcordeonActivo] = useState('lista'); 
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
@@ -56,11 +48,8 @@ export default function MenuLateral({
   const esCapitanYSuperior = esAdminOperativo || perfilUsuario?.rol === 'Capitán';
   const esPrecursorYSuperior = esCapitanYSuperior || perfilUsuario?.rol === 'Precursor';
 
-  const territoriosOrdenados = [...(seccionesGuardadas || [])].sort((a, b) => {
-    if (a.asignado_a === perfilUsuario?.id && b.asignado_a !== perfilUsuario?.id) return -1;
-    if (b.asignado_a === perfilUsuario?.id && a.asignado_a !== perfilUsuario?.id) return 1;
-    return 0;
-  });
+  // ★ QUITAMOS EL ORDENAMIENTO VISUAL FORZADO PARA RESPETAR EL ORDEN GLOBAL ★
+  const territoriosOrdenados = seccionesGuardadas || [];
 
   const manejarRestablecerPassword = async () => {
     try {
@@ -80,7 +69,6 @@ export default function MenuLateral({
 
       <div className={`fixed top-0 left-0 h-full w-80 sm:w-96 bg-slate-50 dark:bg-slate-900 shadow-2xl z-[3001] transform transition-transform duration-300 flex flex-col ${abierto ? 'translate-x-0' : '-translate-x-full'}`}>
         
-        {/* CABECERA */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-950">
           <div className="flex flex-col">
             <h2 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -107,7 +95,6 @@ export default function MenuLateral({
 
         <div className="flex-1 overflow-y-auto scroll-limpio p-3 space-y-2">
 
-          {/* MÓDULO GLOBAL */}
           {esAdminMayor && (
             <>
               <div className="text-[10px] font-black uppercase text-indigo-500 tracking-wider mb-2 mt-1 px-1">Control Maestro Global</div>
@@ -137,7 +124,6 @@ export default function MenuLateral({
             acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}
           />
           
-          {/* ★ MÓDULO DE REVISITAS (Visible solo si estamos dentro de un mapa activo) ★ */}
           <SeccionMisRevisitas 
             visible={!esAdminMayor || (esAdminMayor && congregacionContextoId)}
             acordeonActivo={acordeonActivo}
@@ -163,6 +149,10 @@ export default function MenuLateral({
                 usuariosEquipo={usuariosEquipo} actualizarNotasSeccionEnBD={actualizarNotasSeccionEnBD}
                 asignarTerritorioEnBD={asignarTerritorioEnBD} reiniciarTerritorioEnBD={reiniciarTerritorioEnBD}
                 alEliminarSeccion={alEliminarSeccion} alCompletarTerritorio={alCompletarTerritorio} alVolarATerritorio={alVolarATerritorio}
+                
+                // ★ CONECTAMOS LA PROP AL COMPONENTE ★
+                alReordenarTerritorio={alReordenarTerritorio}
+
                 acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}
               />
               <SeccionDibujarTerritorio 
@@ -198,10 +188,11 @@ export default function MenuLateral({
           <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-6 px-1">Cuenta e Historial</div>
           <SeccionMiPerfil 
             perfilUsuario={perfilUsuario} manejarRestablecerPassword={manejarRestablecerPassword}
-            alCerrar={alCerrar} acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon}
+            alCerrar={alCerrar} acordeonActivo={acordeonActivo}
+            alternarAcordeon={alternarAcordeon}
+            actualizarNombrePerfilBD={actualizarNombrePerfilBD}
           />
           
-          {/* ★ SECCIÓN DE HISTORIAL CONECTADA CON LAS PROPS ★ */}
           <SeccionHistorial 
             visible={esCapitanYSuperior && (!esAdminMayor || (esAdminMayor && congregacionContextoId))}
             acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon}

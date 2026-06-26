@@ -18,6 +18,7 @@ export default function SeccionTerritorios({
   alEliminarSeccion,
   alCompletarTerritorio,
   alVolarATerritorio,
+  alReordenarTerritorio, // <-- NUEVA PROP
   acordeonActivo,
   alternarAcordeon,
   alCerrar
@@ -36,12 +37,11 @@ export default function SeccionTerritorios({
           {territoriosOrdenados?.length === 0 ? (
             <p className="text-xs text-slate-400 text-center py-2">No hay territorios creados aún.</p>
           ) : (
-            territoriosOrdenados.map(sec => {
+            territoriosOrdenados.map((sec, index) => {
               const casasDeEstaSeccion = edificiosGuardados?.filter(e => e.seccion_id === sec.id) || [];
               const totalCasas = casasDeEstaSeccion.length;
               const casasCompletadas = casasDeEstaSeccion.filter(e => e.estado === 'completado').length;
               
-              // 1. CORRECCIÓN MATEMÁTICA: Soporte para territorios sin casas
               let porcentaje = 0;
               if (totalCasas > 0) {
                 porcentaje = Math.round((casasCompletadas / totalCasas) * 100);
@@ -51,11 +51,9 @@ export default function SeccionTerritorios({
               
               const esMio = sec.asignado_a === perfilUsuario?.id;
 
-              // 2. FILTRO DE JERARQUÍA PARA ASIGNACIONES
               const usuariosAsignables = usuariosEquipo.filter(u => {
-                if (esAdminOperativo) return true; // El admin ve a todos
+                if (esAdminOperativo) return true; 
                 if (esCapitanYSuperior) {
-                  // El capitán solo se ve a sí mismo o a los precursores
                   return u.id === perfilUsuario?.id || u.rol === 'Precursor';
                 }
                 return false;
@@ -68,7 +66,9 @@ export default function SeccionTerritorios({
                       <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: sec.colorHex }} />
                       <div className="flex flex-col flex-1">
                         <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-none">{sec.nombre}</span>
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-none">
+                            <span className="text-slate-400 mr-1">#{index + 1}</span> {sec.nombre}
+                          </span>
                           {esMio && <span className="flex items-center gap-0.5 text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 px-1.5 py-0.5 rounded-md font-bold uppercase"><Star size={10}/> Mi Asignación</span>}
                         </div>
                         <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-0.5 overflow-hidden">
@@ -82,6 +82,23 @@ export default function SeccionTerritorios({
                   {territorioExpandido === sec.id && (
                     <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
                       
+                      {/* ★ REORDENAR (Exclusivo Capitán y Superior) ★ */}
+                      {esCapitanYSuperior && (
+                        <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800/50 p-2.5 rounded-lg mb-3 border border-slate-200 dark:border-slate-700">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <List size={14}/> Ordenar en Lista
+                          </span>
+                          <div className="flex gap-1.5">
+                            <button disabled={index === 0} onClick={() => alReordenarTerritorio(sec.id, 'arriba')} className="p-1.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded shadow-sm hover:text-indigo-500 disabled:opacity-30 transition-colors">
+                              <ChevronUp size={14} />
+                            </button>
+                            <button disabled={index === territoriosOrdenados.length - 1} onClick={() => alReordenarTerritorio(sec.id, 'abajo')} className="p-1.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded shadow-sm hover:text-indigo-500 disabled:opacity-30 transition-colors">
+                              <ChevronDown size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {esPrecursorYSuperior ? (
                         <textarea 
                           defaultValue={sec.notas}
@@ -99,7 +116,6 @@ export default function SeccionTerritorios({
                         <span className={porcentaje === 100 ? 'text-emerald-500' : ''}>{porcentaje}% Listo</span>
                       </div>
 
-                      {/* ASIGNACIÓN DE TERRITORIO (Exclusivo Capitán y Superior) */}
                       {esCapitanYSuperior && (
                         <div className="mb-3">
                           <label className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1"><UserCheck size={12}/> Asignar a:</label>
@@ -116,7 +132,6 @@ export default function SeccionTerritorios({
                         </div>
                       )}
 
-                      {/* BOTONERÍA DE ACCIONES */}
                       <div className="grid grid-cols-1 gap-2">
                         <button onClick={() => { alVolarATerritorio(sec.coordenadas); alCerrar(); }} className="flex justify-center items-center gap-1.5 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold text-xs hover:bg-indigo-100 transition-colors">
                           <Navigation size={14} /> Volar al Territorio
@@ -126,14 +141,12 @@ export default function SeccionTerritorios({
                           <CheckCircle2 size={14} /> {porcentaje === 100 ? 'Territorio Terminado' : (totalCasas === 0 ? 'Marcar Territorio Completado' : 'Marcar TODO Completado')}
                         </button>
                         
-                        {/* REINICIAR (Exclusivo Capitán y Superior) */}
                         {esCapitanYSuperior && porcentaje > 0 && (
                           <button onClick={() => reiniciarTerritorioEnBD(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg font-bold text-xs hover:bg-amber-100 transition-colors">
                             <RefreshCcw size={14} /> Reiniciar Territorio
                           </button>
                         )}
 
-                        {/* ELIMINAR (Exclusivo Admin) */}
                         {esAdminOperativo && (
                           <button onClick={() => alEliminarSeccion(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg font-bold text-xs hover:bg-rose-100 transition-colors">
                             <Trash2 size={14} /> Eliminar Territorio

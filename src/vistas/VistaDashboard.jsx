@@ -50,7 +50,9 @@ export default function VistaDashboard() {
     reiniciarTerritorioEnBD, 
     actualizarNotasSeccionEnBD,
     eliminarCongregacionMasterBD,
-    targetCongId
+    targetCongId,
+    actualizarNombrePerfilBD,
+    reordenarTerritorioEnBD // ★ FUNCIÓN RECUPERADA PARA REORDENAR TERRITORIOS ★
   } = useMapa();
 
   // ESTADOS DE TACHUELAS GRUPALES
@@ -186,7 +188,6 @@ export default function VistaDashboard() {
         edificiosGuardados={edificios} 
         alEliminarSeccion={eliminarSeccionEnBD}
         
-        // ★ USAMOS LAS NUEVAS FUNCIONES CON HISTORIAL ★
         alCompletarTerritorio={manejarCompletarTerritorio} 
         reiniciarTerritorioEnBD={manejarReiniciarTerritorio} 
         
@@ -223,10 +224,12 @@ export default function VistaDashboard() {
         revisitaExpandida={revisitaExpandida}
         setRevisitaExpandida={setRevisitaExpandida}
 
-        // ★ PASAMOS LOS DATOS AL MENÚ PARA MOSTRAR EL HISTORIAL ★
         logs={logs}
         cargandoLogs={cargandoLogs}
         recargarLogs={cargarLogs}
+
+        actualizarNombrePerfilBD={actualizarNombrePerfilBD}
+        alReordenarTerritorio={reordenarTerritorioEnBD} // ★ PROP RECUPERADA ★
       />
 
       <MenuEdificio 
@@ -237,8 +240,6 @@ export default function VistaDashboard() {
         alCambiarDireccion={(nuevaDir) => setEdificioSeleccionado(prev => ({ ...prev, direccion: nuevaDir }))}
         notasTemp={notasEdificioTemp}
         alCambiarNotasTemp={setNotasEdificioTemp}
-        
-        // ★ USAMOS LA NUEVA FUNCIÓN CON HISTORIAL ★
         alGuardar={manejarGuardarEdificio}
         alEliminar={eliminarEdificioEnBD}
       />
@@ -248,11 +249,8 @@ export default function VistaDashboard() {
         edificios={edificios}
         perfilUsuario={perfilUsuario}
         alCerrar={() => setTerritorioSeleccionado(null)}
-        
-        // ★ USAMOS LAS NUEVAS FUNCIONES CON HISTORIAL ★
         alCompletar={manejarCompletarTerritorio}
         alReiniciar={manejarReiniciarTerritorio}
-        
         alGuardarNotas={actualizarNotasSeccionEnBD}
       />
 

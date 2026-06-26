@@ -19,7 +19,9 @@ export default function useEstadoGlobal() {
         if (!user) return;
         const { data: perfil } = await supabase.from('perfiles').select('*').eq('id', user.id).single();
         if (perfil) {
-          setPerfilUsuario(perfil);
+          // ★ INYECTAMOS EL EMAIL DIRECTAMENTE AL OBJETO DEL PERFIL ★
+          setPerfilUsuario({ ...perfil, email: user.email });
+          
           if (perfil.rol === 'Administrador Mayor') {
             const { data: congs } = await supabase.from('congregaciones').select('*').order('creado_en', { ascending: true });
             setListaCongregaciones(congs || []);
@@ -43,6 +45,19 @@ export default function useEstadoGlobal() {
   };
 
   useEffect(() => { refrescarDatosCongregacion(); }, [targetCongId]);
+
+  // ★ NUEVA FUNCIÓN: ACTUALIZAR EL NOMBRE DEL USUARIO ★
+  const actualizarNombrePerfilBD = async (nuevoNombre) => {
+    if (!perfilUsuario || !nuevoNombre.trim() || nuevoNombre === perfilUsuario.nombre) return;
+    setCargandoGlobal(true);
+    const { error } = await supabase.from('perfiles').update({ nombre: nuevoNombre.trim() }).eq('id', perfilUsuario.id);
+    if (!error) {
+      setPerfilUsuario(prev => ({ ...prev, nombre: nuevoNombre.trim() }));
+    } else {
+      console.error("Error al actualizar nombre:", error.message);
+    }
+    setCargandoGlobal(false);
+  };
 
   const guardarNombreCongregacionBD = async (nuevoNombre) => {
     if (!congregacionActiva || nuevoNombre === congregacionActiva.nombre) return;
@@ -79,7 +94,6 @@ export default function useEstadoGlobal() {
     if (!perfilUsuario) return '';
     const urlBase = window.location.origin;
     
-    // ★ USANDO NUESTRO ESTÁNDAR DE ENCRIPTACIÓN DEL PROYECTO ★
     if (rolDestino === 'Publicador') {
       const enlaceCorto = congregacionActiva?.enlace_corto || 'central-demo';
       const payloadCifrado = btoa(encodeURIComponent(JSON.stringify({ v: enlaceCorto })));
@@ -87,7 +101,6 @@ export default function useEstadoGlobal() {
       return `https://api.whatsapp.com/send?text=${encodeURIComponent(`Hola hermano, aquí tienes el enlace para ver y trabajar los territorios:\n\n${linkPublico}`)}`;
     }
     
-    // Encriptación para registro y nuevas congregaciones
     const payloadCifrado = btoa(encodeURIComponent(JSON.stringify({
       r: rolDestino, nc: esNuevaCongregacion ? 1 : 0, c: esNuevaCongregacion ? null : targetCongId
     })));
@@ -97,6 +110,7 @@ export default function useEstadoGlobal() {
   return {
     perfilUsuario, listaCongregaciones, congregacionContextoId, setCongregacionContextoId,
     congregacionActiva, usuariosEquipo, cargandoGlobal, targetCongId,
-    guardarNombreCongregacionBD, eliminarCongregacionMasterBD, eliminarMiembroEquipo, crearLinkInvitacion
+    guardarNombreCongregacionBD, eliminarCongregacionMasterBD, eliminarMiembroEquipo, crearLinkInvitacion,
+    actualizarNombrePerfilBD // <-- EXPORTAMOS LA NUEVA FUNCIÓN
   };
 }

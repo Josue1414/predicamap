@@ -11,11 +11,17 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     if (!targetCongId) return;
     setCargandoTerritorios(true);
     try {
-      const { data: secs } = await supabase.from('secciones').select('*').eq('congregacion_id', targetCongId).order('creado_en', { ascending: true });
+      // ★ ORDENAMOS PRIMERO POR LA NUEVA COLUMNA 'orden', LUEGO POR CREACIÓN ★
+      const { data: secs } = await supabase.from('secciones')
+        .select('*')
+        .eq('congregacion_id', targetCongId)
+        .order('orden', { ascending: true })
+        .order('creado_en', { ascending: true });
+
       const formateadas = (secs || []).map(item => ({
         id: item.id, nombre: item.nombre, colorHex: item.color_hex, 
         coordenadas: item.coordenadas, notas: item.notas, asignado_a: item.asignado_a,
-        estado: item.estado // <-- AHORA LEEMOS EL ESTADO DEL TERRITORIO
+        estado: item.estado, orden: item.orden 
       }));
       setSecciones(formateadas);
 
@@ -39,6 +45,38 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
 
   useEffect(() => { cargarTerritoriosYCasas(); }, [targetCongId]);
 
+  // ★ NUEVA FUNCIÓN MATEMÁTICA PARA REORDENAR ★
+  const reordenarTerritorioEnBD = async (id, direccion) => {
+    const indexActual = secciones.findIndex(s => s.id === id);
+    if (indexActual < 0) return;
+    if (direccion === 'arriba' && indexActual === 0) return;
+    if (direccion === 'abajo' && indexActual === secciones.length - 1) return;
+
+    const nuevoArreglo = [...secciones];
+    const indexDestino = direccion === 'arriba' ? indexActual - 1 : indexActual + 1;
+
+    // 1. Intercambiamos los elementos en el arreglo local
+    const temp = nuevoArreglo[indexActual];
+    nuevoArreglo[indexActual] = nuevoArreglo[indexDestino];
+    nuevoArreglo[indexDestino] = temp;
+
+    // 2. Les asignamos a todos su nueva posición matemática
+    const arregloActualizado = nuevoArreglo.map((item, index) => ({
+      ...item,
+      orden: index
+    }));
+
+    // 3. Actualizamos la pantalla de inmediato (Efecto Optimista)
+    setSecciones(arregloActualizado);
+
+    // 4. Guardamos silenciosamente en la base de datos
+    await Promise.all(
+      arregloActualizado.map(t => 
+        supabase.from('secciones').update({ orden: t.orden }).eq('id', t.id)
+      )
+    );
+  };
+
   const eliminarSeccionEnBD = async (id) => {
     if (!window.confirm("¿Estás seguro de eliminar este territorio? Se borrarán en cascada todos los checks asociados a él.")) return;
     setCargandoTerritorios(true);
@@ -57,7 +95,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   const reiniciarTerritorioEnBD = async (id) => {
     if (!window.confirm("¿Estás seguro? Esto regresará el territorio y TODAS sus casas a Pendiente.")) return;
     setCargandoTerritorios(true);
-    // ACTUALIZA TANTO EL TERRITORIO COMO LAS CASAS
     await supabase.from('secciones').update({ estado: 'pendiente' }).eq('id', id);
     await supabase.from('edificios').update({ estado: 'pendiente' }).eq('seccion_id', id);
     await cargarTerritoriosYCasas();
@@ -67,7 +104,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   const completarTerritorioEntero = async (id) => {
     if (!window.confirm("¿Marcar este territorio y TODAS sus casas como completados?")) return;
     setCargandoTerritorios(true);
-    // ACTUALIZA TANTO EL TERRITORIO COMO LAS CASAS
     await supabase.from('secciones').update({ estado: 'completado' }).eq('id', id);
     await supabase.from('edificios').update({ estado: 'completado' }).eq('seccion_id', id);
     await cargarTerritoriosYCasas();
@@ -87,6 +123,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   return {
     secciones, edificios, cargandoTerritorios, cargarTerritoriosYCasas,
     eliminarSeccionEnBD, asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD, completarTerritorioEntero,
-    crearSeccionBD, crearEdificioBD, actualizarEdificioBD, eliminarEdificioBD
+    crearSeccionBD, crearEdificioBD, actualizarEdificioBD, eliminarEdificioBD,
+    reordenarTerritorioEnBD // <-- EXPORTAMOS LA NUEVA FUNCIÓN
   };
 }
