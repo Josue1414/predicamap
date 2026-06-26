@@ -1,9 +1,35 @@
 // src/componentes/VisorMapa.jsx
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Tooltip, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Marker, Tooltip, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
+import L from 'leaflet'; // <-- IMPORTAMOS LEAFLET PARA CREAR EL ICONO
 import ManejadorClicksMapa from './ManejadorClicksMapa';
 import { LocateFixed, Info } from 'lucide-react'; // <-- IMPORTAMOS EL ICONO INFO Y GPS
 import 'leaflet/dist/leaflet.css';
+
+// ★ CONFIGURACIÓN DE ICONOS SVG PARA TACHUELAS (Anclaje perfecto y alto contraste) ★
+const crearPinSVG = (color, opacidad = 1) => `
+  <div style="filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.6)); opacity: ${opacidad};">
+    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="${color}" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+      <circle cx="12" cy="10" r="3" fill="#ffffff"></circle>
+    </svg>
+  </div>
+`;
+
+// iconAnchor: [18, 36] clava la punta inferior exactamente en la lat/lng
+const iconoTachuela = L.divIcon({
+  html: crearPinSVG('#0891b2'), // Cyan brillante
+  className: 'bg-transparent border-0',
+  iconSize: [36, 36],
+  iconAnchor: [18, 36]
+});
+
+const iconoTachuelaTemporal = L.divIcon({
+  html: crearPinSVG('#06b6d4', 0.6), // Cyan ligeramente más claro y semi-transparente
+  className: 'bg-transparent border-0',
+  iconSize: [36, 36],
+  iconAnchor: [18, 36]
+});
 
 // 1. Rastreador invisible para el nivel de zoom
 function RastreadorZoom({ onZoomChange }) {
@@ -77,7 +103,12 @@ export default function VisorMapa({
   alSeleccionarTerritorio,
   marcadoresPersonales = [], 
   alSeleccionarRevisita, 
-  marcadorTemporal
+  marcadorTemporal,
+  // ★ NUEVAS PROPS: TACHUELAS GRUPALES ★
+  enModoTachuela = false,
+  tachuelasGrupales = [],
+  alSeleccionarTachuela,
+  tachuelaTemporal
 }) {
   
   // Motores de Mapas
@@ -87,18 +118,21 @@ export default function VisorMapa({
 
   const [zoomReal, setZoomReal] = useState(zoomInicial || 15);
   
-  // ★ NUEVO: Esta variable ahora controla tanto los Títulos como las Casas y Revisitas ★
+  // Controla Títulos, Casas y Revisitas (Las tachuelas las dejamos siempre visibles para ubicarse desde lejos)
   const mostrarDetallesZoom = zoomReal >= 16;
 
   // Estados
   const [rastreando, setRastreando] = useState(false);
   const [miUbicacion, setMiUbicacion] = useState(null);
   
-  // ★ NUEVO: Estado para ocultar/mostrar la leyenda de colores ★
+  // Estado para ocultar/mostrar la leyenda de colores
   const [mostrarLeyenda, setMostrarLeyenda] = useState(false);
 
+  // Determinar si el mapa está esperando un clic
+  const mapaActivoClics = enModoTrazado || enModoEdificios || !!marcadorTemporal || (alSeleccionarRevisita !== undefined) || enModoTachuela;
+
   return (
-    <div className={`w-full h-full bg-slate-200 dark:bg-slate-950 relative ${enModoTrazado || enModoEdificios ? 'cursor-crosshair' : ''}`}>
+    <div className={`w-full h-full bg-slate-200 dark:bg-slate-950 relative ${mapaActivoClics ? 'cursor-crosshair' : ''}`}>
       
       {/* SECCIÓN SUPERIOR DERECHA: BOTONES Y LEYENDA */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col items-end gap-3 pointer-events-none">
@@ -147,6 +181,14 @@ export default function VisorMapa({
             <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 mt-1 pt-2 border-t border-slate-200 dark:border-slate-700">
               <div className="w-3.5 h-3.5 rounded-full bg-[#8b5cf6] border border-white shadow-sm" /> Mi Revisita Personal
             </div>
+            {/* ★ NUEVO: INDICADOR TACHUELA GRUPAL CON SVG ★ */}
+            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#0891b2" stroke="#ffffff" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3" fill="#ffffff"></circle>
+              </svg> 
+              Aviso / Tachuela Grupal
+            </div>
           </div>
         )}
 
@@ -165,7 +207,8 @@ export default function VisorMapa({
         {mostrarCalles && <TileLayer url={urlCallesEsri} zIndex={10} maxNativeZoom={20} maxZoom={22} />}
         {mostrarLugares && <TileLayer url={urlLugaresEsri} zIndex={11} maxNativeZoom={20} maxZoom={22} />}
 
-        <ManejadorClicksMapa activo={enModoTrazado || enModoEdificios || !!marcadorTemporal || (alSeleccionarRevisita !== undefined)} alHacerClick={alRegistrarPuntoTrazado} />
+        {/* ★ CLICS HABILITADOS TAMBIÉN PARA MODO TACHUELA ★ */}
+        <ManejadorClicksMapa activo={mapaActivoClics} alHacerClick={alRegistrarPuntoTrazado} />
 
         {/* DIBUJANDO PUNTO AZUL DEL USUARIO (GPS) */}
         {miUbicacion && (
@@ -184,7 +227,30 @@ export default function VisorMapa({
           </>
         )}
 
-        {/* ★ PINES DE REVISITAS PERSONALES ★ */}
+        {/* ★ TACHUELAS GRUPALES (Siempre visibles para fácil ubicación) ★ */}
+        {tachuelasGrupales.map((tachuela) => (
+          <Marker 
+            key={tachuela.id} 
+            position={[tachuela.lat, tachuela.lng]} 
+            icon={iconoTachuela}
+            eventHandlers={{ 
+              click: (e) => { 
+                e.originalEvent.stopPropagation(); 
+                if (!enModoTrazado && !enModoTachuela && alSeleccionarTachuela) alSeleccionarTachuela(tachuela); 
+              } 
+            }}
+          />
+        ))}
+
+        {/* ★ TACHUELA TEMPORAL (Durante la creación) ★ */}
+        {tachuelaTemporal && (
+          <Marker 
+            position={[tachuelaTemporal.lat, tachuelaTemporal.lng]} 
+            icon={iconoTachuelaTemporal} 
+          />
+        )}
+
+        {/* PINES DE REVISITAS PERSONALES */}
         {mostrarDetallesZoom && marcadoresPersonales.map((pin) => (
           <CircleMarker 
             key={pin.id} 
@@ -200,7 +266,7 @@ export default function VisorMapa({
           />
         ))}
 
-        {/* ★ PIN TEMPORAL (ANTES DE GUARDAR) ★ */}
+        {/* PIN TEMPORAL REVISITAS */}
         {marcadorTemporal && (
           <CircleMarker 
             center={[marcadorTemporal.lat, marcadorTemporal.lng]} 
@@ -241,7 +307,7 @@ export default function VisorMapa({
                   eventHandlers={{
                     click: (e) => {
                       e.originalEvent.stopPropagation(); 
-                      if (!enModoTrazado && !enModoEdificios && alSeleccionarTerritorio) {
+                      if (!enModoTrazado && !enModoEdificios && !enModoTachuela && alSeleccionarTerritorio) {
                         alSeleccionarTerritorio(seccion);
                       }
                     }
@@ -267,7 +333,7 @@ export default function VisorMapa({
               radius={6}
               pathOptions={{ color: '#ffffff', fillColor: colorEstado, fillOpacity: 1, weight: 2 }}
               eventHandlers={{ 
-                click: () => { if (!enModoTrazado && !enModoEdificios) alSeleccionarEdificio(edificio); } 
+                click: () => { if (!enModoTrazado && !enModoEdificios && !enModoTachuela) alSeleccionarEdificio(edificio); } 
               }}
             />
           );

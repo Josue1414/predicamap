@@ -1,6 +1,6 @@
 // src/componentes/menu-lateral/SeccionAjustesGenerales.jsx
-import React from 'react';
-import { MapPin, Layers, Share2, ChevronUp, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Layers, Share2, ChevronUp, ChevronDown, Save } from 'lucide-react';
 
 export default function SeccionAjustesGenerales({
   visible,
@@ -14,7 +14,21 @@ export default function SeccionAjustesGenerales({
   acordeonActivo,
   alternarAcordeon
 }) {
+  // Estado local para escribir sin afectar la BD al instante
+  const [nombreTemp, setNombreTemp] = useState('');
+
+  // Sincroniza el nombre local si cambia desde afuera
+  useEffect(() => {
+    setNombreTemp(nombreCongregacion || '');
+  }, [nombreCongregacion]);
+
   if (!visible) return null;
+
+  const manejarGuardado = () => {
+    if (nombreTemp.trim() !== '') {
+      alCambiarNombreCongregacion(nombreTemp.trim());
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden mb-2">
@@ -29,12 +43,20 @@ export default function SeccionAjustesGenerales({
         <div className="p-4 bg-white dark:bg-slate-950 space-y-4">
           <div>
             <label className="block text-[11px] font-bold text-slate-500 mb-1">Nombre de la Congregación</label>
-            <input 
-              type="text" 
-              value={nombreCongregacion} 
-              onChange={(e) => alCambiarNombreCongregacion(e.target.value)} 
-              className="w-full border rounded-lg p-2 text-xs dark:bg-slate-900 dark:border-slate-700 dark:text-white focus:ring-1 focus:ring-indigo-500 font-bold outline-none" 
-            />
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={nombreTemp} 
+                onChange={(e) => setNombreTemp(e.target.value)} 
+                className="w-full border rounded-lg p-2 text-xs dark:bg-slate-900 dark:border-slate-700 dark:text-white focus:ring-1 focus:ring-indigo-500 font-bold outline-none" 
+              />
+              <button 
+                onClick={manejarGuardado}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
+              >
+                <Save size={14} />
+              </button>
+            </div>
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-500 mb-2">Enlace para Publicadores:</p>

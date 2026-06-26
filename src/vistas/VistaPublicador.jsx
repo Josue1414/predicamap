@@ -6,6 +6,9 @@ import MenuLateralPublicador from '../componentes/menu-lateral/MenuLateralPublic
 import { Menu, MapPin, Moon, Sun, Home, Map as MapIcon, X, BookmarkPlus } from 'lucide-react';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 
+// ★ IMPORTACIÓN DEL MODAL MODULAR DE TACHUELAS ★
+import { ModalInfoTachuela } from '../componentes/ModalTachuela';
+
 export default function VistaPublicador() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -16,6 +19,10 @@ export default function VistaPublicador() {
   const [congregacion, setCongregacion] = useState(null);
   const [secciones, setSecciones] = useState([]);
   const [edificios, setEdificios] = useState([]);
+  
+  // ★ ESTADOS PARA TACHUELAS GRUPALES (Lectura) ★
+  const [tachuelasGrupales, setTachuelasGrupales] = useState([]);
+  const [tachuelaLeida, setTachuelaLeida] = useState(null);
   
   // Estado del Mapa
   const [coordenadasActuales, setCoordenadasActuales] = useState([25.6565, -100.2930]);
@@ -31,7 +38,7 @@ export default function VistaPublicador() {
   const [territorioLeido, setTerritorioLeido] = useState(null);
   const [casaLeida, setCasaLeida] = useState(null);
 
-  // ★ ESTADOS PARA LAS REVISITAS PERSONALES ★
+  // ESTADOS PARA LAS REVISITAS PERSONALES
   const gestorRevisitas = useMarcadoresPersonales();
   const [enModoRevisita, setEnModoRevisita] = useState(false);
   const [marcadorTemporal, setMarcadorTemporal] = useState(null); 
@@ -51,7 +58,6 @@ export default function VistaPublicador() {
         const payloadCifrado = ruta.split('/v/')[1];
         if (!payloadCifrado) throw new Error("Enlace de congregación inválido.");
 
-        // ★ DESENCRIPTACIÓN ESTÁNDAR DEL PROYECTO ★
         let enlaceCorto = '';
         try {
           const datosDecodificados = JSON.parse(decodeURIComponent(atob(payloadCifrado)));
@@ -72,7 +78,11 @@ export default function VistaPublicador() {
         }));
         setSecciones(formateadas);
 
-        // 3. Obtener Casas y Centrar Mapa
+        // ★ 3. DESCARGAR TACHUELAS GRUPALES ★
+        const { data: tachs } = await supabase.from('tachuelas').select('*').eq('congregacion_id', cong.id);
+        setTachuelasGrupales(tachs || []);
+
+        // 4. Obtener Casas y Centrar Mapa
         if (formateadas.length > 0) {
           let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
           formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
@@ -150,7 +160,6 @@ export default function VistaPublicador() {
         mostrarLugares={mostrarLugares} alCambiarMostrarLugares={setMostrarLugares}
         textoBusqueda={textoBusqueda} alCambiarTextoBusqueda={setTextoBusqueda} alBuscar={buscarCiudadEnServidor}
         resultadosCiudades={resultadosCiudades} alSeleccionarCiudad={seleccionarCiudad}
-        // ★ PROPS PARA EL MENÚ DE REVISITAS ★
         marcadoresPersonales={gestorRevisitas.marcadores}
         alVolarARevisita={volarARevisita}
         alEliminarRevisita={gestorRevisitas.eliminarMarcador}
@@ -177,20 +186,22 @@ export default function VistaPublicador() {
           alSeleccionarEdificio={setCasaLeida}
           alSeleccionarTerritorio={setTerritorioLeido}
           enModoTrazado={false} enModoEdificios={false} puntosTrazadoActual={[]} colorTrazadoActual="#000" 
-          // En modo revisita registramos el click para poner el pin morado
           alRegistrarPuntoTrazado={(coords) => {
             if (enModoRevisita) setMarcadorTemporal({ lat: coords[0], lng: coords[1] });
           }}
           mostrarCalles={mostrarCalles} mostrarLugares={mostrarLugares}
-          // ★ CONEXIÓN DE LOS PINES AL MAPA ★
           enModoRevisita={enModoRevisita}
           marcadoresPersonales={gestorRevisitas.marcadores}
           alSeleccionarRevisita={setRevisitaLectura}
           marcadorTemporal={marcadorTemporal}
+          // ★ PASAMOS LAS TACHUELAS GRUPALES AL MAPA ★
+          tachuelasGrupales={tachuelasGrupales}
+          alSeleccionarTachuela={setTachuelaLeida}
+          enModoTachuela={false}
         />
         
         {/* BOTÓN FLOTANTE NUEVA REVISITA */}
-        {!enModoRevisita && !revisitaEditando && !revisitaLectura && !casaLeida && !territorioLeido && (
+        {!enModoRevisita && !revisitaEditando && !revisitaLectura && !casaLeida && !territorioLeido && !tachuelaLeida && (
           <button 
             onClick={() => setEnModoRevisita(true)} 
             className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[2000] bg-purple-600 text-white px-6 py-3.5 rounded-full font-black text-sm shadow-xl shadow-purple-600/30 flex items-center gap-2 hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all"
@@ -200,12 +211,21 @@ export default function VistaPublicador() {
         )}
       </main>
 
-      {/* MODALES DE LECTURA */}
+      {/* MODALES DE LECTURA NORMALES */}
       {territorioLeido && <ModalInfoLectura icono={<MapIcon size={24} className="text-indigo-500" />} titulo={territorioLeido.nombre} notas={territorioLeido.notas} alCerrar={() => setTerritorioLeido(null)} />}
       {casaLeida && <ModalInfoLectura icono={<Home size={24} className="text-emerald-500" />} titulo={casaLeida.direccion} estado={casaLeida.estado} notas={casaLeida.notas} alCerrar={() => setCasaLeida(null)} />}
       {revisitaLectura && <ModalInfoLectura icono={<BookmarkPlus size={24} className="text-purple-500" />} titulo={revisitaLectura.titulo} estado={revisitaLectura.fechaProgramada ? `Agendado: ${revisitaLectura.fechaProgramada}` : 'Sin fecha específica'} estadoColor="text-purple-500" notas={revisitaLectura.notas} alCerrar={() => setRevisitaLectura(null)} />}
 
-      {/* ★ MODAL FORMULARIO DE REVISITA ★ */}
+      {/* ★ MODAL LECTURA TACHUELA GRUPAL (Solo Lectura) ★ */}
+      {tachuelaLeida && (
+        <ModalInfoTachuela 
+          tachuela={tachuelaLeida}
+          puedeEliminar={false} // El publicador solo puede leer
+          alCerrar={() => setTachuelaLeida(null)}
+        />
+      )}
+
+      {/* MODAL FORMULARIO DE REVISITA PERSONAL */}
       {(marcadorTemporal || revisitaEditando) && (
         <ModalFormularioRevisita
           marcadorEditando={revisitaEditando}

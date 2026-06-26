@@ -6,6 +6,8 @@ import { supabase } from '../../utilidades/clienteSupabase';
 import SeccionMasterCongregaciones from './SeccionMasterCongregaciones';
 import SeccionMasterNuevaCongregacion from './SeccionMasterNuevaCongregacion';
 import SeccionBuscarMapa from './SeccionBuscarMapa';
+// ★ IMPORTAMOS LA NUEVA SECCIÓN DE REVISITAS ★
+import SeccionMisRevisitas from './SeccionMisRevisitas'; 
 import SeccionTerritorios from './SeccionTerritorios';
 import SeccionDibujarTerritorio from './SeccionDibujarTerritorio';
 import SeccionSembrarCasas from './SeccionSembrarCasas';
@@ -25,8 +27,23 @@ export default function MenuLateral({
   perfilUsuario, usuariosEquipo, alEliminarMiembro, alCrearLinkInvitacion,
   listaCongregaciones, congregacionContextoId, alSeleccionarCongregacionContexto,
   asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD,
-  // Nueva Prop Recibida
-  alEliminarCongregacion
+  alEliminarCongregacion,
+  
+  // ★ PROPS PARA REVISITAS PERSONALES ★
+  marcadoresPersonales,
+  alVolarARevisita,
+  alEditarRevisita,
+  alEliminarRevisita,
+  alCompartirRevisita,
+  alExportarBackup,
+  alImportarBackup,
+  revisitaExpandida,
+  setRevisitaExpandida,
+
+  // ★ NUEVAS PROPS: HISTORIAL DE LOGS ★
+  logs,
+  cargandoLogs,
+  recargarLogs
 }) {
   const [acordeonActivo, setAcordeonActivo] = useState('lista'); 
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
@@ -63,7 +80,7 @@ export default function MenuLateral({
 
       <div className={`fixed top-0 left-0 h-full w-80 sm:w-96 bg-slate-50 dark:bg-slate-900 shadow-2xl z-[3001] transform transition-transform duration-300 flex flex-col ${abierto ? 'translate-x-0' : '-translate-x-full'}`}>
         
-        {/* CABECERA (BOTÓN CONECTADO AQUÍ) */}
+        {/* CABECERA */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-950">
           <div className="flex flex-col">
             <h2 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -74,7 +91,6 @@ export default function MenuLateral({
                 <span className="text-[9px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-extrabold px-2 py-0.5 rounded-full w-max tracking-wider uppercase shadow-sm">
                   {congregacionContextoId ? "Modo Simulado" : `Rango: ${perfilUsuario.rol}`}
                 </span>
-                {/* 💥 NUEVO BOTÓN DE ESCAPE DE CONGREGACIÓN */}
                 {esAdminMayor && congregacionContextoId && (
                   <button 
                     onClick={() => { alSeleccionarCongregacionContexto(null); alCerrar(); }}
@@ -91,7 +107,7 @@ export default function MenuLateral({
 
         <div className="flex-1 overflow-y-auto scroll-limpio p-3 space-y-2">
 
-          {/* MÓDULO GLOBAL (Reaparece también si estás simulando para poder cambiar de congregación rápido) */}
+          {/* MÓDULO GLOBAL */}
           {esAdminMayor && (
             <>
               <div className="text-[10px] font-black uppercase text-indigo-500 tracking-wider mb-2 mt-1 px-1">Control Maestro Global</div>
@@ -104,7 +120,6 @@ export default function MenuLateral({
                 acordeonActivo={acordeonActivo}
                 alternarAcordeon={alternarAcordeon}
                 alCerrar={alCerrar}
-                // PASAMOS LA NUEVA PROP DE BORRADO DE CONGREGACIONES
                 alEliminarCongregacion={alEliminarCongregacion}
               />
               <SeccionMasterNuevaCongregacion 
@@ -115,11 +130,27 @@ export default function MenuLateral({
             </>
           )}
 
-          <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-4 px-1">Navegación</div>
+          <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-4 px-1">Navegación y Herramientas</div>
           <SeccionBuscarMapa 
             textoBusqueda={textoBusqueda} alCambiarTextoBusqueda={alCambiarTextoBusqueda} alBuscar={alBuscar}
             resultadosCiudades={resultadosCiudades} alSeleccionarCiudad={alSeleccionarCiudad}
             acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}
+          />
+          
+          {/* ★ MÓDULO DE REVISITAS (Visible solo si estamos dentro de un mapa activo) ★ */}
+          <SeccionMisRevisitas 
+            visible={!esAdminMayor || (esAdminMayor && congregacionContextoId)}
+            acordeonActivo={acordeonActivo}
+            alternarAcordeon={alternarAcordeon}
+            marcadoresPersonales={marcadoresPersonales}
+            alVolarARevisita={alVolarARevisita}
+            alEditarRevisita={alEditarRevisita}
+            alEliminarRevisita={alEliminarRevisita}
+            alCompartirRevisita={alCompartirRevisita}
+            alExportarBackup={alExportarBackup}
+            alImportarBackup={alImportarBackup}
+            revisitaExpandida={revisitaExpandida}
+            setRevisitaExpandida={setRevisitaExpandida}
           />
 
           {esPrecursorYSuperior && (!esAdminMayor || (esAdminMayor && congregacionContextoId)) && (
@@ -169,9 +200,14 @@ export default function MenuLateral({
             perfilUsuario={perfilUsuario} manejarRestablecerPassword={manejarRestablecerPassword}
             alCerrar={alCerrar} acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon}
           />
+          
+          {/* ★ SECCIÓN DE HISTORIAL CONECTADA CON LAS PROPS ★ */}
           <SeccionHistorial 
             visible={esCapitanYSuperior && (!esAdminMayor || (esAdminMayor && congregacionContextoId))}
             acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon}
+            logs={logs}
+            cargandoLogs={cargandoLogs}
+            recargarLogs={recargarLogs}
           />
 
         </div>
