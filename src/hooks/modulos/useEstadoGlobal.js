@@ -86,8 +86,18 @@ export default function useEstadoGlobal() {
   const eliminarMiembroEquipo = async (idMiembro) => {
     if (!window.confirm("¿Revocar el acceso a este usuario? Se eliminará su cuenta por completo.")) return;
     setCargandoGlobal(true);
-    await supabase.from('perfiles').delete().eq('id', idMiembro);
-    await refrescarDatosCongregacion();
+    
+    // Agregamos manejo de errores para detectar bloqueos de RLS en Supabase
+    const { error } = await supabase.from('perfiles').delete().eq('id', idMiembro);
+    
+    if (error) {
+      alert(`No se pudo eliminar al usuario. Es posible que las políticas de seguridad (RLS) de Supabase estén bloqueando la acción.\n\nDetalle técnico: ${error.message}`);
+      console.error("Error al eliminar usuario:", error);
+    } else {
+      await refrescarDatosCongregacion();
+    }
+    
+    setCargandoGlobal(false);
   };
 
   const crearLinkInvitacion = (rolDestino, esNuevaCongregacion = false) => {
