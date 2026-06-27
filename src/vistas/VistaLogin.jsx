@@ -1,7 +1,8 @@
 // src/vistas/VistaLogin.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utilidades/clienteSupabase';
-import { MapPin, Mail, Lock, User, LogIn, UserPlus, Send } from 'lucide-react';
+// IMPORTAMOS EYE Y EYEOFF
+import { MapPin, Mail, Lock, User, LogIn, UserPlus, Send, Eye, EyeOff } from 'lucide-react';
 
 export default function VistaLogin() {
   const [esRegistro, setEsRegistro] = useState(false);
@@ -10,6 +11,9 @@ export default function VistaLogin() {
   const [nombre, setNombre] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+  
+  // NUEVO ESTADO: Para controlar el ojito de la contraseña
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
 
   // ESTADOS PARA INTERCEPTAR PARÁMETROS DE INVITACIÓN
   const [rolInvitado, setRolInvitado] = useState(null);
@@ -23,7 +27,6 @@ export default function VistaLogin() {
     // Desencriptación Segura del Payload de la URL
     if (key) {
       try {
-        // NUEVO: decodeURIComponent recupera las tildes después de desencriptar el Base64
         const decoded = JSON.parse(decodeURIComponent(atob(key))); 
         if (decoded.r) {
           setRolInvitado(decoded.r);
@@ -44,13 +47,11 @@ export default function VistaLogin() {
 
     try {
       if (esRegistro) {
-        // Empaquetamos los metadatos ocultos para que el Trigger de Supabase los procese
         const metadatosAuth = {
           nombre: nombre,
-          rol: rolInvitado || 'Publicador', // Rango asignado o nivel base por defecto
+          rol: rolInvitado || 'Publicador',
         };
 
-        // Si la invitación viene ligada a una congregación existente, la inyectamos
         if (congregacionInvitadaId) {
           metadatosAuth.congregacion_id = congregacionInvitadaId;
         }
@@ -59,13 +60,14 @@ export default function VistaLogin() {
           email: correo,
           password: contrasena,
           options: {
-            data: metadatosAuth // El disparador SQL leerá este objeto raw_user_meta_data
+            data: metadatosAuth,
+            // NUEVO: Redirección dinámica y automática a tu sitio web
+            emailRedirectTo: window.location.origin
           }
         });
         
         if (error) throw error;
 
-        // NUEVO: Flujo de respuesta con instrucciones claras de confirmación de correo
         if (requiereNuevaCongregacion) {
           setMensaje({ 
             tipo: 'exito', 
@@ -78,17 +80,14 @@ export default function VistaLogin() {
           });
         }
         
-        // Limpiamos la contraseña por seguridad y regresamos a la vista de login
         setContrasena('');
         setEsRegistro(false);
       } else {
-        // Inicio de Sesión Regular
         const { error } = await supabase.auth.signInWithPassword({
           email: correo,
           password: contrasena
         });
         
-        // Si el usuario intenta entrar sin confirmar, Supabase arrojará un error específico que podemos atrapar
         if (error) {
           if (error.message.includes('Email not confirmed') || error.message.includes('Invalid login credentials')) {
             throw new Error('Credenciales inválidas o falta confirmar tu correo. Por favor revisa tu bandeja de entrada.');
@@ -116,7 +115,6 @@ export default function VistaLogin() {
           </div>
           <h2 className="text-xl font-black text-white tracking-tight">PredicaMap</h2>
           
-          {/* Alerta visual de invitación activa */}
           {rolInvitado ? (
             <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold px-2.5 py-1 rounded-full mt-2 flex items-center gap-1">
               <UserPlus size={12}/> Invitación para: {rolInvitado}
@@ -126,7 +124,6 @@ export default function VistaLogin() {
           )}
         </div>
 
-        {/* Alertas de Mensajes */}
         {mensaje.texto && (
           <div className={`p-3 rounded-xl mb-4 border font-medium flex items-start gap-2 leading-tight ${
             mensaje.tipo === 'error' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
@@ -142,7 +139,7 @@ export default function VistaLogin() {
               <label className="block text-slate-400 font-semibold mb-1">Nombre Completo</label>
               <div className="relative flex items-center">
                 <User size={14} className="absolute left-3 text-slate-500" />
-                <input required type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Hermano Silva" className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500" />
+                <input required type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Hermano Silva" className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
               </div>
             </div>
           )}
@@ -151,7 +148,7 @@ export default function VistaLogin() {
             <label className="block text-slate-400 font-semibold mb-1">Correo Electrónico</label>
             <div className="relative flex items-center">
               <Mail size={14} className="absolute left-3 text-slate-500" />
-              <input required type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="correo_hermano@gmail.com" className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500" />
+              <input required type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="correo_hermano@gmail.com" className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
             </div>
           </div>
 
@@ -159,20 +156,34 @@ export default function VistaLogin() {
             <label className="block text-slate-400 font-semibold mb-1">Contraseña</label>
             <div className="relative flex items-center">
               <Lock size={14} className="absolute left-3 text-slate-500" />
-              <input required type="password" value={contrasena} onChange={(e) => setContrasena(e.target.value)} placeholder="••••••••" className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500" />
+              <input 
+                required 
+                type={mostrarContrasena ? "text" : "password"} 
+                value={contrasena} 
+                onChange={(e) => setContrasena(e.target.value)} 
+                placeholder="••••••••" 
+                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" 
+              />
+              {/* BOTÓN DEL OJITO PARA MOSTRAR/OCULTAR CONTRASEÑA */}
+              <button 
+                type="button" 
+                onClick={() => setMostrarContrasena(!mostrarContrasena)}
+                className="absolute right-3 text-slate-500 hover:text-indigo-400 transition-colors p-1"
+              >
+                {mostrarContrasena ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
             </div>
           </div>
 
-          <button disabled={cargando} type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/10 transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]">
+          <button disabled={cargando} type="submit" className="w-full py-3 mt-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/10 transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]">
             <LogIn size={15} />
             {cargando ? 'Procesando...' : esRegistro ? 'Confirmar Registro' : 'Entrar al Sistema'}
           </button>
         </form>
 
-        {/* El selector de modo se bloquea si hay una invitación para forzar el registro */}
         {!rolInvitado && (
           <div className="mt-5 text-center">
-            <button onClick={() => { setEsRegistro(!esRegistro); setMensaje({ tipo: '', texto: '' }); }} className="text-indigo-400 hover:underline font-semibold transition-colors">
+            <button onClick={() => { setEsRegistro(!esRegistro); setMensaje({ tipo: '', texto: '' }); }} className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold transition-colors">
               {esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate aquí'}
             </button>
           </div>

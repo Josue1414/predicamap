@@ -7,11 +7,11 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   const [edificios, setEdificios] = useState([]);
   const [cargandoTerritorios, setCargandoTerritorios] = useState(false);
 
-  const cargarTerritoriosYCasas = async () => {
+  // ★ 1. AGREGAMOS EL PARÁMETRO "esCargaInicial" (Por defecto es false) ★
+  const cargarTerritoriosYCasas = async (esCargaInicial = false) => {
     if (!targetCongId) return;
     setCargandoTerritorios(true);
     try {
-      // ★ ORDENAMOS PRIMERO POR LA NUEVA COLUMNA 'orden', LUEGO POR CREACIÓN ★
       const { data: secs } = await supabase.from('secciones')
         .select('*')
         .eq('congregacion_id', targetCongId)
@@ -25,7 +25,9 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       }));
       setSecciones(formateadas);
 
-      if (formateadas.length > 0 && esSimulacion) {
+      // ★ 2. CENTRAMOS PARA TODOS LOS ROLES (QUITAMOS esSimulacion) 
+      // Y SOLO LO HACEMOS SI ES LA CARGA INICIAL ★
+      if (formateadas.length > 0 && esCargaInicial) {
         let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
         formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
           if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
@@ -43,9 +45,9 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     finally { setCargandoTerritorios(false); }
   };
 
-  useEffect(() => { cargarTerritoriosYCasas(); }, [targetCongId]);
+  // ★ 3. AL ENTRAR AL SISTEMA POR PRIMERA VEZ, LE PASAMOS "TRUE" ★
+  useEffect(() => { cargarTerritoriosYCasas(true); }, [targetCongId]);
 
-  // ★ NUEVA FUNCIÓN MATEMÁTICA PARA REORDENAR ★
   const reordenarTerritorioEnBD = async (id, direccion) => {
     const indexActual = secciones.findIndex(s => s.id === id);
     if (indexActual < 0) return;
@@ -55,21 +57,17 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     const nuevoArreglo = [...secciones];
     const indexDestino = direccion === 'arriba' ? indexActual - 1 : indexActual + 1;
 
-    // 1. Intercambiamos los elementos en el arreglo local
     const temp = nuevoArreglo[indexActual];
     nuevoArreglo[indexActual] = nuevoArreglo[indexDestino];
     nuevoArreglo[indexDestino] = temp;
 
-    // 2. Les asignamos a todos su nueva posición matemática
     const arregloActualizado = nuevoArreglo.map((item, index) => ({
       ...item,
       orden: index
     }));
 
-    // 3. Actualizamos la pantalla de inmediato (Efecto Optimista)
     setSecciones(arregloActualizado);
 
-    // 4. Guardamos silenciosamente en la base de datos
     await Promise.all(
       arregloActualizado.map(t => 
         supabase.from('secciones').update({ orden: t.orden }).eq('id', t.id)
@@ -77,6 +75,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     );
   };
 
+  // ★ LAS FUNCIONES INFERIORES AHORA RECARGARÁN SILENCIOSAMENTE (esCargaInicial = false) ★
   const eliminarSeccionEnBD = async (id) => {
     if (!window.confirm("¿Estás seguro de eliminar este territorio? Se borrarán en cascada todos los checks asociados a él.")) return;
     setCargandoTerritorios(true);
@@ -124,6 +123,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     secciones, edificios, cargandoTerritorios, cargarTerritoriosYCasas,
     eliminarSeccionEnBD, asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD, completarTerritorioEntero,
     crearSeccionBD, crearEdificioBD, actualizarEdificioBD, eliminarEdificioBD,
-    reordenarTerritorioEnBD // <-- EXPORTAMOS LA NUEVA FUNCIÓN
+    reordenarTerritorioEnBD
   };
 }

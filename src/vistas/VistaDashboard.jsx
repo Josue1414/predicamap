@@ -9,12 +9,10 @@ import ControlesTrazado from '../componentes/ControlesTrazado';
 import MenuEdificio from '../componentes/MenuEdificio';
 import MenuTerritorio from '../componentes/MenuTerritorio';
 
-// COMPONENTES EXTRAÍDOS PARA LIMPIAR LA VISTA
 import ModalBienvenida from '../componentes/ModalBienvenida';
 import { ModalFormularioTachuela, ModalInfoTachuela } from '../componentes/ModalTachuela';
 import { ModalFormularioRevisita, ModalInfoLecturaRevisita } from '../componentes/ModalesRevisita';
 
-// HOOKS
 import useMapa from '../hooks/useMapa';
 import useGestorTachuelas from '../hooks/modulos/useGestorTachuelas';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
@@ -45,14 +43,12 @@ export default function VistaDashboard() {
     eliminarCongregacionMasterBD, targetCongId, actualizarNombrePerfilBD, reordenarTerritorioEnBD
   } = useMapa();
 
-  // ESTADOS DE TACHUELAS GRUPALES
   const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD } = useGestorTachuelas(targetCongId);
   const [enModoTachuela, setEnModoTachuela] = useState(false);
   const [tachuelaTemporal, setTachuelaTemporal] = useState(null);
   const [tachuelaLeida, setTachuelaLeida] = useState(null);
   const puedeCrearTachuela = perfilUsuario && ['Administrador Mayor', 'Administrador', 'Capitán'].includes(perfilUsuario.rol);
 
-  // ESTADOS DE REVISITAS PERSONALES
   const gestorRevisitas = useMarcadoresPersonales();
   const [enModoRevisita, setEnModoRevisita] = useState(false);
   const [marcadorRevisitaTemporal, setMarcadorRevisitaTemporal] = useState(null);
@@ -60,10 +56,8 @@ export default function VistaDashboard() {
   const [revisitaLectura, setRevisitaLectura] = useState(null);
   const [revisitaExpandida, setRevisitaExpandida] = useState(null); 
 
-  // HISTORIAL DE ACTIVIDAD
   const { logs, cargandoLogs, cargarLogs, registrarLog } = useGestorHistorial(targetCongId);
 
-  // WRAPPERS PARA REGISTRAR EN EL HISTORIAL AUTOMÁTICAMENTE
   const manejarCompletarTerritorio = async (id) => {
     await completarTerritorioEntero(id);
     if (perfilUsuario) registrarLog(perfilUsuario.id, 'Territorio Completado', 'territorio', `Se marcó un territorio y sus casas como completados.`);
@@ -113,7 +107,7 @@ export default function VistaDashboard() {
   const mostrarModalBienvenida = congregacionActiva?.nombre === 'Nueva Congregación';
 
   return (
-    <div className="w-screen h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
+    <div className="w-screen h-[100dvh] overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
       
       {mostrarModalBienvenida && (
         <ModalBienvenida 
@@ -151,35 +145,45 @@ export default function VistaDashboard() {
       {enModoTrazado && !mostrarModalBienvenida && <ControlesTrazado puntosContados={puntosTrazadoActual.length} alDeshacer={deshacerUltimoPunto} alLimpiar={limpiarTrazadoCompleto} alCancelar={cancelarTrazadoYSalir} alGuardar={guardarNuevaSeccionEnBD} />}
 
       {enModoEdificios && !edificioSeleccionado && !mostrarModalBienvenida && (
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[2000] animate-slide-up">
+        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-[2000] animate-slide-up">
           <button onClick={() => setEnModoEdificios(false)} className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 px-6 rounded-full shadow-2xl shadow-rose-600/30 active:scale-95 transition-all text-xs border border-rose-400">Detener Siembra de Casas</button>
         </div>
       )}
 
       {enModoTachuela && !tachuelaTemporal && !mostrarModalBienvenida && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[2000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-5 py-3 rounded-full shadow-2xl border-2 border-cyan-500 text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-4 animate-slide-up">
-          <span className="flex items-center gap-2"><span className="text-xl animate-pulse">📌</span> Toca el mapa para fijar</span>
-          <button onClick={() => setEnModoTachuela(false)} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-3 py-1 rounded-lg text-xs hover:bg-rose-200 transition-colors">Cancelar</button>
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[2000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-5 py-2.5 rounded-full shadow-2xl border-2 border-cyan-500 text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3 animate-slide-up">
+          <span className="flex items-center gap-1.5"><span className="text-base animate-pulse">📌</span> Toca para fijar</span>
+          <button onClick={() => setEnModoTachuela(false)} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-md text-[10px] hover:bg-rose-200 transition-colors">Cancelar</button>
         </div>
       )}
 
       {enModoRevisita && !marcadorRevisitaTemporal && !mostrarModalBienvenida && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[2000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-5 py-3 rounded-full shadow-2xl border-2 border-purple-500 text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-4 animate-slide-up">
-          <span className="flex items-center gap-2"><BookmarkPlus size={16} className="text-purple-500 animate-pulse"/> Toca el mapa para ubicar</span>
-          <button onClick={() => setEnModoRevisita(false)} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-3 py-1 rounded-lg text-xs hover:bg-rose-200 transition-colors">Cancelar</button>
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[2000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-5 py-2.5 rounded-full shadow-2xl border-2 border-purple-500 text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3 animate-slide-up">
+          <span className="flex items-center gap-1.5"><BookmarkPlus size={14} className="text-purple-500 animate-pulse"/> Toca para ubicar</span>
+          <button onClick={() => setEnModoRevisita(false)} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-md text-[10px] hover:bg-rose-200 transition-colors">Cancelar</button>
         </div>
       )}
 
+      {/* ★ BOTONES FLOTANTES ALINEADOS JUNTO A LOS BOTONES DE ZOOM ★ */}
       {!enModoTrazado && !enModoEdificios && !enModoTachuela && !enModoRevisita && !mostrarModalBienvenida && (
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[2000] flex items-center gap-3">
-          <button onClick={() => setEnModoRevisita(true)} className="bg-purple-600 text-white px-5 py-3.5 rounded-full font-black text-sm shadow-xl shadow-purple-600/30 flex items-center gap-2 hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all">
-            <BookmarkPlus size={18} /> + Revisita
-          </button>
+        <div className="absolute bottom-[14px] right-14 z-[2000] flex items-center gap-2 animate-slide-up">
           {puedeCrearTachuela && (
-            <button onClick={() => setEnModoTachuela(true)} className="bg-cyan-600 text-white px-5 py-3.5 rounded-full font-black text-sm shadow-xl shadow-cyan-600/30 flex items-center gap-2 hover:bg-cyan-500 hover:scale-105 active:scale-95 transition-all">
-              <span className="text-lg leading-none">📌</span> + Aviso
+            <button 
+              onClick={() => setEnModoTachuela(true)} 
+              className="bg-cyan-600 text-white w-12 h-12 rounded-2xl shadow-xl shadow-cyan-600/30 flex flex-col items-center justify-center hover:bg-cyan-500 hover:scale-105 active:scale-95 transition-all border border-cyan-500"
+            >
+              <span className="text-base leading-none mb-0.5">📌</span>
+              <span className="text-[7px] font-black uppercase tracking-wider">Aviso</span>
             </button>
           )}
+          
+          <button 
+            onClick={() => setEnModoRevisita(true)} 
+            className="bg-purple-600 text-white w-12 h-12 rounded-2xl shadow-xl shadow-purple-600/30 flex flex-col items-center justify-center hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all border border-purple-500"
+          >
+            <BookmarkPlus size={18} className="mb-0.5" />
+            <span className="text-[7px] font-black uppercase tracking-wider">Revisita</span>
+          </button>
         </div>
       )}
 
@@ -197,13 +201,14 @@ export default function VistaDashboard() {
           enModoTachuela={enModoTachuela} tachuelasGrupales={tachuelas} alSeleccionarTachuela={setTachuelaLeida} tachuelaTemporal={tachuelaTemporal}
           enModoRevisita={enModoRevisita} marcadoresPersonales={gestorRevisitas.marcadores} alSeleccionarRevisita={setRevisitaLectura} marcadorTemporal={marcadorRevisitaTemporal}
         />
-        {!mostrarModalBienvenida && (
-          <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-lg text-[10px] font-semibold text-slate-700 dark:text-slate-300 pointer-events-none border border-slate-200 dark:border-slate-800">
-            {enModoTrazado ? <span className="text-rose-500 animate-pulse font-bold">✏️ Dibujando territorio...</span> : 
-             enModoEdificios ? <span className="text-emerald-500 animate-pulse font-bold">🏠 Toca los techos en el mapa</span> : 
-             enModoTachuela ? <span className="text-cyan-500 animate-pulse font-bold">📌 Modo Aviso Grupal</span> : 
-             enModoRevisita ? <span className="text-purple-500 animate-pulse font-bold">📍 Modo Revisita</span> : 
-             <>Rol: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{perfilUsuario?.rol || 'Cargando...'}</span></>}
+        
+        {/* LETREROS TEMPORALES DE MODO */}
+        {(enModoTrazado || enModoEdificios || enModoTachuela || enModoRevisita) && !mostrarModalBienvenida && (
+          <div className="absolute bottom-8 left-4 z-[1000] bg-white/90 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-lg text-[10px] font-semibold text-slate-700 dark:text-slate-300 pointer-events-none border border-slate-200 dark:border-slate-800 animate-slide-up">
+            {enModoTrazado && <span className="text-rose-500 animate-pulse font-bold">✏️ Dibujando territorio...</span>}
+            {enModoEdificios && <span className="text-emerald-500 animate-pulse font-bold">🏠 Toca los techos en el mapa</span>}
+            {enModoTachuela && <span className="text-cyan-500 animate-pulse font-bold">📌 Modo Aviso Grupal</span>}
+            {enModoRevisita && <span className="text-purple-500 animate-pulse font-bold">📍 Modo Revisita</span>}
           </div>
         )}
       </main>
