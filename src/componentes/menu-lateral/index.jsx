@@ -14,6 +14,7 @@ import SeccionAjustesGenerales from './SeccionAjustesGenerales';
 import SeccionDirectorio from './SeccionDirectorio';
 import SeccionMiPerfil from './SeccionMiPerfil';
 import SeccionHistorial from './SeccionHistorial';
+import SeccionMiProgreso from './SeccionMiProgreso';
 
 export default function MenuLateral({
   abierto, alCerrar,
@@ -184,6 +185,16 @@ export default function MenuLateral({
               />
             </>
           )}
+
+
+          {/* Mi progreso */}
+          <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-6 px-1">Mi Servicio</div>
+          <SeccionMiProgreso 
+            perfilUsuario={perfilUsuario}
+            acordeonActivo={acordeonActivo}
+            alternarAcordeon={alternarAcordeon}
+          />
+          
 
           <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-6 px-1">Cuenta e Historial</div>
           <SeccionMiPerfil 
