@@ -1,5 +1,7 @@
+// src/componentes/menu-lateral/index.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Settings, ArrowLeft, Edit2, Save } from 'lucide-react';
+// ★ IMPORTAMOS SUN Y MOON ★
+import { X, Settings, ArrowLeft, Edit2, Save, Sun, Moon } from 'lucide-react';
 import { supabase } from '../../utilidades/clienteSupabase';
 
 import SeccionMasterCongregaciones from './SeccionMasterCongregaciones';
@@ -30,13 +32,14 @@ export default function MenuLateral({
   revisitaExpandida, setRevisitaExpandida,
   logs, cargandoLogs, recargarLogs,
   actualizarNombrePerfilBD,
-  alReordenarTerritorio
+  alReordenarTerritorio,
+  // ★ NUEVAS PROPS: MODO OSCURO ★
+  modoOscuro, alCambiarModo
 }) {
   const [acordeonActivo, setAcordeonActivo] = useState('lista'); 
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
   const [congregacionExpandida, setCongregacionExpandido] = useState(null);
 
-  // Estados para la edicion rápida del nombre de la congregación
   const [editandoCong, setEditandoCong] = useState(false);
   const [nombreCongTemp, setNombreCongTemp] = useState('');
 
@@ -78,9 +81,6 @@ export default function MenuLateral({
 
       <div className={`fixed top-0 left-0 h-full w-80 sm:w-96 bg-slate-50 dark:bg-slate-900 shadow-2xl z-[3001] transform transition-transform duration-300 flex flex-col ${abierto ? 'translate-x-0' : '-translate-x-full'}`}>
         
-        {/* ========================================================================= */}
-        {/* CABECERA (Con Editor de Nombre de Congregación Dinámico) */}
-        {/* ========================================================================= */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
           <div className="flex justify-between items-start">
             <div className="flex flex-col w-full pr-2">
@@ -94,6 +94,16 @@ export default function MenuLateral({
                   <span className="text-[9px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-extrabold px-2 py-0.5 rounded-full w-max tracking-wider uppercase shadow-sm">
                     {congregacionContextoId ? "Modo Simulado" : `Rango: ${perfilUsuario.rol}`}
                   </span>
+                  
+                  {/* ★ BOTÓN DE MODO OSCURO AÑADIDO AQUÍ ★ */}
+                  <button 
+                    onClick={alCambiarModo} 
+                    className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm"
+                    title={modoOscuro ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+                  >
+                    {modoOscuro ? <Sun size={12} /> : <Moon size={12} />}
+                  </button>
+
                   {esAdminMayor && congregacionContextoId && (
                     <button onClick={() => { alSeleccionarCongregacionContexto(null); alCerrar(); }} className="text-[9px] bg-rose-500 hover:bg-rose-600 text-white font-black px-2 py-0.5 rounded-full transition-all uppercase tracking-wider shadow-md flex items-center gap-0.5 active:scale-95">
                       <ArrowLeft size={10} /> Salir
@@ -131,9 +141,6 @@ export default function MenuLateral({
           </div>
         </div>
 
-        {/* ========================================================================= */}
-        {/* CUERPO DEL MENÚ (Reordenado) */}
-        {/* ========================================================================= */}
         <div className="flex-1 overflow-y-auto scroll-limpio p-3 space-y-2">
 
           {esAdminMayor && (
@@ -148,7 +155,6 @@ export default function MenuLateral({
             </>
           )}
 
-          {/* 1, 2, 3, 4 -> NAVEGACIÓN Y SERVICIO DEL PUBLICADOR */}
           <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-4 px-1">Navegación y Servicio</div>
           
           <SeccionBuscarMapa 
@@ -179,7 +185,6 @@ export default function MenuLateral({
             />
           )}
 
-          {/* HERRAMIENTAS EXCLUSIVAS DE CAMPO (CAPITANES Y SUPERIORES) */}
           {esCapitanYSuperior && (!esAdminMayor || (esAdminMayor && congregacionContextoId)) && (
             <>
               <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-6 px-1">Gestión de Campo</div>
@@ -193,7 +198,6 @@ export default function MenuLateral({
             </>
           )}
 
-          {/* DIRECTORIO Y ACCESOS (Para Precursores y superiores) */}
           {(!esAdminMayor || (esAdminMayor && congregacionContextoId)) && (
             <>
               <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-6 px-1">Administración Local</div>
@@ -205,7 +209,6 @@ export default function MenuLateral({
             </>
           )}
 
-          {/* CUENTA PERSONAL */}
           <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-6 px-1">Cuenta e Historial</div>
           
           <SeccionMiPerfil 

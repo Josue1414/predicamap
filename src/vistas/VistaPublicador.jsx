@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utilidades/clienteSupabase';
 import VisorMapa from '../componentes/VisorMapa';
 import MenuLateralPublicador from '../componentes/menu-lateral/MenuLateralPublicador';
-import { Menu, MapPin, Moon, Sun, Home, Map as MapIcon, X, BookmarkPlus } from 'lucide-react';
+import CabeceraCongregacion from '../componentes/CabeceraCongregacion'; // ★ IMPORTAMOS LA NUEVA CABECERA ★
+import { Home, Map as MapIcon, X, BookmarkPlus } from 'lucide-react';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 
-// ★ IMPORTACIÓN DEL MODAL MODULAR DE TACHUELAS ★
 import { ModalInfoTachuela } from '../componentes/ModalTachuela';
 
 export default function VistaPublicador() {
@@ -20,7 +20,7 @@ export default function VistaPublicador() {
   const [secciones, setSecciones] = useState([]);
   const [edificios, setEdificios] = useState([]);
   
-  // ★ ESTADOS PARA TACHUELAS GRUPALES (Lectura) ★
+  // ESTADOS PARA TACHUELAS GRUPALES (Lectura)
   const [tachuelasGrupales, setTachuelasGrupales] = useState([]);
   const [tachuelaLeida, setTachuelaLeida] = useState(null);
   
@@ -78,7 +78,7 @@ export default function VistaPublicador() {
         }));
         setSecciones(formateadas);
 
-        // ★ 3. DESCARGAR TACHUELAS GRUPALES ★
+        // 3. DESCARGAR TACHUELAS GRUPALES
         const { data: tachs } = await supabase.from('tachuelas').select('*').eq('congregacion_id', cong.id);
         setTachuelasGrupales(tachs || []);
 
@@ -101,7 +101,6 @@ export default function VistaPublicador() {
     cargarDatos();
   }, []);
 
-  // Lógica del buscador anónimo
   const buscarCiudadEnServidor = async (e) => {
     e.preventDefault();
     if (!textoBusqueda.trim()) return;
@@ -135,26 +134,19 @@ export default function VistaPublicador() {
   if (error) return <div className="w-screen h-screen flex items-center justify-center bg-slate-900 text-rose-500 font-bold p-6 text-center">Error: {error}</div>;
 
   return (
-    <div className="w-screen h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col relative">
+    // ★ SOLUCIÓN DE BUG DE SALTO: Usamos h-[100dvh] en lugar de h-screen ★
+    <div className="w-screen h-[100dvh] overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col relative transition-colors duration-200">
       
-      {/* CABECERA PÚBLICA */}
-      <header className="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-3 sm:px-4 z-[2000] relative shadow-sm">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setMenuAbierto(true)} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors">
-            <Menu size={20} />
-          </button>
-          <div className="flex flex-col">
-            <h1 className="font-black text-sm sm:text-base text-slate-800 dark:text-slate-100 leading-none">{congregacion.nombre}</h1>
-            <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mt-0.5">Publicador</p>
-          </div>
-        </div>
-        <button onClick={() => setModoOscuro(!modoOscuro)} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-500 transition-colors">
-          {modoOscuro ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-      </header>
+      {/* ★ NUEVA CABECERA PÚBLICA INTEGRADA ★ */}
+      <CabeceraCongregacion 
+        nombreCongregacion={congregacion.nombre} 
+        alAbrirMenu={() => setMenuAbierto(true)} 
+        perfilUsuario={{ rol: 'Publicador' }} 
+      />
 
       <MenuLateralPublicador 
         abierto={menuAbierto} alCerrar={() => setMenuAbierto(false)} nombreCongregacion={congregacion.nombre}
+        perfilUsuario={{ rol: 'Publicador' }}
         secciones={secciones} edificios={edificios} alVolarATerritorio={volarATerritorio}
         mostrarCalles={mostrarCalles} alCambiarMostrarCalles={setMostrarCalles}
         mostrarLugares={mostrarLugares} alCambiarMostrarLugares={setMostrarLugares}
@@ -167,15 +159,42 @@ export default function VistaPublicador() {
         alExportarBackup={gestorRevisitas.exportarBackup}
         alImportarBackup={gestorRevisitas.importarBackup}
         alEditarRevisita={(m) => setRevisitaEditando(m)}
+        // ★ PASAMOS LA FUNCIÓN DEL MODO OSCURO ★
+        modoOscuro={modoOscuro} alCambiarModo={() => setModoOscuro(!modoOscuro)}
       />
 
-      <main className="flex-1 relative z-10">
+      <main className="flex-1 w-full relative z-10">
         
-        {/* BANNER INDICADOR DE MODO REVISITA */}
+        {/* BANNER INDICADOR DE MODO REVISITA (Reubicado a top-20) */}
         {enModoRevisita && !marcadorTemporal && (
-          <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-5 py-3 rounded-full shadow-2xl border-2 border-purple-500 text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-4 animate-slide-up">
-            <span className="flex items-center gap-2"><BookmarkPlus size={16} className="text-purple-500 animate-pulse"/> Toca el mapa para ubicar</span>
-            <button onClick={() => setEnModoRevisita(false)} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-3 py-1 rounded-lg text-xs hover:bg-rose-200 transition-colors">Cancelar</button>
+          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[2000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-5 py-2.5 rounded-full shadow-2xl border-2 border-purple-500 text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3 animate-slide-up">
+            <span className="flex items-center gap-1.5"><BookmarkPlus size={14} className="text-purple-500 animate-pulse"/> Toca para ubicar</span>
+            <button onClick={() => setEnModoRevisita(false)} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-md text-[10px] hover:bg-rose-200 transition-colors">Cancelar</button>
+          </div>
+        )}
+
+        {/* ★ BOTÓN FLOTANTE NUEVA REVISITA FIJO (Con bloque fantasma) ★ */}
+        {!enModoRevisita && !marcadorTemporal && (
+          <div className="absolute bottom-[14px] right-14 z-[2000] flex items-center gap-2 animate-slide-up">
+            
+            <button 
+              onClick={() => setEnModoRevisita(true)} 
+              className="bg-purple-600 text-white w-12 h-12 rounded-2xl shadow-xl shadow-purple-600/30 flex flex-col items-center justify-center hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all border border-purple-500"
+            >
+              <BookmarkPlus size={18} className="mb-0.5" />
+              <span className="text-[7px] font-black uppercase tracking-wider">Revisita</span>
+            </button>
+
+            {/* Bloque invisible para que no se recorra hacia la derecha */}
+            <div className="w-12 h-12 pointer-events-none"></div>
+            
+          </div>
+        )}
+
+        {/* LETRERO INFERIOR DE MODO */}
+        {enModoRevisita && (
+          <div className="absolute bottom-8 left-4 z-[1000] bg-white/90 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-lg text-[10px] font-semibold text-slate-700 dark:text-slate-300 pointer-events-none border border-slate-200 dark:border-slate-800 animate-slide-up">
+            <span className="text-purple-500 animate-pulse font-bold">📍 Modo Revisita</span>
           </div>
         )}
 
@@ -194,21 +213,10 @@ export default function VistaPublicador() {
           marcadoresPersonales={gestorRevisitas.marcadores}
           alSeleccionarRevisita={setRevisitaLectura}
           marcadorTemporal={marcadorTemporal}
-          // ★ PASAMOS LAS TACHUELAS GRUPALES AL MAPA ★
           tachuelasGrupales={tachuelasGrupales}
           alSeleccionarTachuela={setTachuelaLeida}
           enModoTachuela={false}
         />
-        
-        {/* BOTÓN FLOTANTE NUEVA REVISITA */}
-        {!enModoRevisita && !revisitaEditando && !revisitaLectura && !casaLeida && !territorioLeido && !tachuelaLeida && (
-          <button 
-            onClick={() => setEnModoRevisita(true)} 
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[2000] bg-purple-600 text-white px-6 py-3.5 rounded-full font-black text-sm shadow-xl shadow-purple-600/30 flex items-center gap-2 hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all"
-          >
-            <BookmarkPlus size={20} /> + Nueva Revisita
-          </button>
-        )}
       </main>
 
       {/* MODALES DE LECTURA NORMALES */}
@@ -216,7 +224,7 @@ export default function VistaPublicador() {
       {casaLeida && <ModalInfoLectura icono={<Home size={24} className="text-emerald-500" />} titulo={casaLeida.direccion} estado={casaLeida.estado} notas={casaLeida.notas} alCerrar={() => setCasaLeida(null)} />}
       {revisitaLectura && <ModalInfoLectura icono={<BookmarkPlus size={24} className="text-purple-500" />} titulo={revisitaLectura.titulo} estado={revisitaLectura.fechaProgramada ? `Agendado: ${revisitaLectura.fechaProgramada}` : 'Sin fecha específica'} estadoColor="text-purple-500" notas={revisitaLectura.notas} alCerrar={() => setRevisitaLectura(null)} />}
 
-      {/* ★ MODAL LECTURA TACHUELA GRUPAL (Solo Lectura) ★ */}
+      {/* MODAL LECTURA TACHUELA GRUPAL (Solo Lectura) */}
       {tachuelaLeida && (
         <ModalInfoTachuela 
           tachuela={tachuelaLeida}

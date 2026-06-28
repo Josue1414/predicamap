@@ -1,6 +1,7 @@
 // src/componentes/menu-lateral/MenuLateralPublicador.jsx
 import React, { useState, useRef } from 'react';
 import { X, Search, Map, MapPin, Layers, Navigation, ChevronDown, ChevronUp, BookmarkPlus, Download, Upload, Share2, Edit, Trash2 } from 'lucide-react';
+import SeccionMiProgreso from './SeccionMiProgreso';
 
 export default function MenuLateralPublicador({
   abierto,
@@ -25,7 +26,8 @@ export default function MenuLateralPublicador({
   alEliminarRevisita,
   alCompartirRevisita,
   alExportarBackup,
-  alImportarBackup
+  alImportarBackup,
+  perfilUsuario,
 }) {
   const [acordeonActivo, setAcordeonActivo] = useState('territorios');
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
@@ -151,6 +153,13 @@ export default function MenuLateralPublicador({
               </div>
             )}
           </div>
+
+          <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-4 px-1">Mi Servicio</div>
+            <SeccionMiProgreso 
+                perfilUsuario={perfilUsuario} 
+                acordeonActivo={acordeonActivo} 
+                alternarAcordeon={alternarAcordeon} 
+            />
 
           {/* 3. TERRITORIOS (SOLO LECTURA) */}
           <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">

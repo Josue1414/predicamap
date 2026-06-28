@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function useGestorProgreso() {
   const [datosProgreso, setDatosProgreso] = useState(() => {
@@ -7,24 +7,39 @@ export default function useGestorProgreso() {
     return {
       metaMensual: '',
       metaAnual: '',
-      horasAcumuladasPrevias: 0, // Por si el usuario ya tenía horas antes de instalar la app
+      horasAcumuladasPrevias: 0, 
       registrosDiarios: {} 
     };
   });
 
+  // ★ SOLUCIÓN DE ERROR REACT: Usamos una "bandera" para emitir el evento en el momento seguro
+  const soyElEmisor = useRef(false);
+
   useEffect(() => {
-    localStorage.setItem('predicamap_progreso', JSON.stringify(datosProgreso));
+    // Escuchar cambios hechos por otros componentes
+    const sincronizarProgreso = (e) => {
+      setDatosProgreso(e.detail);
+    };
+    window.addEventListener('progreso_actualizado', sincronizarProgreso);
+    return () => window.removeEventListener('progreso_actualizado', sincronizarProgreso);
+  }, []);
+
+  useEffect(() => {
+    // Solo si ESTE componente hizo el cambio, guardamos y avisamos a los demás
+    if (soyElEmisor.current) {
+      localStorage.setItem('predicamap_progreso', JSON.stringify(datosProgreso));
+      window.dispatchEvent(new CustomEvent('progreso_actualizado', { detail: datosProgreso }));
+      soyElEmisor.current = false; // Bajamos la bandera
+    }
   }, [datosProgreso]);
 
   const obtenerFechaHoy = () => new Date().toISOString().split('T')[0];
 
-  // Matemáticas exactas para el Año de Servicio
   const calcularDiasHastaAgosto = () => {
     const hoy = new Date();
     let añoFin = hoy.getFullYear();
-    // Si estamos entre septiembre y diciembre, el año de servicio termina el próximo año
     if (hoy.getMonth() >= 8) añoFin += 1;
-    const fechaFin = new Date(añoFin, 7, 31); // 31 de Agosto
+    const fechaFin = new Date(añoFin, 7, 31); 
     const diffTiempo = fechaFin.getTime() - hoy.getTime();
     const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
     return diffDias > 0 ? diffDias : 1; 
@@ -74,8 +89,9 @@ export default function useGestorProgreso() {
   };
 
   const modificarHorasHoy = (cantidad) => {
-    const hoy = obtenerFechaHoy();
+    soyElEmisor.current = true; // Levantamos bandera
     setDatosProgreso(prev => {
+      const hoy = obtenerFechaHoy();
       const registroHoy = prev.registrosDiarios[hoy] || { horas: 0, estudios: 0 };
       const nuevasHoras = Math.max(0, (registroHoy.horas || 0) + Math.round(cantidad * 100) / 100); 
       
@@ -90,8 +106,9 @@ export default function useGestorProgreso() {
   };
 
   const setEstudiosHoy = (cantidad) => {
-    const hoy = obtenerFechaHoy();
+    soyElEmisor.current = true; // Levantamos bandera
     setDatosProgreso(prev => {
+      const hoy = obtenerFechaHoy();
       const registroHoy = prev.registrosDiarios[hoy] || { horas: 0, estudios: 0 };
       return {
         ...prev,
@@ -104,6 +121,7 @@ export default function useGestorProgreso() {
   };
 
   const actualizarMetas = (nuevasMetas) => {
+    soyElEmisor.current = true; // Levantamos bandera
     setDatosProgreso(prev => ({ ...prev, ...nuevasMetas }));
   };
 

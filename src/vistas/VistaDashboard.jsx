@@ -118,8 +118,14 @@ export default function VistaDashboard() {
         />
       )}
 
-      <CabeceraCongregacion nombreCongregacion={nombreCongregacionUI} modoOscuro={modoOscuro} alCambiarModo={() => setModoOscuro(!modoOscuro)} alAbrirMenu={() => setMenuAbierto(true)} />
+      {/* ★ CABECERA: Ahora recibe el Perfil para saber los progresos y le quitamos el modo oscuro ★ */}
+      <CabeceraCongregacion 
+        nombreCongregacion={nombreCongregacionUI} 
+        alAbrirMenu={() => setMenuAbierto(true)} 
+        perfilUsuario={perfilUsuario}
+      />
 
+      {/* ★ MENÚ LATERAL: Ahora recibe las funciones de modo oscuro ★ */}
       <MenuLateral 
         abierto={menuAbierto} alCerrar={() => setMenuAbierto(false)} nombreCongregacion={nombreCongregacionUI} 
         alCambiarNombreCongregacion={setNombreCongregacionUI} seccionesGuardadas={secciones} edificiosGuardados={edificios} 
@@ -137,6 +143,7 @@ export default function VistaDashboard() {
         alEditarRevisita={(m) => { setRevisitaEditando(m); setMenuAbierto(false); }} alEliminarRevisita={gestorRevisitas.eliminarMarcador} alCompartirRevisita={gestorRevisitas.compartirMarcador}
         alExportarBackup={gestorRevisitas.exportarBackup} alImportarBackup={gestorRevisitas.importarBackup} revisitaExpandida={revisitaExpandida} setRevisitaExpandida={setRevisitaExpandida}
         logs={logs} cargandoLogs={cargandoLogs} recargarLogs={cargarLogs} actualizarNombrePerfilBD={actualizarNombrePerfilBD} alReordenarTerritorio={reordenarTerritorioEnBD}
+        modoOscuro={modoOscuro} alCambiarModo={() => setModoOscuro(!modoOscuro)}
       />
 
       <MenuEdificio edificio={edificioSeleccionado} perfilUsuario={perfilUsuario} alCerrar={() => setEdificioSeleccionado(null)} alCambiarEstado={cambiarEstadoEdificioTemp} alCambiarDireccion={(nuevaDir) => setEdificioSeleccionado(prev => ({ ...prev, direccion: nuevaDir }))} notasTemp={notasEdificioTemp} alCambiarNotasTemp={setNotasEdificioTemp} alGuardar={manejarGuardarEdificio} alEliminar={eliminarEdificioEnBD} />
@@ -164,19 +171,12 @@ export default function VistaDashboard() {
         </div>
       )}
 
-      {/* ★ BOTONES FLOTANTES ALINEADOS JUNTO A LOS BOTONES DE ZOOM ★ */}
+      
+      {/* ★ BOTONES FLOTANTES: ORDEN FIJO CON BLOQUE FANTASMA ★ */}
       {!enModoTrazado && !enModoEdificios && !enModoTachuela && !enModoRevisita && !mostrarModalBienvenida && (
         <div className="absolute bottom-[14px] right-14 z-[2000] flex items-center gap-2 animate-slide-up">
-          {puedeCrearTachuela && (
-            <button 
-              onClick={() => setEnModoTachuela(true)} 
-              className="bg-cyan-600 text-white w-12 h-12 rounded-2xl shadow-xl shadow-cyan-600/30 flex flex-col items-center justify-center hover:bg-cyan-500 hover:scale-105 active:scale-95 transition-all border border-cyan-500"
-            >
-              <span className="text-base leading-none mb-0.5">📌</span>
-              <span className="text-[7px] font-black uppercase tracking-wider">Aviso</span>
-            </button>
-          )}
           
+          {/* BOTÓN REVISITA (Siempre visible y anclado a la izquierda) */}
           <button 
             onClick={() => setEnModoRevisita(true)} 
             className="bg-purple-600 text-white w-12 h-12 rounded-2xl shadow-xl shadow-purple-600/30 flex flex-col items-center justify-center hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all border border-purple-500"
@@ -184,10 +184,24 @@ export default function VistaDashboard() {
             <BookmarkPlus size={18} className="mb-0.5" />
             <span className="text-[7px] font-black uppercase tracking-wider">Revisita</span>
           </button>
+          
+          {/* BOTÓN AVISO O ESPACIO FANTASMA */}
+          {puedeCrearTachuela ? (
+            <button 
+              onClick={() => setEnModoTachuela(true)} 
+              className="bg-cyan-600 text-white w-12 h-12 rounded-2xl shadow-xl shadow-cyan-600/30 flex flex-col items-center justify-center hover:bg-cyan-500 hover:scale-105 active:scale-95 transition-all border border-cyan-500"
+            >
+              <span className="text-base leading-none mb-0.5">📌</span>
+              <span className="text-[7px] font-black uppercase tracking-wider">Aviso</span>
+            </button>
+          ) : (
+            /* Bloque invisible que mide exactamente lo mismo que el botón Aviso */
+            <div className="w-12 h-12 pointer-events-none"></div>
+          )}
         </div>
       )}
 
-      <main className="w-full h-full pt-14 relative z-10">
+      <main className="flex-1 w-full relative z-10">
         <VisorMapa 
           centroInicial={[25.6565, -100.2930]} zoomInicial={15} centroActual={coordenadasActuales} zoomActual={zoomActual} setZoomActual={setZoomActual} 
           secciones={secciones} edificios={edificios} alSeleccionarEdificio={setEdificioSeleccionado} enModoTrazado={enModoTrazado} enModoEdificios={enModoEdificios}
@@ -202,7 +216,6 @@ export default function VistaDashboard() {
           enModoRevisita={enModoRevisita} marcadoresPersonales={gestorRevisitas.marcadores} alSeleccionarRevisita={setRevisitaLectura} marcadorTemporal={marcadorRevisitaTemporal}
         />
         
-        {/* LETREROS TEMPORALES DE MODO */}
         {(enModoTrazado || enModoEdificios || enModoTachuela || enModoRevisita) && !mostrarModalBienvenida && (
           <div className="absolute bottom-8 left-4 z-[1000] bg-white/90 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-lg text-[10px] font-semibold text-slate-700 dark:text-slate-300 pointer-events-none border border-slate-200 dark:border-slate-800 animate-slide-up">
             {enModoTrazado && <span className="text-rose-500 animate-pulse font-bold">✏️ Dibujando territorio...</span>}
