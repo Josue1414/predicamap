@@ -4,7 +4,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './utilidades/clienteSupabase';
 import VistaLogin from './vistas/VistaLogin';
 import VistaDashboard from './vistas/VistaDashboard';
-import VistaPublicador from './vistas/VistaPublicador'; // <-- IMPORTAMOS LA NUEVA VISTA
+import VistaPublicador from './vistas/VistaPublicador'; 
+import VistaRecuperar from './vistas/VistaRecuperar';
 
 export default function App() {
   const [sesion, setSesion] = useState(null);
@@ -17,8 +18,16 @@ export default function App() {
       setCargando(false);
     });
 
-    // 2. Escuchar cambios (login, logout, token expirado)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_evento, session) => {
+    // 2. Escuchar cambios de autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, session) => {
+      
+      // ★ NUEVA LÓGICA DE SEGURIDAD: Atrapar evento de recuperación ★
+      // Cuando Supabase lee el token del correo, emite 'PASSWORD_RECOVERY'
+      if (evento === 'PASSWORD_RECOVERY') {
+        // Forzamos la navegación segura a la vista de nueva contraseña
+        window.location.href = '/recuperar';
+      }
+      
       setSesion(session);
     });
 
@@ -38,8 +47,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         
-        {/* ★ NUEVA RUTA PÚBLICA (PUBLICADOR) ★ */}
-        {/* Esta ruta es libre, no exige sesión y atrapa cualquier enlace que empiece con /v/ */}
+        {/* RUTA PÚBLICA (PUBLICADOR) */}
         <Route 
           path="/v/:enlaceCorto" 
           element={<VistaPublicador />} 
@@ -55,6 +63,12 @@ export default function App() {
         <Route 
           path="/registro" 
           element={!sesion ? <VistaLogin /> : <Navigate to="/" replace />} 
+        />
+
+        {/* RUTA: RECUPERACIÓN DE CONTRASEÑA */}
+        <Route 
+          path="/recuperar" 
+          element={<VistaRecuperar />} 
         />
 
         {/* RUTA PRINCIPAL (MAPA DASHBOARD ADMINISTRATIVO) */}
