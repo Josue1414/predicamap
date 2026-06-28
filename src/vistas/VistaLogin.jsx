@@ -1,21 +1,22 @@
 // src/vistas/VistaLogin.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utilidades/clienteSupabase';
-// IMPORTAMOS EYE Y EYEOFF
-import { MapPin, Mail, Lock, User, LogIn, UserPlus, Send, Eye, EyeOff } from 'lucide-react';
+import { MapPin, Mail, Lock, User, LogIn, UserPlus, Send, Eye, EyeOff, RefreshCcw } from 'lucide-react';
 
 export default function VistaLogin() {
   const [esRegistro, setEsRegistro] = useState(false);
+  
+  // ★ NUEVO: Estado para el modo "Olvidé mi contraseña"
+  const [esRecuperacion, setEsRecuperacion] = useState(false);
+  
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [nombre, setNombre] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   
-  // NUEVO ESTADO: Para controlar el ojito de la contraseña
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
 
-  // ESTADOS PARA INTERCEPTAR PARÁMETROS DE INVITACIÓN
   const [rolInvitado, setRolInvitado] = useState(null);
   const [congregacionInvitadaId, setCongregacionInvitadaId] = useState(null);
   const [requiereNuevaCongregacion, setRequiereNuevaCongregacion] = useState(false);
@@ -24,7 +25,6 @@ export default function VistaLogin() {
     const parametros = new URLSearchParams(window.location.search);
     const key = parametros.get('key');
 
-    // Desencriptación Segura del Payload de la URL
     if (key) {
       try {
         const decoded = JSON.parse(decodeURIComponent(atob(key))); 
@@ -40,8 +40,34 @@ export default function VistaLogin() {
     }
   }, []);
 
+  // ★ NUEVA FUNCIÓN: Solicitar correo de recuperación ★
+  const manejarRecuperacion = async (evento) => {
+    evento.preventDefault();
+    if (!correo) return setMensaje({ tipo: 'error', texto: 'Por favor, escribe tu correo electrónico primero.' });
+    
+    setCargando(true);
+    setMensaje({ tipo: '', texto: '' });
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(correo, {
+        redirectTo: `${window.location.origin}/recuperar`, // Apuntamos a la nueva ruta
+      });
+      if (error) throw error;
+      setMensaje({ tipo: 'exito', texto: '✅ Se ha enviado un enlace seguro a tu correo. Revisa tu bandeja de entrada o SPAM.' });
+      setEsRecuperacion(false); // Volvemos al modo login normal
+    } catch (error) {
+      setMensaje({ tipo: 'error', texto: error.message });
+    } finally {
+      setCargando(false);
+    }
+  };
+
   const manejarAutenticacion = async (evento) => {
     evento.preventDefault();
+    
+    // Si estamos en modo recuperación, desviamos la lógica
+    if (esRecuperacion) return manejarRecuperacion(evento);
+
     setCargando(true);
     setMensaje({ tipo: '', texto: '' });
 
@@ -61,7 +87,6 @@ export default function VistaLogin() {
           password: contrasena,
           options: {
             data: metadatosAuth,
-            // NUEVO: Redirección dinámica y automática a tu sitio web
             emailRedirectTo: window.location.origin
           }
         });
@@ -110,17 +135,21 @@ export default function VistaLogin() {
       <div className="w-full max-w-sm bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 shadow-2xl relative z-10 text-xs">
         
         <div className="flex flex-col items-center mb-6">
-          <div className="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-600/30 text-white mb-2">
-            <MapPin size={28} className="animate-pulse" />
+          <div className={`p-3 rounded-2xl shadow-lg text-white mb-2 transition-colors ${esRecuperacion ? 'bg-rose-600 shadow-rose-600/30' : 'bg-indigo-600 shadow-indigo-600/30'}`}>
+            {esRecuperacion ? <RefreshCcw size={28} /> : <MapPin size={28} className="animate-pulse" />}
           </div>
-          <h2 className="text-xl font-black text-white tracking-tight">PredicaMap</h2>
+          <h2 className="text-xl font-black text-white tracking-tight">
+            {esRecuperacion ? 'Recuperar Acceso' : 'PredicaMap'}
+          </h2>
           
-          {rolInvitado ? (
+          {rolInvitado && !esRecuperacion ? (
             <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold px-2.5 py-1 rounded-full mt-2 flex items-center gap-1">
               <UserPlus size={12}/> Invitación para: {rolInvitado}
             </span>
           ) : (
-            <p className="text-slate-400 text-[11px] mt-1 text-center">Control y marcación de territorios de predicación</p>
+            <p className="text-slate-400 text-[11px] mt-1 text-center">
+              {esRecuperacion ? 'Te enviaremos un enlace seguro a tu correo' : 'Control y marcación de territorios de predicación'}
+            </p>
           )}
         </div>
 
@@ -134,7 +163,7 @@ export default function VistaLogin() {
         )}
 
         <form onSubmit={manejarAutenticacion} className="space-y-3.5">
-          {esRegistro && (
+          {!esRecuperacion && esRegistro && (
             <div>
               <label className="block text-slate-400 font-semibold mb-1">Nombre Completo</label>
               <div className="relative flex items-center">
@@ -152,42 +181,64 @@ export default function VistaLogin() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-slate-400 font-semibold mb-1">Contraseña</label>
-            <div className="relative flex items-center">
-              <Lock size={14} className="absolute left-3 text-slate-500" />
-              <input 
-                required 
-                type={mostrarContrasena ? "text" : "password"} 
-                value={contrasena} 
-                onChange={(e) => setContrasena(e.target.value)} 
-                placeholder="••••••••" 
-                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" 
-              />
-              {/* BOTÓN DEL OJITO PARA MOSTRAR/OCULTAR CONTRASEÑA */}
-              <button 
-                type="button" 
-                onClick={() => setMostrarContrasena(!mostrarContrasena)}
-                className="absolute right-3 text-slate-500 hover:text-indigo-400 transition-colors p-1"
-              >
-                {mostrarContrasena ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
+          {!esRecuperacion && (
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">Contraseña</label>
+              <div className="relative flex items-center">
+                <Lock size={14} className="absolute left-3 text-slate-500" />
+                <input 
+                  required 
+                  type={mostrarContrasena ? "text" : "password"} 
+                  value={contrasena} 
+                  onChange={(e) => setContrasena(e.target.value)} 
+                  placeholder="••••••••" 
+                  className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setMostrarContrasena(!mostrarContrasena)}
+                  className="absolute right-3 text-slate-500 hover:text-indigo-400 transition-colors p-1"
+                >
+                  {mostrarContrasena ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+              
+              {/* ★ NUEVO: Botón de Olvidé mi contraseña ★ */}
+              {!esRegistro && (
+                <div className="flex justify-end mt-2">
+                  <button 
+                    type="button" 
+                    onClick={() => { setEsRecuperacion(true); setMensaje({ tipo: '', texto: '' }); }}
+                    className="text-[10px] text-slate-400 hover:text-rose-400 transition-colors"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
-          <button disabled={cargando} type="submit" className="w-full py-3 mt-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/10 transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]">
-            <LogIn size={15} />
-            {cargando ? 'Procesando...' : esRegistro ? 'Confirmar Registro' : 'Entrar al Sistema'}
+          <button 
+            disabled={cargando} 
+            type="submit" 
+            className={`w-full py-3 mt-2 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 active:scale-[0.99] disabled:opacity-70 ${esRecuperacion ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/10'}`}
+          >
+            {esRecuperacion ? <Send size={15} /> : <LogIn size={15} />}
+            {cargando ? 'Procesando...' : esRecuperacion ? 'Enviar Enlace de Recuperación' : esRegistro ? 'Confirmar Registro' : 'Entrar al Sistema'}
           </button>
         </form>
 
-        {!rolInvitado && (
-          <div className="mt-5 text-center">
+        <div className="mt-5 text-center">
+          {esRecuperacion ? (
+            <button onClick={() => { setEsRecuperacion(false); setMensaje({ tipo: '', texto: '' }); }} className="text-slate-400 hover:text-white transition-colors">
+              Cancelar y volver al inicio
+            </button>
+          ) : !rolInvitado ? (
             <button onClick={() => { setEsRegistro(!esRegistro); setMensaje({ tipo: '', texto: '' }); }} className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold transition-colors">
               {esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate aquí'}
             </button>
-          </div>
-        )}
+          ) : null}
+        </div>
 
       </div>
     </div>
