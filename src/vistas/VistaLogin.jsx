@@ -5,8 +5,6 @@ import { MapPin, Mail, Lock, User, LogIn, UserPlus, Send, Eye, EyeOff, RefreshCc
 
 export default function VistaLogin() {
   const [esRegistro, setEsRegistro] = useState(false);
-  
-  // ★ NUEVO: Estado para el modo "Olvidé mi contraseña"
   const [esRecuperacion, setEsRecuperacion] = useState(false);
   
   const [correo, setCorreo] = useState('');
@@ -30,7 +28,7 @@ export default function VistaLogin() {
         const decoded = JSON.parse(decodeURIComponent(atob(key))); 
         if (decoded.r) {
           setRolInvitado(decoded.r);
-          setEsRegistro(true); 
+          setEsRegistro(true); // Solo se activa el registro si hay invitación válida
         }
         if (decoded.c) setCongregacionInvitadaId(decoded.c);
         if (decoded.nc === 1) setRequiereNuevaCongregacion(true);
@@ -40,7 +38,6 @@ export default function VistaLogin() {
     }
   }, []);
 
-  // ★ NUEVA FUNCIÓN: Solicitar correo de recuperación ★
   const manejarRecuperacion = async (evento) => {
     evento.preventDefault();
     if (!correo) return setMensaje({ tipo: 'error', texto: 'Por favor, escribe tu correo electrónico primero.' });
@@ -50,11 +47,11 @@ export default function VistaLogin() {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(correo, {
-        redirectTo: `${window.location.origin}/recuperar`, // Apuntamos a la nueva ruta
+        redirectTo: `${window.location.origin}/recuperar`,
       });
       if (error) throw error;
       setMensaje({ tipo: 'exito', texto: '✅ Se ha enviado un enlace seguro a tu correo. Revisa tu bandeja de entrada o SPAM.' });
-      setEsRecuperacion(false); // Volvemos al modo login normal
+      setEsRecuperacion(false); 
     } catch (error) {
       setMensaje({ tipo: 'error', texto: error.message });
     } finally {
@@ -65,7 +62,6 @@ export default function VistaLogin() {
   const manejarAutenticacion = async (evento) => {
     evento.preventDefault();
     
-    // Si estamos en modo recuperación, desviamos la lógica
     if (esRecuperacion) return manejarRecuperacion(evento);
 
     setCargando(true);
@@ -203,7 +199,6 @@ export default function VistaLogin() {
                 </button>
               </div>
               
-              {/* ★ NUEVO: Botón de Olvidé mi contraseña ★ */}
               {!esRegistro && (
                 <div className="flex justify-end mt-2">
                   <button 
@@ -229,15 +224,12 @@ export default function VistaLogin() {
         </form>
 
         <div className="mt-5 text-center">
-          {esRecuperacion ? (
+          {/* ★ AQUI QUITAMOS LA OPCIÓN DE REGISTRO LIBRE ★ */}
+          {esRecuperacion && (
             <button onClick={() => { setEsRecuperacion(false); setMensaje({ tipo: '', texto: '' }); }} className="text-slate-400 hover:text-white transition-colors">
               Cancelar y volver al inicio
             </button>
-          ) : !rolInvitado ? (
-            <button onClick={() => { setEsRegistro(!esRegistro); setMensaje({ tipo: '', texto: '' }); }} className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold transition-colors">
-              {esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate aquí'}
-            </button>
-          ) : null}
+          )}
         </div>
 
       </div>

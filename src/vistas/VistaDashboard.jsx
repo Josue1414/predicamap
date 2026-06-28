@@ -56,7 +56,16 @@ export default function VistaDashboard() {
   const [revisitaLectura, setRevisitaLectura] = useState(null);
   const [revisitaExpandida, setRevisitaExpandida] = useState(null); 
 
-  const { logs, cargandoLogs, cargarLogs, registrarLog } = useGestorHistorial(targetCongId);
+  // ★ CORRECCIÓN: Extraer propiedades de paginación correctamente ★
+  const { 
+    logs, 
+    cargandoLogs, 
+    cargarLogs, 
+    registrarLog,
+    pagina, 
+    totalPaginas, 
+    cambiarPagina 
+  } = useGestorHistorial(targetCongId);
 
   const manejarCompletarTerritorio = async (id) => {
     await completarTerritorioEntero(id);
@@ -118,14 +127,12 @@ export default function VistaDashboard() {
         />
       )}
 
-      {/* ★ CABECERA: Ahora recibe el Perfil para saber los progresos y le quitamos el modo oscuro ★ */}
       <CabeceraCongregacion 
         nombreCongregacion={nombreCongregacionUI} 
         alAbrirMenu={() => setMenuAbierto(true)} 
         perfilUsuario={perfilUsuario}
       />
 
-      {/* ★ MENÚ LATERAL: Ahora recibe las funciones de modo oscuro ★ */}
       <MenuLateral 
         abierto={menuAbierto} alCerrar={() => setMenuAbierto(false)} nombreCongregacion={nombreCongregacionUI} 
         alCambiarNombreCongregacion={setNombreCongregacionUI} seccionesGuardadas={secciones} edificiosGuardados={edificios} 
@@ -142,8 +149,18 @@ export default function VistaDashboard() {
         marcadoresPersonales={gestorRevisitas.marcadores} alVolarARevisita={(m) => { setCoordenadasActuales([m.lat, m.lng]); setZoomActual(19); setMenuAbierto(false); }}
         alEditarRevisita={(m) => { setRevisitaEditando(m); setMenuAbierto(false); }} alEliminarRevisita={gestorRevisitas.eliminarMarcador} alCompartirRevisita={gestorRevisitas.compartirMarcador}
         alExportarBackup={gestorRevisitas.exportarBackup} alImportarBackup={gestorRevisitas.importarBackup} revisitaExpandida={revisitaExpandida} setRevisitaExpandida={setRevisitaExpandida}
-        logs={logs} cargandoLogs={cargandoLogs} recargarLogs={cargarLogs} actualizarNombrePerfilBD={actualizarNombrePerfilBD} alReordenarTerritorio={reordenarTerritorioEnBD}
-        modoOscuro={modoOscuro} alCambiarModo={() => setModoOscuro(!modoOscuro)}
+        
+        // ★ CORRECCIÓN: Pasar variables directamente ★
+        logs={logs} 
+        cargandoLogs={cargandoLogs} 
+        recargarLogs={cargarLogs} 
+        actualizarNombrePerfilBD={actualizarNombrePerfilBD} 
+        alReordenarTerritorio={reordenarTerritorioEnBD}
+        modoOscuro={modoOscuro} 
+        alCambiarModo={() => setModoOscuro(!modoOscuro)}
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        alCambiarPagina={cambiarPagina}
       />
 
       <MenuEdificio edificio={edificioSeleccionado} perfilUsuario={perfilUsuario} alCerrar={() => setEdificioSeleccionado(null)} alCambiarEstado={cambiarEstadoEdificioTemp} alCambiarDireccion={(nuevaDir) => setEdificioSeleccionado(prev => ({ ...prev, direccion: nuevaDir }))} notasTemp={notasEdificioTemp} alCambiarNotasTemp={setNotasEdificioTemp} alGuardar={manejarGuardarEdificio} alEliminar={eliminarEdificioEnBD} />
@@ -172,11 +189,9 @@ export default function VistaDashboard() {
       )}
 
       
-      {/* ★ BOTONES FLOTANTES: ORDEN FIJO CON BLOQUE FANTASMA ★ */}
       {!enModoTrazado && !enModoEdificios && !enModoTachuela && !enModoRevisita && !mostrarModalBienvenida && (
         <div className="absolute bottom-[14px] right-14 z-[2000] flex items-center gap-2 animate-slide-up">
           
-          {/* BOTÓN REVISITA (Siempre visible y anclado a la izquierda) */}
           <button 
             onClick={() => setEnModoRevisita(true)} 
             className="bg-purple-600 text-white w-12 h-12 rounded-2xl shadow-xl shadow-purple-600/30 flex flex-col items-center justify-center hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all border border-purple-500"
@@ -185,7 +200,6 @@ export default function VistaDashboard() {
             <span className="text-[7px] font-black uppercase tracking-wider">Revisita</span>
           </button>
           
-          {/* BOTÓN AVISO O ESPACIO FANTASMA */}
           {puedeCrearTachuela ? (
             <button 
               onClick={() => setEnModoTachuela(true)} 
@@ -195,7 +209,6 @@ export default function VistaDashboard() {
               <span className="text-[7px] font-black uppercase tracking-wider">Aviso</span>
             </button>
           ) : (
-            /* Bloque invisible que mide exactamente lo mismo que el botón Aviso */
             <div className="w-12 h-12 pointer-events-none"></div>
           )}
         </div>

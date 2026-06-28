@@ -33,8 +33,11 @@ export default function MenuLateral({
   logs, cargandoLogs, recargarLogs,
   actualizarNombrePerfilBD,
   alReordenarTerritorio,
-  // ★ NUEVAS PROPS: MODO OSCURO ★
-  modoOscuro, alCambiarModo
+  modoOscuro, alCambiarModo,
+  // ★ AÑADIDAS PROPS DE PAGINACIÓN ★
+  pagina,
+  totalPaginas,
+  alCambiarPagina
 }) {
   const [acordeonActivo, setAcordeonActivo] = useState('lista'); 
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
@@ -220,7 +223,12 @@ export default function MenuLateral({
           
           <SeccionHistorial 
             visible={esCapitanYSuperior && (!esAdminMayor || (esAdminMayor && congregacionContextoId))}
-            acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} logs={logs} cargandoLogs={cargandoLogs} recargarLogs={recargarLogs}
+            acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon}
+            logs={logs} cargandoLogs={cargandoLogs} recargarLogs={recargarLogs}
+            // ★ SE PASAN LAS PROPS AQUÍ ★
+            pagina={pagina}
+            totalPaginas={totalPaginas}
+            alCambiarPagina={alCambiarPagina}
           />
 
         </div>
