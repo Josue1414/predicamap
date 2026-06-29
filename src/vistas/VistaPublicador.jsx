@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utilidades/clienteSupabase';
 import VisorMapa from '../componentes/VisorMapa';
 import MenuLateralPublicador from '../componentes/menu-lateral/MenuLateralPublicador';
-import CabeceraCongregacion from '../componentes/CabeceraCongregacion'; // ★ IMPORTAMOS LA NUEVA CABECERA ★
+import CabeceraCongregacion from '../componentes/CabeceraCongregacion';
 import { Home, Map as MapIcon, X, BookmarkPlus } from 'lucide-react';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 
@@ -15,30 +15,24 @@ export default function VistaPublicador() {
   const [modoOscuro, setModoOscuro] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
   
-  // Datos de la base de datos
   const [congregacion, setCongregacion] = useState(null);
   const [secciones, setSecciones] = useState([]);
   const [edificios, setEdificios] = useState([]);
   
-  // ESTADOS PARA TACHUELAS GRUPALES (Lectura)
   const [tachuelasGrupales, setTachuelasGrupales] = useState([]);
   const [tachuelaLeida, setTachuelaLeida] = useState(null);
   
-  // Estado del Mapa
   const [coordenadasActuales, setCoordenadasActuales] = useState([25.6565, -100.2930]);
   const [zoomActual, setZoomActual] = useState(15);
   const [mostrarCalles, setMostrarCalles] = useState(true);
   const [mostrarLugares, setMostrarLugares] = useState(true);
 
-  // Estado del Buscador
   const [textoBusqueda, setTextoBusqueda] = useState('');
   const [resultadosCiudades, setResultadosCiudades] = useState([]);
 
-  // Modales de Lectura
   const [territorioLeido, setTerritorioLeido] = useState(null);
   const [casaLeida, setCasaLeida] = useState(null);
 
-  // ESTADOS PARA LAS REVISITAS PERSONALES
   const gestorRevisitas = useMarcadoresPersonales();
   const [enModoRevisita, setEnModoRevisita] = useState(false);
   const [marcadorTemporal, setMarcadorTemporal] = useState(null); 
@@ -66,23 +60,19 @@ export default function VistaPublicador() {
           enlaceCorto = payloadCifrado;
         }
 
-        // 1. Obtener Congregación
         const { data: cong, error: errCong } = await supabase.from('congregaciones').select('*').eq('enlace_corto', enlaceCorto).single();
         if (errCong || !cong) throw new Error("La congregación no existe o el enlace expiró.");
         setCongregacion(cong);
 
-        // 2. Obtener Territorios
         const { data: secs } = await supabase.from('secciones').select('*').eq('congregacion_id', cong.id);
         const formateadas = (secs || []).map(item => ({
           id: item.id, nombre: item.nombre, colorHex: item.color_hex, coordenadas: item.coordenadas, notas: item.notas, estado: item.estado
         }));
         setSecciones(formateadas);
 
-        // 3. DESCARGAR TACHUELAS GRUPALES
         const { data: tachs } = await supabase.from('tachuelas').select('*').eq('congregacion_id', cong.id);
         setTachuelasGrupales(tachs || []);
 
-        // 4. Obtener Casas y Centrar Mapa
         if (formateadas.length > 0) {
           let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
           formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
@@ -100,6 +90,48 @@ export default function VistaPublicador() {
     };
     cargarDatos();
   }, []);
+
+  // ★ NUEVO BLOQUE: Escuchar cambios en Tiempo Real para los Publicadores ★
+  useEffect(() => {
+    if (!congregacion?.id) return;
+
+    const canalPublicador = supabase.channel(`publicador-${congregacion.id}`)
+      // Escuchar Territorios
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'secciones', filter: `congregacion_id=eq.${congregacion.id}` }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setSecciones(prev => [...prev, { id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, coordenadas: payload.new.coordenadas, notas: payload.new.notas, estado: payload.new.estado }]);
+        } else if (payload.eventType === 'UPDATE') {
+          setSecciones(prev => prev.map(s => s.id === payload.new.id ? { ...s, ...payload.new, colorHex: payload.new.color_hex } : s));
+        } else if (payload.eventType === 'DELETE') {
+          setSecciones(prev => prev.filter(s => s.id !== payload.old.id));
+        }
+      })
+      // Escuchar Casas y Calles
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'edificios' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setEdificios(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setEdificios(prev => prev.map(e => e.id === payload.new.id ? payload.new : e));
+        } else if (payload.eventType === 'DELETE') {
+          setEdificios(prev => prev.filter(e => e.id !== payload.old.id));
+        }
+      })
+      // Escuchar Tachuelas/Avisos
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tachuelas', filter: `congregacion_id=eq.${congregacion.id}` }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setTachuelasGrupales(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setTachuelasGrupales(prev => prev.map(t => t.id === payload.new.id ? payload.new : t));
+        } else if (payload.eventType === 'DELETE') {
+          setTachuelasGrupales(prev => prev.filter(t => t.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(canalPublicador);
+    };
+  }, [congregacion]);
 
   const buscarCiudadEnServidor = async (e) => {
     e.preventDefault();
@@ -134,10 +166,8 @@ export default function VistaPublicador() {
   if (error) return <div className="w-screen h-screen flex items-center justify-center bg-slate-900 text-rose-500 font-bold p-6 text-center">Error: {error}</div>;
 
   return (
-    // ★ SOLUCIÓN DE BUG DE SALTO: Usamos h-[100dvh] en lugar de h-screen ★
     <div className="w-screen h-[100dvh] overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col relative transition-colors duration-200">
       
-      {/* ★ NUEVA CABECERA PÚBLICA INTEGRADA ★ */}
       <CabeceraCongregacion 
         nombreCongregacion={congregacion.nombre} 
         alAbrirMenu={() => setMenuAbierto(true)} 
@@ -159,13 +189,11 @@ export default function VistaPublicador() {
         alExportarBackup={gestorRevisitas.exportarBackup}
         alImportarBackup={gestorRevisitas.importarBackup}
         alEditarRevisita={(m) => setRevisitaEditando(m)}
-        // ★ PASAMOS LA FUNCIÓN DEL MODO OSCURO ★
         modoOscuro={modoOscuro} alCambiarModo={() => setModoOscuro(!modoOscuro)}
       />
 
       <main className="flex-1 w-full relative z-10">
         
-        {/* BANNER INDICADOR DE MODO REVISITA (Reubicado a top-20) */}
         {enModoRevisita && !marcadorTemporal && (
           <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[2000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-5 py-2.5 rounded-full shadow-2xl border-2 border-purple-500 text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3 animate-slide-up">
             <span className="flex items-center gap-1.5"><BookmarkPlus size={14} className="text-purple-500 animate-pulse"/> Toca para ubicar</span>
@@ -173,10 +201,8 @@ export default function VistaPublicador() {
           </div>
         )}
 
-        {/* ★ BOTÓN FLOTANTE NUEVA REVISITA FIJO (Con bloque fantasma) ★ */}
         {!enModoRevisita && !marcadorTemporal && (
           <div className="absolute bottom-[14px] right-14 z-[2000] flex items-center gap-2 animate-slide-up">
-            
             <button 
               onClick={() => setEnModoRevisita(true)} 
               className="bg-purple-600 text-white w-12 h-12 rounded-2xl shadow-xl shadow-purple-600/30 flex flex-col items-center justify-center hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all border border-purple-500"
@@ -184,14 +210,10 @@ export default function VistaPublicador() {
               <BookmarkPlus size={18} className="mb-0.5" />
               <span className="text-[7px] font-black uppercase tracking-wider">Revisita</span>
             </button>
-
-            {/* Bloque invisible para que no se recorra hacia la derecha */}
             <div className="w-12 h-12 pointer-events-none"></div>
-            
           </div>
         )}
 
-        {/* LETRERO INFERIOR DE MODO */}
         {enModoRevisita && (
           <div className="absolute bottom-8 left-4 z-[1000] bg-white/90 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-lg text-[10px] font-semibold text-slate-700 dark:text-slate-300 pointer-events-none border border-slate-200 dark:border-slate-800 animate-slide-up">
             <span className="text-purple-500 animate-pulse font-bold">📍 Modo Revisita</span>
@@ -219,21 +241,18 @@ export default function VistaPublicador() {
         />
       </main>
 
-      {/* MODALES DE LECTURA NORMALES */}
       {territorioLeido && <ModalInfoLectura icono={<MapIcon size={24} className="text-indigo-500" />} titulo={territorioLeido.nombre} notas={territorioLeido.notas} alCerrar={() => setTerritorioLeido(null)} />}
       {casaLeida && <ModalInfoLectura icono={<Home size={24} className="text-emerald-500" />} titulo={casaLeida.direccion} estado={casaLeida.estado} notas={casaLeida.notas} alCerrar={() => setCasaLeida(null)} />}
       {revisitaLectura && <ModalInfoLectura icono={<BookmarkPlus size={24} className="text-purple-500" />} titulo={revisitaLectura.titulo} estado={revisitaLectura.fechaProgramada ? `Agendado: ${revisitaLectura.fechaProgramada}` : 'Sin fecha específica'} estadoColor="text-purple-500" notas={revisitaLectura.notas} alCerrar={() => setRevisitaLectura(null)} />}
 
-      {/* MODAL LECTURA TACHUELA GRUPAL (Solo Lectura) */}
       {tachuelaLeida && (
         <ModalInfoTachuela 
           tachuela={tachuelaLeida}
-          puedeEliminar={false} // El publicador solo puede leer
+          puedeEliminar={false}
           alCerrar={() => setTachuelaLeida(null)}
         />
       )}
 
-      {/* MODAL FORMULARIO DE REVISITA PERSONAL */}
       {(marcadorTemporal || revisitaEditando) && (
         <ModalFormularioRevisita
           marcadorEditando={revisitaEditando}
@@ -254,9 +273,6 @@ export default function VistaPublicador() {
   );
 }
 
-// --------------------------------------------------------
-// COMPONENTE INTERNO: FORMULARIO DE REVISITA
-// --------------------------------------------------------
 function ModalFormularioRevisita({ marcadorEditando, alGuardar, alCancelar }) {
   const [titulo, setTitulo] = useState(marcadorEditando?.titulo || '');
   const [fecha, setFecha] = useState(marcadorEditando?.fechaProgramada || '');
@@ -306,9 +322,6 @@ function ModalFormularioRevisita({ marcadorEditando, alGuardar, alCancelar }) {
   );
 }
 
-// --------------------------------------------------------
-// COMPONENTE INTERNO: MODAL INFO LECTURA 
-// --------------------------------------------------------
 function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, alCerrar }) {
   let color = estadoColor || 'text-slate-500';
   let textoEstado = estado || '';

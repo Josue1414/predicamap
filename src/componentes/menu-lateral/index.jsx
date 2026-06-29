@@ -160,11 +160,7 @@ export default function MenuLateral({
 
           <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-4 px-1">Navegación y Servicio</div>
           
-          <SeccionBuscarMapa 
-            textoBusqueda={textoBusqueda} alCambiarTextoBusqueda={alCambiarTextoBusqueda} alBuscar={alBuscar}
-            resultadosCiudades={resultadosCiudades} alSeleccionarCiudad={alSeleccionarCiudad}
-            acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}
-          />
+          
           
           <SeccionMisRevisitas 
             visible={!esAdminMayor || (esAdminMayor && congregacionContextoId)}
@@ -229,6 +225,12 @@ export default function MenuLateral({
             pagina={pagina}
             totalPaginas={totalPaginas}
             alCambiarPagina={alCambiarPagina}
+          />
+
+          <SeccionBuscarMapa 
+            textoBusqueda={textoBusqueda} alCambiarTextoBusqueda={alCambiarTextoBusqueda} alBuscar={alBuscar}
+            resultadosCiudades={resultadosCiudades} alSeleccionarCiudad={alSeleccionarCiudad}
+            acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}
           />
 
         </div>

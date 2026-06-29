@@ -96,6 +96,16 @@ export default function VisorMapa({
 
   const mapaActivoClics = enModoTrazado || enModoEdificios || !!marcadorTemporal || (alSeleccionarRevisita !== undefined) || enModoTachuela;
 
+  // ★ TEMPORIZADOR CORREGIDO ★
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMostrarLeyenda(false); // CORREGIDO: Se llama mostrarLeyenda, no mostrarInfo
+    }, 7000);
+    
+    // Limpiamos el temporizador por seguridad si el mapa se desmonta
+    return () => clearTimeout(timer);
+  }, []);
+  
   return (
     <div className={`w-full h-full bg-slate-200 dark:bg-slate-950 relative ${mapaActivoClics ? 'cursor-crosshair' : ''}`}>
       

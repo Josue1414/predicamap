@@ -1,3 +1,4 @@
+// src/hooks/modulos/useGestorProgreso.js
 import { useState, useEffect, useRef } from 'react';
 
 export default function useGestorProgreso() {
@@ -12,11 +13,9 @@ export default function useGestorProgreso() {
     };
   });
 
-  // ★ SOLUCIÓN DE ERROR REACT: Usamos una "bandera" para emitir el evento en el momento seguro
   const soyElEmisor = useRef(false);
 
   useEffect(() => {
-    // Escuchar cambios hechos por otros componentes
     const sincronizarProgreso = (e) => {
       setDatosProgreso(e.detail);
     };
@@ -25,15 +24,19 @@ export default function useGestorProgreso() {
   }, []);
 
   useEffect(() => {
-    // Solo si ESTE componente hizo el cambio, guardamos y avisamos a los demás
     if (soyElEmisor.current) {
       localStorage.setItem('predicamap_progreso', JSON.stringify(datosProgreso));
       window.dispatchEvent(new CustomEvent('progreso_actualizado', { detail: datosProgreso }));
-      soyElEmisor.current = false; // Bajamos la bandera
+      soyElEmisor.current = false;
     }
   }, [datosProgreso]);
 
-  const obtenerFechaHoy = () => new Date().toISOString().split('T')[0];
+  const obtenerFechaHoyLocal = () => {
+    const fecha = new Date();
+    const offsetMs = fecha.getTimezoneOffset() * 60000;
+    const fechaLocal = new Date(fecha.getTime() - offsetMs);
+    return fechaLocal.toISOString().split('T')[0];
+  };
 
   const calcularDiasHastaAgosto = () => {
     const hoy = new Date();
@@ -67,7 +70,7 @@ export default function useGestorProgreso() {
   };
 
   const calcularHorasMesActual = () => {
-    const prefijoMesActual = obtenerFechaHoy().substring(0, 7); 
+    const prefijoMesActual = obtenerFechaHoyLocal().substring(0, 7); 
     let total = 0;
     for (const [fecha, datos] of Object.entries(datosProgreso.registrosDiarios)) {
       if (fecha.startsWith(prefijoMesActual)) {
@@ -78,7 +81,7 @@ export default function useGestorProgreso() {
   };
 
   const calcularEstudiosMesActual = () => {
-    const prefijoMesActual = obtenerFechaHoy().substring(0, 7);
+    const prefijoMesActual = obtenerFechaHoyLocal().substring(0, 7);
     let maxEstudios = 0;
     for (const [fecha, datos] of Object.entries(datosProgreso.registrosDiarios)) {
       if (fecha.startsWith(prefijoMesActual) && datos.estudios > maxEstudios) {
@@ -88,12 +91,38 @@ export default function useGestorProgreso() {
     return maxEstudios;
   };
 
+  // ★ MODIFICADO: Agrega o quita horas enteras respetando el límite de 18 ★
   const modificarHorasHoy = (cantidad) => {
-    soyElEmisor.current = true; // Levantamos bandera
+    soyElEmisor.current = true;
     setDatosProgreso(prev => {
-      const hoy = obtenerFechaHoy();
+      const hoy = obtenerFechaHoyLocal();
       const registroHoy = prev.registrosDiarios[hoy] || { horas: 0, estudios: 0 };
-      const nuevasHoras = Math.max(0, (registroHoy.horas || 0) + Math.round(cantidad * 100) / 100); 
+      
+      let nuevasHoras = Math.max(0, (registroHoy.horas || 0) + cantidad); 
+      if (nuevasHoras > 18) nuevasHoras = 18; // Límite máximo
+      
+      return {
+        ...prev,
+        registrosDiarios: {
+          ...prev.registrosDiarios,
+          [hoy]: { ...registroHoy, horas: nuevasHoras }
+        }
+      };
+    });
+  };
+
+  // ★ NUEVO: Función exclusiva para cambiar los minutos (0, 0.25, 0.5, 0.75) ★
+  const setFraccionMinutosHoy = (fraccionDecimal) => {
+    soyElEmisor.current = true;
+    setDatosProgreso(prev => {
+      const hoy = obtenerFechaHoyLocal();
+      const registroHoy = prev.registrosDiarios[hoy] || { horas: 0, estudios: 0 };
+      
+      // Separamos las horas enteras actuales y le sumamos la nueva fracción
+      const horasEnteras = Math.floor(registroHoy.horas || 0);
+      let nuevasHoras = horasEnteras + fraccionDecimal;
+      
+      if (nuevasHoras > 18) nuevasHoras = 18; // Límite máximo
       
       return {
         ...prev,
@@ -106,9 +135,9 @@ export default function useGestorProgreso() {
   };
 
   const setEstudiosHoy = (cantidad) => {
-    soyElEmisor.current = true; // Levantamos bandera
+    soyElEmisor.current = true;
     setDatosProgreso(prev => {
-      const hoy = obtenerFechaHoy();
+      const hoy = obtenerFechaHoyLocal();
       const registroHoy = prev.registrosDiarios[hoy] || { horas: 0, estudios: 0 };
       return {
         ...prev,
@@ -121,8 +150,40 @@ export default function useGestorProgreso() {
   };
 
   const actualizarMetas = (nuevasMetas) => {
-    soyElEmisor.current = true; // Levantamos bandera
+    soyElEmisor.current = true;
     setDatosProgreso(prev => ({ ...prev, ...nuevasMetas }));
+  };
+
+  const exportarProgreso = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(datosProgreso));
+    const a = document.createElement('a');
+    a.setAttribute("href", dataStr);
+    a.setAttribute("download", `PredicaMap_Progreso_${obtenerFechaHoyLocal()}.json`);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const importarProgreso = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target.result);
+        if (json.registrosDiarios) {
+          soyElEmisor.current = true;
+          setDatosProgreso(json);
+          alert("¡Tu progreso ha sido restaurado con éxito!");
+        } else {
+          alert("El archivo no tiene el formato correcto.");
+        }
+      } catch (error) {
+        alert("Ocurrió un error al leer el archivo.");
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; 
   };
 
   return {
@@ -133,8 +194,11 @@ export default function useGestorProgreso() {
     diasHastaAgosto: calcularDiasHastaAgosto(),
     mesesRestantes: calcularMesesRestantes(),
     modificarHorasHoy,
+    setFraccionMinutosHoy, // Exportamos la nueva función
     setEstudiosHoy,
     actualizarMetas,
-    fechaHoyStr: obtenerFechaHoy()
+    fechaHoyStr: obtenerFechaHoyLocal(),
+    exportarProgreso, 
+    importarProgreso  
   };
 }

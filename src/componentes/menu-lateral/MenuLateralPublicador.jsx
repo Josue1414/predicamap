@@ -67,33 +67,6 @@ export default function MenuLateralPublicador({
 
         <div className="flex-1 overflow-y-auto scroll-limpio p-3 space-y-4">
 
-          {/* 1. BUSCADOR DIRECTO */}
-          <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <button onClick={() => alternarAcordeon('buscador')} className="w-full p-3 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <span className="font-bold text-xs text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                <Search size={16} className="text-indigo-500"/> Buscar en el Mapa
-              </span>
-              {acordeonActivo === 'buscador' ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-            </button>
-            {acordeonActivo === 'buscador' && (
-              <div className="p-3">
-                <form onSubmit={alBuscar} className="flex gap-2">
-                  <input type="text" value={textoBusqueda} onChange={(e) => alCambiarTextoBusqueda(e.target.value)} placeholder="Ej: Zapopan, Jalisco..." className="w-full border rounded-lg p-2 text-xs dark:bg-slate-900 dark:border-slate-700 dark:text-white focus:ring-1 focus:ring-indigo-500 outline-none" />
-                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold transition-colors">Ir</button>
-                </form>
-                {resultadosCiudades.length > 0 && (
-                  <ul className="mt-2 border rounded-lg max-h-40 overflow-y-auto text-[11px] dark:border-slate-700 scroll-limpio">
-                    {resultadosCiudades.map((c, i) => (
-                      <li key={i} onClick={() => { alSeleccionarCiudad(c); alCerrar(); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer border-b last:border-0 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                        {c.display_name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-
           {/* ★ 2. MIS REVISITAS PERSONALES ★ */}
           <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
             <button onClick={() => alternarAcordeon('revisitas')} className="w-full p-3 flex justify-between items-center bg-purple-50 dark:bg-purple-900/10 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
@@ -233,6 +206,33 @@ export default function MenuLateralPublicador({
                   <input type="checkbox" checked={mostrarLugares} onChange={(e) => alCambiarMostrarLugares(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
                   Mostrar Nombres de Lugares
                 </label>
+              </div>
+            )}
+          </div>
+
+          {/* 1. BUSCADOR DIRECTO */}
+          <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <button onClick={() => alternarAcordeon('buscador')} className="w-full p-3 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <span className="font-bold text-xs text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                <Search size={16} className="text-indigo-500"/> Buscar en el Mapa
+              </span>
+              {acordeonActivo === 'buscador' ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+            </button>
+            {acordeonActivo === 'buscador' && (
+              <div className="p-3">
+                <form onSubmit={alBuscar} className="flex gap-2">
+                  <input type="text" value={textoBusqueda} onChange={(e) => alCambiarTextoBusqueda(e.target.value)} placeholder="Ej: Zapopan, Jalisco..." className="w-full border rounded-lg p-2 text-xs dark:bg-slate-900 dark:border-slate-700 dark:text-white focus:ring-1 focus:ring-indigo-500 outline-none" />
+                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold transition-colors">Ir</button>
+                </form>
+                {resultadosCiudades.length > 0 && (
+                  <ul className="mt-2 border rounded-lg max-h-40 overflow-y-auto text-[11px] dark:border-slate-700 scroll-limpio">
+                    {resultadosCiudades.map((c, i) => (
+                      <li key={i} onClick={() => { alSeleccionarCiudad(c); alCerrar(); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer border-b last:border-0 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                        {c.display_name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>
