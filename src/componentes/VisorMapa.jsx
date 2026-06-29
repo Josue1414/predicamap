@@ -164,7 +164,7 @@ export default function VisorMapa({
         )}
       </div>
 
-      <MapContainer center={centroInicial} zoom={zoomInicial} minZoom={4} maxZoom={22} zoomControl={false} className="w-full h-full">
+      <MapContainer center={centroInicial} zoom={zoomInicial} minZoom={4} maxZoom={22} zoomControl={false} preferCanvas={true} className="w-full h-full">
         
         <ZoomControl position="bottomright" />
         <ControladorVistaInteligente centro={centroActual} zoomConfigurado={zoomActual} setZoomActual={setZoomActual} />
@@ -273,18 +273,28 @@ export default function VisorMapa({
           );
         })}
 
-        {/* ★ LOS PUNTOS DE CASAS APARECEN UN ZOOM DESPUÉS ★ */}
+        {/* ★ LOS PUNTOS DE CASAS Y CALLES APARECEN UN ZOOM DESPUÉS ★ */}
         {mostrarCasasZoom && edificios.map((edificio) => {
-          let colorEstado = '#f97316'; 
-          if (edificio.estado === 'completado') colorEstado = '#10b981'; 
-          if (edificio.estado === 'no_responde') colorEstado = '#e11d48'; 
+          let colorEstado = '#f97316'; // Pendiente
+          if (edificio.estado === 'completado') colorEstado = '#10b981'; // Listo
+          if (edificio.estado === 'no_responde') colorEstado = '#e11d48'; // No visitar
+          
+          const esCalle = edificio.tipo_edificio === 'calle';
 
           return (
             <CircleMarker 
               key={edificio.id} 
               center={[edificio.lat, edificio.lng]} 
-              radius={6}
-              pathOptions={{ color: '#ffffff', fillColor: colorEstado, fillOpacity: 1, weight: 2 }}
+              // Las calles son ligeramente más grandes que las casas
+              radius={esCalle ? 8 : 6}
+              pathOptions={{ 
+                color: '#ffffff', 
+                fillColor: colorEstado, 
+                // Las calles tienen un poco de transparencia y borde punteado
+                fillOpacity: esCalle ? 0.7 : 1, 
+                weight: esCalle ? 2.5 : 2,
+                dashArray: esCalle ? '3, 4' : null 
+              }}
               eventHandlers={{ 
                 click: () => { if (!enModoTrazado && !enModoEdificios && !enModoTachuela) alSeleccionarEdificio(edificio); } 
               }}

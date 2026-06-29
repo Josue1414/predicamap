@@ -18,6 +18,9 @@ import useGestorTachuelas from '../hooks/modulos/useGestorTachuelas';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 import useGestorHistorial from '../hooks/modulos/useGestorHistorial';
 
+// ★ NUESTRO NUEVO CONTEXTO GLOBAL ★
+import { useModoMapa, MODOS_MAPA } from '../context/ContextoModoMapa';
+
 export default function VistaDashboard() {
   const [modoOscuro, setModoOscuro] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -26,11 +29,19 @@ export default function VistaDashboard() {
   const [nombreNuevoSetup, setNombreNuevoSetup] = useState('');
   const [territorioSeleccionado, setTerritorioSeleccionado] = useState(null);
 
+  // ★ EXTRAEMOS LOS MODOS DEL CONTEXTO ★
+  const { 
+    enModoTachuela, 
+    enModoRevisita, 
+    cambiarModo, 
+    limpiarModo 
+  } = useModoMapa();
+
   const {
     secciones, edificios, cargando,
     textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad,
     coordenadasActuales, zoomActual, setZoomActual, setCoordenadasActuales,
-    enModoTrazado, setEnModoTrazado, enModoEdificios, setEnModoEdificios,
+    enModoTrazado, enModoEdificios, // Ya vienen del hook sincronizados con el contexto
     nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio,
     puntosTrazadoActual, manejarClickMapa, deshacerUltimoPunto, limpiarTrazadoCompleto, cancelarTrazadoYSalir,
     guardarNuevaSeccionEnBD, eliminarSeccionEnBD,
@@ -44,19 +55,16 @@ export default function VistaDashboard() {
   } = useMapa();
 
   const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD } = useGestorTachuelas(targetCongId);
-  const [enModoTachuela, setEnModoTachuela] = useState(false);
   const [tachuelaTemporal, setTachuelaTemporal] = useState(null);
   const [tachuelaLeida, setTachuelaLeida] = useState(null);
   const puedeCrearTachuela = perfilUsuario && ['Administrador Mayor', 'Administrador', 'Capitán'].includes(perfilUsuario.rol);
 
   const gestorRevisitas = useMarcadoresPersonales();
-  const [enModoRevisita, setEnModoRevisita] = useState(false);
   const [marcadorRevisitaTemporal, setMarcadorRevisitaTemporal] = useState(null);
   const [revisitaEditando, setRevisitaEditando] = useState(null);
   const [revisitaLectura, setRevisitaLectura] = useState(null);
   const [revisitaExpandida, setRevisitaExpandida] = useState(null); 
 
-  // ★ CORRECCIÓN: Extraer propiedades de paginación correctamente ★
   const { 
     logs, 
     cargandoLogs, 
@@ -86,7 +94,7 @@ export default function VistaDashboard() {
     await agregarTachuelaBD(tachuelaTemporal.lat, tachuelaTemporal.lng, datos.titulo, datos.notas);
     if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Creado', 'tachuela', `Se fijó un nuevo aviso: ${datos.titulo}`);
     setTachuelaTemporal(null);
-    setEnModoTachuela(false);
+    limpiarModo(); // ★ Uso del contexto
   };
 
   const manejarEliminarTachuela = async (id, titulo) => {
@@ -140,8 +148,11 @@ export default function VistaDashboard() {
         alVolarATerritorio={volarATerritorio} textoBusqueda={textoBusqueda} alCambiarTextoBusqueda={setTextoBusqueda} alBuscar={buscarCiudadEnServidor}
         resultadosCiudades={resultadosCiudades} alSeleccionarCiudad={seleccionarCiudad} nombreTerritorio={nombreNuevoTerritorio} alCambiarNombre={setNombreNuevoTerritorio}
         colorTerritorio={colorNuevoTerritorio} alCambiarColor={setColorNuevoTerritorio} notasTerritorio={notasNuevoTerritorio} alCambiarNotas={setNotasNuevoTerritorio}
-        alEmpezarATrazar={() => { setEnModoTrazado(true); setEnModoEdificios(false); setEnModoTachuela(false); setEnModoRevisita(false); }}
-        alActivarModoEdificios={() => { setEnModoEdificios(true); setEnModoTrazado(false); setEnModoTachuela(false); setEnModoRevisita(false); }}
+        
+        // ★ MIRA CÓMO SIMPLIFICAMOS ESTO ★
+        alEmpezarATrazar={() => cambiarModo(MODOS_MAPA.TRAZADO)}
+        alActivarModoEdificios={() => cambiarModo(MODOS_MAPA.EDIFICIOS)}
+        
         mostrarCalles={mostrarCalles} alCambiarMostrarCalles={setMostrarCalles} mostrarLugares={mostrarLugares} alCambiarMostrarLugares={setMostrarLugares}
         perfilUsuario={perfilUsuario} usuariosEquipo={usuariosEquipo} alEliminarMiembro={eliminarMiembroEquipo} alCrearLinkInvitacion={crearLinkInvitacion}
         listaCongregaciones={listaCongregaciones} congregacionContextoId={congregacionContextoId} alSeleccionarCongregacionContexto={alSeleccionarCongregacionContexto}
@@ -150,7 +161,6 @@ export default function VistaDashboard() {
         alEditarRevisita={(m) => { setRevisitaEditando(m); setMenuAbierto(false); }} alEliminarRevisita={gestorRevisitas.eliminarMarcador} alCompartirRevisita={gestorRevisitas.compartirMarcador}
         alExportarBackup={gestorRevisitas.exportarBackup} alImportarBackup={gestorRevisitas.importarBackup} revisitaExpandida={revisitaExpandida} setRevisitaExpandida={setRevisitaExpandida}
         
-        // ★ CORRECCIÓN: Pasar variables directamente ★
         logs={logs} 
         cargandoLogs={cargandoLogs} 
         recargarLogs={cargarLogs} 
@@ -163,37 +173,36 @@ export default function VistaDashboard() {
         alCambiarPagina={cambiarPagina}
       />
 
-      <MenuEdificio edificio={edificioSeleccionado} perfilUsuario={perfilUsuario} alCerrar={() => setEdificioSeleccionado(null)} alCambiarEstado={cambiarEstadoEdificioTemp} alCambiarDireccion={(nuevaDir) => setEdificioSeleccionado(prev => ({ ...prev, direccion: nuevaDir }))} notasTemp={notasEdificioTemp} alCambiarNotasTemp={setNotasEdificioTemp} alGuardar={manejarGuardarEdificio} alEliminar={eliminarEdificioEnBD} />
+      <MenuEdificio edificio={edificioSeleccionado} perfilUsuario={perfilUsuario} alCerrar={() => setEdificioSeleccionado(null)} alCambiarEstado={cambiarEstadoEdificioTemp} alCambiarDireccion={(nuevaDir) => setEdificioSeleccionado(prev => ({ ...prev, direccion: nuevaDir }))} notasTemp={notasEdificioTemp} alCambiarNotasTemp={setNotasEdificioTemp} alCambiarTipo={(nuevoTipo) => setEdificioSeleccionado(prev => ({ ...prev, tipo_edificio: nuevoTipo }))} alGuardar={manejarGuardarEdificio} alEliminar={eliminarEdificioEnBD} />
       <MenuTerritorio territorio={territorioSeleccionado} edificios={edificios} perfilUsuario={perfilUsuario} alCerrar={() => setTerritorioSeleccionado(null)} alCompletar={manejarCompletarTerritorio} alReiniciar={manejarReiniciarTerritorio} alGuardarNotas={actualizarNotasSeccionEnBD} />
 
       {enModoTrazado && !mostrarModalBienvenida && <ControlesTrazado puntosContados={puntosTrazadoActual.length} alDeshacer={deshacerUltimoPunto} alLimpiar={limpiarTrazadoCompleto} alCancelar={cancelarTrazadoYSalir} alGuardar={guardarNuevaSeccionEnBD} />}
 
       {enModoEdificios && !edificioSeleccionado && !mostrarModalBienvenida && (
         <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-[2000] animate-slide-up">
-          <button onClick={() => setEnModoEdificios(false)} className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 px-6 rounded-full shadow-2xl shadow-rose-600/30 active:scale-95 transition-all text-xs border border-rose-400">Detener Siembra de Casas</button>
+          <button onClick={limpiarModo} className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 px-6 rounded-full shadow-2xl shadow-rose-600/30 active:scale-95 transition-all text-xs border border-rose-400">Detener Siembra de Casas</button>
         </div>
       )}
 
       {enModoTachuela && !tachuelaTemporal && !mostrarModalBienvenida && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[2000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-5 py-2.5 rounded-full shadow-2xl border-2 border-cyan-500 text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3 animate-slide-up">
           <span className="flex items-center gap-1.5"><span className="text-base animate-pulse">📌</span> Toca para fijar</span>
-          <button onClick={() => setEnModoTachuela(false)} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-md text-[10px] hover:bg-rose-200 transition-colors">Cancelar</button>
+          <button onClick={limpiarModo} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-md text-[10px] hover:bg-rose-200 transition-colors">Cancelar</button>
         </div>
       )}
 
       {enModoRevisita && !marcadorRevisitaTemporal && !mostrarModalBienvenida && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[2000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-5 py-2.5 rounded-full shadow-2xl border-2 border-purple-500 text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3 animate-slide-up">
           <span className="flex items-center gap-1.5"><BookmarkPlus size={14} className="text-purple-500 animate-pulse"/> Toca para ubicar</span>
-          <button onClick={() => setEnModoRevisita(false)} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-md text-[10px] hover:bg-rose-200 transition-colors">Cancelar</button>
+          <button onClick={limpiarModo} className="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-md text-[10px] hover:bg-rose-200 transition-colors">Cancelar</button>
         </div>
       )}
 
-      
       {!enModoTrazado && !enModoEdificios && !enModoTachuela && !enModoRevisita && !mostrarModalBienvenida && (
         <div className="absolute bottom-[14px] right-14 z-[2000] flex items-center gap-2 animate-slide-up">
           
           <button 
-            onClick={() => setEnModoRevisita(true)} 
+            onClick={() => cambiarModo(MODOS_MAPA.REVISITA)} 
             className="bg-purple-600 text-white w-12 h-12 rounded-2xl shadow-xl shadow-purple-600/30 flex flex-col items-center justify-center hover:bg-purple-500 hover:scale-105 active:scale-95 transition-all border border-purple-500"
           >
             <BookmarkPlus size={18} className="mb-0.5" />
@@ -202,7 +211,7 @@ export default function VistaDashboard() {
           
           {puedeCrearTachuela ? (
             <button 
-              onClick={() => setEnModoTachuela(true)} 
+              onClick={() => cambiarModo(MODOS_MAPA.TACHUELA)} 
               className="bg-cyan-600 text-white w-12 h-12 rounded-2xl shadow-xl shadow-cyan-600/30 flex flex-col items-center justify-center hover:bg-cyan-500 hover:scale-105 active:scale-95 transition-all border border-cyan-500"
             >
               <span className="text-base leading-none mb-0.5">📌</span>
@@ -239,16 +248,16 @@ export default function VistaDashboard() {
         )}
       </main>
 
-      {tachuelaTemporal && <ModalFormularioTachuela alGuardar={manejarGuardarTachuela} alCancelar={() => { setTachuelaTemporal(null); setEnModoTachuela(false); }} />}
+      {tachuelaTemporal && <ModalFormularioTachuela alGuardar={manejarGuardarTachuela} alCancelar={() => { setTachuelaTemporal(null); limpiarModo(); }} />}
       {tachuelaLeida && <ModalInfoTachuela tachuela={tachuelaLeida} puedeEliminar={puedeCrearTachuela} alEliminar={() => manejarEliminarTachuela(tachuelaLeida.id, tachuelaLeida.titulo)} alCerrar={() => setTachuelaLeida(null)} />}
 
       {(marcadorRevisitaTemporal || revisitaEditando) && (
         <ModalFormularioRevisita marcadorEditando={revisitaEditando}
           alGuardar={(datos) => {
             if (revisitaEditando) { gestorRevisitas.editarMarcador(revisitaEditando.id, datos); setRevisitaEditando(null); } 
-            else { gestorRevisitas.agregarMarcador(marcadorRevisitaTemporal.lat, marcadorRevisitaTemporal.lng, datos.titulo, datos.fechaProgramada, datos.notas); setMarcadorRevisitaTemporal(null); setEnModoRevisita(false); }
+            else { gestorRevisitas.agregarMarcador(marcadorRevisitaTemporal.lat, marcadorRevisitaTemporal.lng, datos.titulo, datos.fechaProgramada, datos.notas); setMarcadorRevisitaTemporal(null); limpiarModo(); }
           }}
-          alCancelar={() => { setMarcadorRevisitaTemporal(null); setRevisitaEditando(null); setEnModoRevisita(false); }}
+          alCancelar={() => { setMarcadorRevisitaTemporal(null); setRevisitaEditando(null); limpiarModo(); }}
         />
       )}
       {revisitaLectura && <ModalInfoLecturaRevisita titulo={revisitaLectura.titulo} fechaProgramada={revisitaLectura.fechaProgramada} notas={revisitaLectura.notas} alCerrar={() => setRevisitaLectura(null)} />}

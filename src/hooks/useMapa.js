@@ -2,6 +2,7 @@
 import useEstadoGlobal from './modulos/useEstadoGlobal';
 import useControlesUI from './modulos/useControlesUI';
 import useGestorTerritorios from './modulos/useGestorTerritorios';
+import { useModoMapa } from '../context/ContextoModoMapa'; // Tu nuevo contexto
 
 const verificarPuntoEnPoligono = (lat, lng, poligono) => {
   let x = lat, y = lng;
@@ -19,17 +20,27 @@ export default function useMapa() {
   const global = useEstadoGlobal();
   const ui = useControlesUI();
   const db = useGestorTerritorios(global.targetCongId, !!global.congregacionContextoId, ui.setCoordenadasActuales);
+  const { enModoTrazado, enModoEdificios, limpiarModo } = useModoMapa();
 
-  // 1. Orquestar Clics en el Mapa (Conecta UI y DB)
   const manejarClickMapa = (coordenada) => {
     const [lat, lng] = coordenada;
-    if (ui.enModoTrazado) {
+    if (enModoTrazado) {
       ui.setPuntosTrazadoActual(prev => [...prev, coordenada]);
-    } else if (ui.enModoEdificios) {
+    } else if (enModoEdificios) {
       const seccionContenedora = db.secciones.find(sec => verificarPuntoEnPoligono(lat, lng, sec.coordenadas));
       if (!seccionContenedora) { alert("📍 Toca adentro de un territorio de color válido."); return; }
       const casasEnSeccion = db.edificios.filter(e => e.seccion_id === seccionContenedora.id);
-      ui.setEdificioSeleccionado({ seccion_id: seccionContenedora.id, direccion: `Casa #${casasEnSeccion.length + 1} (${seccionContenedora.nombre})`, lat, lng, estado: 'pendiente', notas: '' });
+      
+      // ★ CAMBIO: Por defecto es 'calle' y el nombre predeterminado cambia
+      ui.setEdificioSeleccionado({ 
+        seccion_id: seccionContenedora.id, 
+        tipo_edificio: 'calle', // Marcador principal
+        direccion: `Tramo #${casasEnSeccion.length + 1} (${seccionContenedora.nombre})`, 
+        lat, 
+        lng, 
+        estado: 'pendiente', 
+        notas: '' 
+      });
       ui.setNotasEdificioTemp('');
     }
   };
@@ -37,7 +48,6 @@ export default function useMapa() {
   const deshacerUltimoPunto = () => ui.setPuntosTrazadoActual(prev => prev.slice(0, -1));
   const limpiarTrazadoCompleto = () => ui.setPuntosTrazadoActual([]);
 
-  // 2. Orquestar Guardado de Territorios
   const guardarNuevaSeccionEnBD = async () => {
     if (ui.puntosTrazadoActual.length < 3 || !ui.nombreNuevoTerritorio.trim()) return;
     await db.crearSeccionBD({
@@ -46,12 +56,23 @@ export default function useMapa() {
     });
     await db.cargarTerritoriosYCasas();
     ui.cancelarTrazadoYSalir();
+    limpiarModo();
   };
 
-  // 3. Orquestar Guardado de Casas
   const guardarEdificioEnBD = async () => {
     if (!ui.edificioSeleccionado) return;
-    const datosAEnviar = { seccion_id: ui.edificioSeleccionado.seccion_id, direccion: ui.edificioSeleccionado.direccion, lat: ui.edificioSeleccionado.lat, lng: ui.edificioSeleccionado.lng, estado: ui.edificioSeleccionado.estado, notas: ui.notesEdificioTemp };
+    
+    // ★ CAMBIO: Incluimos el tipo_edificio y corregimos el typo de notas
+    const datosAEnviar = { 
+      seccion_id: ui.edificioSeleccionado.seccion_id, 
+      tipo_edificio: ui.edificioSeleccionado.tipo_edificio || 'calle',
+      direccion: ui.edificioSeleccionado.direccion, 
+      lat: ui.edificioSeleccionado.lat, 
+      lng: ui.edificioSeleccionado.lng, 
+      estado: ui.edificioSeleccionado.estado, 
+      notas: ui.notasEdificioTemp // Corregido de notesEdificioTemp
+    };
+    
     if (ui.edificioSeleccionado.id) { await db.actualizarEdificioBD(ui.edificioSeleccionado.id, datosAEnviar); } 
     else { await db.crearEdificioBD(datosAEnviar); }
     await db.cargarTerritoriosYCasas();
@@ -69,11 +90,12 @@ export default function useMapa() {
     if (ui.edificioSeleccionado) ui.setEdificioSeleccionado(prev => ({ ...prev, estado: nuevoEstado })); 
   };
 
-  // EMITIR TODAS LAS VARIABLES (Dashboard las tomará sin notar que vienen de distintos archivos)
   return {
     ...global,
     ...ui,
     ...db,
+    enModoTrazado,
+    enModoEdificios,
     alSeleccionarCongregacionContexto: global.setCongregacionContextoId,
     cargando: global.cargandoGlobal || db.cargandoTerritorios,
     manejarClickMapa, deshacerUltimoPunto, limpiarTrazadoCompleto,

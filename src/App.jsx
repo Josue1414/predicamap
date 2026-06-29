@@ -6,6 +6,7 @@ import VistaLogin from './vistas/VistaLogin';
 import VistaDashboard from './vistas/VistaDashboard';
 import VistaPublicador from './vistas/VistaPublicador'; 
 import VistaRecuperar from './vistas/VistaRecuperar';
+import { ProveedorModoMapa } from './context/ContextoModoMapa';
 
 export default function App() {
   const [sesion, setSesion] = useState(null);
@@ -45,6 +46,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+    <ProveedorModoMapa>
       <Routes>
         
         {/* RUTA PÚBLICA (PUBLICADOR) */}
@@ -83,6 +85,7 @@ export default function App() {
           element={<Navigate to="/" replace />} 
         />
       </Routes>
+      </ProveedorModoMapa>
     </BrowserRouter>
   );
 }
