@@ -173,7 +173,24 @@ export default function VistaDashboard() {
         alCambiarPagina={cambiarPagina}
       />
 
-      <MenuEdificio edificio={edificioSeleccionado} perfilUsuario={perfilUsuario} alCerrar={() => setEdificioSeleccionado(null)} alCambiarEstado={cambiarEstadoEdificioTemp} alCambiarDireccion={(nuevaDir) => setEdificioSeleccionado(prev => ({ ...prev, direccion: nuevaDir }))} notasTemp={notasEdificioTemp} alCambiarNotasTemp={setNotasEdificioTemp} alCambiarTipo={(nuevoTipo) => setEdificioSeleccionado(prev => ({ ...prev, tipo_edificio: nuevoTipo }))} alGuardar={manejarGuardarEdificio} alEliminar={eliminarEdificioEnBD} />
+      <MenuEdificio 
+        edificio={edificioSeleccionado} 
+        perfilUsuario={perfilUsuario} 
+        alCerrar={() => setEdificioSeleccionado(null)} 
+        alCambiarEstado={cambiarEstadoEdificioTemp} 
+        alCambiarDireccion={(nuevaDir) => setEdificioSeleccionado(prev => ({ ...prev, direccion: nuevaDir }))} 
+        
+       
+        alCambiarTipo={(nuevoTipo) => setEdificioSeleccionado(prev => ({ ...prev, tipo_edificio: nuevoTipo }))}
+        
+       
+        notasTemp={edificioSeleccionado?.notas || ''} 
+        alCambiarNotasTemp={(nuevasNotas) => setEdificioSeleccionado(prev => ({ ...prev, notas: nuevasNotas }))} 
+        
+        alGuardar={manejarGuardarEdificio} 
+        alEliminar={eliminarEdificioEnBD} 
+      />
+
       <MenuTerritorio territorio={territorioSeleccionado} edificios={edificios} perfilUsuario={perfilUsuario} alCerrar={() => setTerritorioSeleccionado(null)} alCompletar={manejarCompletarTerritorio} alReiniciar={manejarReiniciarTerritorio} alGuardarNotas={actualizarNotasSeccionEnBD} />
 
       {enModoTrazado && !mostrarModalBienvenida && <ControlesTrazado puntosContados={puntosTrazadoActual.length} alDeshacer={deshacerUltimoPunto} alLimpiar={limpiarTrazadoCompleto} alCancelar={cancelarTrazadoYSalir} alGuardar={guardarNuevaSeccionEnBD} />}

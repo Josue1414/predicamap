@@ -59,10 +59,9 @@ export default function useMapa() {
     limpiarModo();
   };
 
-  const guardarEdificioEnBD = async () => {
+ const guardarEdificioEnBD = async () => {
     if (!ui.edificioSeleccionado) return;
     
-    // ★ CAMBIO: Incluimos el tipo_edificio y corregimos el typo de notas
     const datosAEnviar = { 
       seccion_id: ui.edificioSeleccionado.seccion_id, 
       tipo_edificio: ui.edificioSeleccionado.tipo_edificio || 'calle',
@@ -70,7 +69,9 @@ export default function useMapa() {
       lat: ui.edificioSeleccionado.lat, 
       lng: ui.edificioSeleccionado.lng, 
       estado: ui.edificioSeleccionado.estado, 
-      notas: ui.notasEdificioTemp // Corregido de notesEdificioTemp
+      
+      // ★ AHORA SÍ LEEMOS DIRECTAMENTE DE LAS NOTAS ACTUALIZADAS ★
+      notas: ui.edificioSeleccionado.notas || '' 
     };
     
     if (ui.edificioSeleccionado.id) { await db.actualizarEdificioBD(ui.edificioSeleccionado.id, datosAEnviar); } 
