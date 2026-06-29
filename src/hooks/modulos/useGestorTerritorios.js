@@ -7,7 +7,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   const [edificios, setEdificios] = useState([]);
   const [cargandoTerritorios, setCargandoTerritorios] = useState(false);
 
-  // ★ 1. AGREGAMOS EL PARÁMETRO "esCargaInicial" (Por defecto es false) ★
   const cargarTerritoriosYCasas = async (esCargaInicial = false) => {
     if (!targetCongId) return;
     setCargandoTerritorios(true);
@@ -25,8 +24,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       }));
       setSecciones(formateadas);
 
-      // ★ 2. CENTRAMOS PARA TODOS LOS ROLES (QUITAMOS esSimulacion) 
-      // Y SOLO LO HACEMOS SI ES LA CARGA INICIAL ★
       if (formateadas.length > 0 && esCargaInicial) {
         let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
         formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
@@ -45,8 +42,47 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     finally { setCargandoTerritorios(false); }
   };
 
-  // ★ 3. AL ENTRAR AL SISTEMA POR PRIMERA VEZ, LE PASAMOS "TRUE" ★
-  useEffect(() => { cargarTerritoriosYCasas(true); }, [targetCongId]);
+  useEffect(() => { 
+    cargarTerritoriosYCasas(true); 
+    
+    // ★ SUSCRIPCIÓN EN TIEMPO REAL ★
+    if (!targetCongId) return;
+
+    const canalMapa = supabase.channel('cambios-mapa')
+      // Escuchar Territorios (Secciones)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'secciones', filter: `congregacion_id=eq.${targetCongId}` }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const nuevaSec = {
+            id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
+            coordenadas: payload.new.coordenadas, notas: payload.new.notas, asignado_a: payload.new.asignado_a,
+            estado: payload.new.estado, orden: payload.new.orden 
+          };
+          setSecciones(prev => [...prev, nuevaSec].sort((a, b) => a.orden - b.orden));
+        } else if (payload.eventType === 'UPDATE') {
+          const secAct = {
+            id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
+            coordenadas: payload.new.coordenadas, notas: payload.new.notas, asignado_a: payload.new.asignado_a,
+            estado: payload.new.estado, orden: payload.new.orden 
+          };
+          setSecciones(prev => prev.map(s => s.id === secAct.id ? secAct : s).sort((a, b) => a.orden - b.orden));
+        } else if (payload.eventType === 'DELETE') {
+          setSecciones(prev => prev.filter(s => s.id !== payload.old.id));
+        }
+      })
+      // Escuchar Calles y Casas (Edificios)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'edificios' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setEdificios(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setEdificios(prev => prev.map(e => e.id === payload.new.id ? payload.new : e));
+        } else if (payload.eventType === 'DELETE') {
+          setEdificios(prev => prev.filter(e => e.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(canalMapa); };
+  }, [targetCongId]);
 
   const reordenarTerritorioEnBD = async (id, direccion) => {
     const indexActual = secciones.findIndex(s => s.id === id);
@@ -61,33 +97,23 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     nuevoArreglo[indexActual] = nuevoArreglo[indexDestino];
     nuevoArreglo[indexDestino] = temp;
 
-    const arregloActualizado = nuevoArreglo.map((item, index) => ({
-      ...item,
-      orden: index
-    }));
-
+    const arregloActualizado = nuevoArreglo.map((item, index) => ({ ...item, orden: index }));
     setSecciones(arregloActualizado);
 
-    await Promise.all(
-      arregloActualizado.map(t => 
-        supabase.from('secciones').update({ orden: t.orden }).eq('id', t.id)
-      )
-    );
+    await Promise.all(arregloActualizado.map(t => supabase.from('secciones').update({ orden: t.orden }).eq('id', t.id)));
   };
 
-  // ★ LAS FUNCIONES INFERIORES AHORA RECARGARÁN SILENCIOSAMENTE (esCargaInicial = false) ★
   const eliminarSeccionEnBD = async (id) => {
     if (!window.confirm("¿Estás seguro de eliminar este territorio? Se borrarán en cascada todos los checks asociados a él.")) return;
     setCargandoTerritorios(true);
-    const { error } = await supabase.from('secciones').delete().eq('id', id);
-    if (!error) await cargarTerritoriosYCasas();
+    await supabase.from('secciones').delete().eq('id', id);
+    // El realtime actualizará la pantalla automáticamente, solo quitamos el estado de carga
     setCargandoTerritorios(false);
   };
 
   const asignarTerritorioEnBD = async (id, idUsuario) => {
     setCargandoTerritorios(true);
-    const { error } = await supabase.from('secciones').update({ asignado_a: idUsuario || null }).eq('id', id);
-    if (!error) await cargarTerritoriosYCasas();
+    await supabase.from('secciones').update({ asignado_a: idUsuario || null }).eq('id', id);
     setCargandoTerritorios(false);
   };
 
@@ -96,7 +122,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     setCargandoTerritorios(true);
     await supabase.from('secciones').update({ estado: 'pendiente' }).eq('id', id);
     await supabase.from('edificios').update({ estado: 'pendiente' }).eq('seccion_id', id);
-    await cargarTerritoriosYCasas();
     setCargandoTerritorios(false);
   };
 
@@ -105,13 +130,11 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     setCargandoTerritorios(true);
     await supabase.from('secciones').update({ estado: 'completado' }).eq('id', id);
     await supabase.from('edificios').update({ estado: 'completado' }).eq('seccion_id', id);
-    await cargarTerritoriosYCasas();
     setCargandoTerritorios(false);
   };
 
   const actualizarNotasSeccionEnBD = async (id, notas) => {
-    const { error } = await supabase.from('secciones').update({ notas }).eq('id', id);
-    if (!error) setSecciones(prev => prev.map(s => s.id === id ? { ...s, notas } : s));
+    await supabase.from('secciones').update({ notas }).eq('id', id);
   };
 
   const crearSeccionBD = async (data) => await supabase.from('secciones').insert([data]);
@@ -122,7 +145,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   return {
     secciones, edificios, cargandoTerritorios, cargarTerritoriosYCasas,
     eliminarSeccionEnBD, asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD, completarTerritorioEntero,
-    crearSeccionBD, crearEdificioBD, actualizarEdificioBD, eliminarEdificioBD,
-    reordenarTerritorioEnBD
+    crearSeccionBD, crearEdificioBD, actualizarEdificioBD, eliminarEdificioBD, reordenarTerritorioEnBD
   };
 }

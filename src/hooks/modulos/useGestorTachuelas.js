@@ -21,30 +21,38 @@ export default function useGestorTachuelas(targetCongId) {
 
   useEffect(() => {
     cargarTachuelas();
+    
+    // ★ SUSCRIPCIÓN EN TIEMPO REAL ★
+    if (!targetCongId) return;
+    const canalTachuelas = supabase.channel('cambios-tachuelas')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tachuelas', filter: `congregacion_id=eq.${targetCongId}` }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setTachuelas(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setTachuelas(prev => prev.map(t => t.id === payload.new.id ? payload.new : t));
+        } else if (payload.eventType === 'DELETE') {
+          setTachuelas(prev => prev.filter(t => t.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(canalTachuelas); };
   }, [targetCongId]);
 
   const agregarTachuelaBD = async (lat, lng, titulo, notas = '') => {
     setCargandoTachuelas(true);
-    const { error } = await supabase.from('tachuelas').insert([{ 
-      congregacion_id: targetCongId, lat, lng, titulo, notas 
-    }]);
-    if (!error) await cargarTachuelas();
+    await supabase.from('tachuelas').insert([{ congregacion_id: targetCongId, lat, lng, titulo, notas }]);
     setCargandoTachuelas(false);
   };
 
   const eliminarTachuelaBD = async (id) => {
     if (!window.confirm("¿Seguro que deseas eliminar esta tachuela grupal del mapa?")) return;
     setCargandoTachuelas(true);
-    const { error } = await supabase.from('tachuelas').delete().eq('id', id);
-    if (!error) await cargarTachuelas();
+    await supabase.from('tachuelas').delete().eq('id', id);
     setCargandoTachuelas(false);
   };
 
   return { 
-    tachuelas, 
-    cargandoTachuelas, 
-    agregarTachuelaBD, 
-    eliminarTachuelaBD,
-    recargarTachuelas: cargarTachuelas
+    tachuelas, cargandoTachuelas, agregarTachuelaBD, eliminarTachuelaBD, recargarTachuelas: cargarTachuelas
   };
 }
