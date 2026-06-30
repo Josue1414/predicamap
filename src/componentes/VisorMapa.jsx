@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Marker, Toolt
 import L from 'leaflet'; 
 import ManejadorClicksMapa from './ManejadorClicksMapa';
 import { LocateFixed, Info } from 'lucide-react'; 
+import { useAlertas } from '../context/ContextoAlertas'; // ★ IMPORTAMOS LAS ALERTAS
 import 'leaflet/dist/leaflet.css';
 
 const crearPinSVG = (color, opacidad = 1) => `
@@ -52,6 +53,7 @@ function ControladorVistaInteligente({ centro, zoomConfigurado, setZoomActual })
 
 function RastreadorGPS({ rastreando, setRastreando, setMiUbicacion }) {
   const map = useMap();
+  const { mostrarAlerta } = useAlertas(); // ★ USAMOS EL CONTEXTO AQUÍ
   
   useEffect(() => {
     if (rastreando) {
@@ -59,7 +61,8 @@ function RastreadorGPS({ rastreando, setRastreando, setMiUbicacion }) {
       map.once('locationfound', (e) => map.flyTo(e.latlng, 18, { duration: 1.5 }));
       map.on('locationfound', (e) => setMiUbicacion(e.latlng));
       map.on('locationerror', (e) => {
-        alert("⚠️ No se pudo acceder a tu ubicación. Verifica que el GPS esté encendido.");
+        // ★ ADIÓS ALERT NATIVO, HOLA ALERTA BONITA
+        mostrarAlerta("GPS no disponible", "⚠️ No se pudo acceder a tu ubicación. Verifica que el GPS esté encendido y tenga permisos.", "warning");
         setRastreando(false);
       });
     } else {
@@ -67,7 +70,7 @@ function RastreadorGPS({ rastreando, setRastreando, setMiUbicacion }) {
       setMiUbicacion(null);
     }
     return () => { map.stopLocate(); map.off('locationfound'); map.off('locationerror'); };
-  }, [rastreando, map, setMiUbicacion]);
+  }, [rastreando, map, setMiUbicacion, mostrarAlerta]);
   return null;
 }
 
@@ -86,7 +89,6 @@ export default function VisorMapa({
 
   const [zoomReal, setZoomReal] = useState(zoomInicial || 15);
   
-  // ★ LA MAGIA DEL ZOOM: Etiquetas aparecen primero (15), Casas y Revisitas después (16) ★
   const mostrarEtiquetasZoom = zoomReal >= 15;
   const mostrarCasasZoom = zoomReal >= 16;
   
@@ -96,20 +98,16 @@ export default function VisorMapa({
 
   const mapaActivoClics = enModoTrazado || enModoEdificios || !!marcadorTemporal || (alSeleccionarRevisita !== undefined) || enModoTachuela;
 
-  // ★ TEMPORIZADOR CORREGIDO ★
   useEffect(() => {
     const timer = setTimeout(() => {
-      setMostrarLeyenda(false); // CORREGIDO: Se llama mostrarLeyenda, no mostrarInfo
+      setMostrarLeyenda(false); 
     }, 7000);
-    
-    // Limpiamos el temporizador por seguridad si el mapa se desmonta
     return () => clearTimeout(timer);
   }, []);
   
   return (
     <div className={`w-full h-full bg-slate-200 dark:bg-slate-950 relative ${mapaActivoClics ? 'cursor-crosshair' : ''}`}>
       
-      {/* ★ CSS INYECTADO: Bajamos aún más los controles del zoom de Leaflet ★ */}
       <style>{`
         .leaflet-bottom.leaflet-right {
           margin-bottom: 0.75rem !important;
@@ -117,11 +115,9 @@ export default function VisorMapa({
         }
       `}</style>
 
-      {/* BOTONES SUPERIORES (GPS Y INFO INTERCAMBIADOS) */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col items-end gap-2 pointer-events-none">
         
         <div className="flex flex-col gap-2 pointer-events-auto">
-          {/* BOTÓN GPS (AHORA ARRIBA) */}
           <button 
             onClick={() => setRastreando(!rastreando)}
             className={`p-2.5 rounded-xl shadow-xl border flex items-center justify-center transition-all active:scale-95 ${
@@ -134,7 +130,6 @@ export default function VisorMapa({
             <LocateFixed size={18} />
           </button>
 
-          {/* BOTÓN INFO (AHORA ABAJO) */}
           <button 
             onClick={() => setMostrarLeyenda(!mostrarLeyenda)}
             className={`p-2.5 rounded-xl shadow-xl border flex items-center justify-center transition-all active:scale-95 ${
@@ -148,7 +143,6 @@ export default function VisorMapa({
           </button>
         </div>
 
-        {/* LEYENDA */}
         {mostrarLeyenda && (
           <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3.5 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 text-[10px] font-bold flex flex-col gap-2.5 pointer-events-auto animate-slide-up origin-top-right mt-1">
             <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
@@ -203,7 +197,6 @@ export default function VisorMapa({
           </>
         )}
 
-        {/* TACHUELAS GRUPALES */}
         {tachuelasGrupales.map((tachuela) => (
           <Marker 
             key={tachuela.id} 
@@ -220,7 +213,6 @@ export default function VisorMapa({
 
         {tachuelaTemporal && <Marker position={[tachuelaTemporal.lat, tachuelaTemporal.lng]} icon={iconoTachuelaTemporal} />}
 
-        {/* ★ PINES DE REVISITAS APARECEN UN ZOOM DESPUÉS DE LAS ETIQUETAS ★ */}
         {mostrarCasasZoom && marcadoresPersonales.map((pin) => (
           <CircleMarker 
             key={pin.id} 
@@ -238,7 +230,6 @@ export default function VisorMapa({
 
         {marcadorTemporal && <CircleMarker center={[marcadorTemporal.lat, marcadorTemporal.lng]} radius={8} pathOptions={{ color: '#ffffff', fillColor: '#c084fc', fillOpacity: 0.8, weight: 3, dashArray: '4' }} />}
 
-        {/* TERRITORIOS (SOMBRAS) Y ETIQUETAS */}
         {secciones.map((seccion) => {
           const casasDeEstaSeccion = edificios.filter(e => e.seccion_id === seccion.id);
           const totalCasas = casasDeEstaSeccion.length;
@@ -259,7 +250,6 @@ export default function VisorMapa({
               positions={seccion.coordenadas} 
               pathOptions={{ color: seccion.colorHex, fillColor: seccion.colorHex, fillOpacity: 0.2, weight: 2 }}
             >
-              {/* ★ LAS ETIQUETAS APARECEN PRIMERO ★ */}
               {mostrarEtiquetasZoom && (
                 <Tooltip 
                   key={`etiqueta-${seccion.id}-${porcentaje}`}
@@ -283,11 +273,10 @@ export default function VisorMapa({
           );
         })}
 
-        {/* ★ LOS PUNTOS DE CASAS Y CALLES APARECEN UN ZOOM DESPUÉS ★ */}
         {mostrarCasasZoom && edificios.map((edificio) => {
-          let colorEstado = '#f97316'; // Pendiente
-          if (edificio.estado === 'completado') colorEstado = '#10b981'; // Listo
-          if (edificio.estado === 'no_responde') colorEstado = '#e11d48'; // No visitar
+          let colorEstado = '#f97316'; 
+          if (edificio.estado === 'completado') colorEstado = '#10b981'; 
+          if (edificio.estado === 'no_responde') colorEstado = '#e11d48'; 
           
           const esCalle = edificio.tipo_edificio === 'calle';
 
@@ -295,12 +284,10 @@ export default function VisorMapa({
             <CircleMarker 
               key={edificio.id} 
               center={[edificio.lat, edificio.lng]} 
-              // Las calles son ligeramente más grandes que las casas
               radius={esCalle ? 8 : 6}
               pathOptions={{ 
                 color: '#ffffff', 
                 fillColor: colorEstado, 
-                // Las calles tienen un poco de transparencia y borde punteado
                 fillOpacity: esCalle ? 0.7 : 1, 
                 weight: esCalle ? 2.5 : 2,
                 dashArray: esCalle ? '3, 4' : null 

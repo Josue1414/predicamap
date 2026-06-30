@@ -4,8 +4,10 @@ import { useState } from 'react';
 export default function useControlesUI() {
   const [textoBusqueda, setTextoBusqueda] = useState('');
   const [resultadosCiudades, setResultadosCiudades] = useState([]);
-  const [coordenadasActuales, setCoordenadasActuales] = useState([25.6565, -100.2930]);
-  const [zoomActual, setZoomActual] = useState(15);
+  
+  // ★ CORRECCIÓN: Inicializamos en el centro de México con zoom nivel país
+  const [coordenadasActuales, setCoordenadasActuales] = useState([23.6345, -102.5528]);
+  const [zoomActual, setZoomActual] = useState(5);
   
   const [enModoTrazado, setEnModoTrazado] = useState(false);
   const [enModoEdificios, setEnModoEdificios] = useState(false); 

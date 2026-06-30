@@ -3,7 +3,7 @@ import useEstadoGlobal from './modulos/useEstadoGlobal';
 import useControlesUI from './modulos/useControlesUI';
 import useGestorTerritorios from './modulos/useGestorTerritorios';
 import { useModoMapa } from '../context/ContextoModoMapa';
-import { useAlertas } from '../context/ContextoAlertas'; // ★ Importamos las alertas
+import { useAlertas } from '../context/ContextoAlertas'; 
 
 const verificarPuntoEnPoligono = (lat, lng, poligono) => {
   let x = lat, y = lng;
@@ -21,11 +21,18 @@ export default function useMapa() {
   const global = useEstadoGlobal();
   const ui = useControlesUI();
   
-  const db = useGestorTerritorios(global.targetCongId, !!global.congregacionContextoId, ui.setCoordenadasActuales);
+  // ★ CORRECCIÓN AQUÍ: Cuando el gestor encuentre la congregación, actualiza coordenadas Y el zoom
+  const db = useGestorTerritorios(
+    global.targetCongId, 
+    !!global.congregacionContextoId, 
+    (coordenadas) => {
+      ui.setCoordenadasActuales(coordenadas);
+      ui.setZoomActual(16); // <-- Esto provocará el vuelo en picada
+    }
+  );
   
   const { enModoTrazado, enModoEdificios, limpiarModo } = useModoMapa();
   
-  // ★ EXTRAEMOS LAS FUNCIONES DEL CONTEXTO
   const { mostrarAlerta, mostrarConfirmacion } = useAlertas(); 
 
   const manejarClickMapa = (coordenada) => {
@@ -36,7 +43,6 @@ export default function useMapa() {
       const seccionContenedora = db.secciones.find(sec => verificarPuntoEnPoligono(lat, lng, sec.coordenadas));
       
       if (!seccionContenedora) { 
-        // ★ ADIÓS AL ALERT DE WINDOWS, BIENVENIDA ALERTA BONITA
         mostrarAlerta("Ubicación inválida", "📍 Toca adentro de un territorio de color válido para sembrar una casa/calle.", "warning");
         return; 
       }
@@ -90,7 +96,6 @@ export default function useMapa() {
   };
 
   const eliminarEdificioEnBD = async (idEdificio) => {
-    // ★ ADIÓS AL WINDOW.CONFIRM, BIENVENIDA CONFIRMACIÓN MODERNA
     const confirmado = await mostrarConfirmacion(
       "Eliminar Punto",
       "¿Seguro que deseas eliminar este punto?",
@@ -123,7 +128,7 @@ export default function useMapa() {
     modoAhorro: db.modoAhorro,
     reactivarTiempoReal: db.reactivarTiempoReal,
     cancelarTrazadoYSalir: () => {
-      ui.cancelarTrazadoYSalir(); // Limpia los puntos
+      ui.cancelarTrazadoYSalir();
       limpiarModo();
     }
   };

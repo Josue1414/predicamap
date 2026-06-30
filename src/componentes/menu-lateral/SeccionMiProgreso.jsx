@@ -22,17 +22,13 @@ const textosMotivacionales = {
   ]
 };
 
+// ★ CORRECCIÓN: Formatear las horas para mostrar "H:MM hrs" ★
 const formatearTiempoTexto = (horasDecimales) => {
-  if (horasDecimales < 0) return "Cifra negativa";
-  if (horasDecimales === 0) return "0 minutos";
+  if (horasDecimales <= 0) return "0:00 hrs";
   const horas = Math.floor(horasDecimales);
   const minutos = Math.round((horasDecimales - horas) * 60);
   
-  let partes = [];
-  if (horas > 0) partes.push(`${horas} hora${horas !== 1 ? 's' : ''}`);
-  if (minutos > 0) partes.push(`${minutos} min`);
-  
-  return partes.join(" y ");
+  return `${horas}:${minutos.toString().padStart(2, '0')} hrs`;
 };
 
 export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alternarAcordeon }) {
@@ -61,7 +57,6 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
   const progresoReal = (horasMesActual / metaMensualUI) * 100;
   const progresoPorcentaje = Math.min(progresoReal, 100);
 
-  // Variables para la interfaz de tiempo de hoy
   const horasHoy = registrosDiarios[fechaHoyStr]?.horas || 0;
   const minutosHoyDecimal = horasHoy - Math.floor(horasHoy);
 
@@ -135,7 +130,7 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
               <div className="flex items-end justify-between mb-2">
                 <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400"><Clock size={16} /> <span className="text-xs font-bold">Avance de Horas</span></div>
                 <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
-                  {horasMesActual} <span className="text-xs text-slate-400 font-medium">/ {metaMensualUI} hrs</span>
+                  {formatearTiempoTexto(horasMesActual)} <span className="text-xs text-slate-400 font-medium">/ {metaMensualUI} hrs</span>
                 </div>
               </div>
 
@@ -143,14 +138,12 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
                 <div className={`h-full transition-all duration-1000 ease-out ${esPrecursor ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`} style={{ width: `${progresoPorcentaje}%` }} />
               </div>
 
-              {/* ★ NUEVA ZONA: BOTONERA RÁPIDA DE HORAS Y MINUTOS ★ */}
               <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 mb-3 flex flex-col items-center">
                 <div className="flex items-center justify-between w-full mb-3">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Añadir tiempo hoy</span>
                   <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-md">Máx 18h</span>
                 </div>
                 
-                {/* Botones de Horas Enteras */}
                 <div className="flex items-center justify-center gap-3 w-full mb-4">
                   <button onClick={() => modificarHorasHoy(-1)} className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-lg flex items-center justify-center hover:bg-slate-300 transition-colors">-1</button>
                   
@@ -161,7 +154,6 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
                   <button onClick={() => modificarHorasHoy(1)} className="w-12 h-12 rounded-full bg-indigo-600 text-white font-black text-xl flex items-center justify-center hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-colors active:scale-95">+1</button>
                 </div>
 
-                {/* Selector Rápido de Minutos */}
                 <div className="w-full bg-white dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-700 flex">
                   {[
                     { valor: 0, label: '00m' },
@@ -183,7 +175,6 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
                 </div>
               </div>
 
-              {/* ESTUDIOS */}
               <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center w-full">
                 <span className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Estudios en el mes</span>
                 <div className="flex items-center gap-6 mb-1">
@@ -194,7 +185,6 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
               </div>
             </div>
 
-            {/* WIDGET DE CALENDARIO NATIVO (AHORA CON FLECHAS) */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -222,14 +212,13 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
                       ${tieneActividad ? esPrecursor ? 'bg-amber-100 dark:bg-amber-900/50' : 'bg-indigo-100 dark:bg-indigo-900/50' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
                       <span className={`text-[10px] font-bold ${tieneActividad ? (esPrecursor ? 'text-amber-700 dark:text-amber-400' : 'text-indigo-700 dark:text-indigo-300') : 'text-slate-500'}`}>{obj.dia}</span>
-                      {tieneActividad && <span className={`text-[7.5px] leading-none mt-0.5 font-bold opacity-80 ${esPrecursor ? 'text-amber-700 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400'}`}>{horasEseDia}h</span>}
+                      {tieneActividad && <span className={`text-[7.5px] leading-none mt-0.5 font-bold opacity-80 ${esPrecursor ? 'text-amber-700 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400'}`}>{formatearTiempoTexto(horasEseDia)}</span>}
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* AJUSTES DE METAS */}
             <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800">
               <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2 mb-3"><Target size={14} className="text-rose-500" /> Ajustar Metas</h4>
               
@@ -280,7 +269,6 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
               </div>
             </div>
 
-            {/* ★ ADVERTENCIA LOCAL Y BACKUP ★ */}
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-4">
               <div className="flex items-start gap-2.5 mb-3">
                 <AlertCircle size={16} className="text-amber-500 mt-0.5 shrink-0" />

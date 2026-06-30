@@ -18,7 +18,6 @@ import useGestorTachuelas from '../hooks/modulos/useGestorTachuelas';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 import useGestorHistorial from '../hooks/modulos/useGestorHistorial';
 
-// ★ NUESTRO NUEVO CONTEXTO GLOBAL ★
 import { useModoMapa, MODOS_MAPA } from '../context/ContextoModoMapa';
 
 export default function VistaDashboard() {
@@ -29,7 +28,6 @@ export default function VistaDashboard() {
   const [nombreNuevoSetup, setNombreNuevoSetup] = useState('');
   const [territorioSeleccionado, setTerritorioSeleccionado] = useState(null);
 
-  // ★ EXTRAEMOS LOS MODOS DEL CONTEXTO ★
   const { 
     enModoTachuela, 
     enModoRevisita, 
@@ -41,7 +39,7 @@ export default function VistaDashboard() {
     secciones, edificios, cargando,
     textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad,
     coordenadasActuales, zoomActual, setZoomActual, setCoordenadasActuales,
-    enModoTrazado, enModoEdificios, // Ya vienen del hook sincronizados con el contexto
+    enModoTrazado, enModoEdificios, 
     nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio,
     puntosTrazadoActual, manejarClickMapa, deshacerUltimoPunto, limpiarTrazadoCompleto, cancelarTrazadoYSalir,
     guardarNuevaSeccionEnBD, eliminarSeccionEnBD,
@@ -52,7 +50,6 @@ export default function VistaDashboard() {
     congregacionActiva, guardarNombreCongregacionBD,
     asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD,
     eliminarCongregacionMasterBD, targetCongId, actualizarNombrePerfilBD, reordenarTerritorioEnBD,
-    // ★ NUEVO: Extraemos el estado de ahorro de datos y la función para reactivar
     modoAhorro, reactivarTiempoReal 
   } = useMapa();
 
@@ -96,7 +93,7 @@ export default function VistaDashboard() {
     await agregarTachuelaBD(tachuelaTemporal.lat, tachuelaTemporal.lng, datos.titulo, datos.notas);
     if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Creado', 'tachuela', `Se fijó un nuevo aviso: ${datos.titulo}`);
     setTachuelaTemporal(null);
-    limpiarModo(); // ★ Uso del contexto
+    limpiarModo(); 
   };
 
   const manejarEliminarTachuela = async (id, titulo) => {
@@ -137,7 +134,6 @@ export default function VistaDashboard() {
         />
       )}
 
-      {/* ★ PASAMOS LAS NUEVAS PROPIEDADES A LA CABECERA ★ */}
       <CabeceraCongregacion 
         nombreCongregacion={nombreCongregacionUI} 
         alAbrirMenu={() => setMenuAbierto(true)} 
@@ -241,7 +237,7 @@ export default function VistaDashboard() {
 
       <main className="flex-1 w-full relative z-10">
         <VisorMapa 
-          centroInicial={[25.6565, -100.2930]} zoomInicial={15} centroActual={coordenadasActuales} zoomActual={zoomActual} setZoomActual={setZoomActual} 
+          centroInicial={[23.6345, -102.5528]} zoomInicial={5} centroActual={coordenadasActuales} zoomActual={zoomActual} setZoomActual={setZoomActual} 
           secciones={secciones} edificios={edificios} alSeleccionarEdificio={setEdificioSeleccionado} enModoTrazado={enModoTrazado} enModoEdificios={enModoEdificios}
           puntosTrazadoActual={puntosTrazadoActual} colorTrazadoActual={colorNuevoTerritorio}
           alRegistrarPuntoTrazado={(coords) => {
@@ -276,7 +272,16 @@ export default function VistaDashboard() {
           alCancelar={() => { setMarcadorRevisitaTemporal(null); setRevisitaEditando(null); limpiarModo(); }}
         />
       )}
-      {revisitaLectura && <ModalInfoLecturaRevisita titulo={revisitaLectura.titulo} fechaProgramada={revisitaLectura.fechaProgramada} notas={revisitaLectura.notas} alCerrar={() => setRevisitaLectura(null)} />}
+      {revisitaLectura && (
+        <ModalInfoLecturaRevisita 
+          revisita={revisitaLectura} 
+          alGuardar={(id, datos) => {
+            gestorRevisitas.editarMarcador(id, datos);
+            setRevisitaLectura({ ...revisitaLectura, ...datos }); // Actualizamos la vista inmediatamente
+          }} 
+          alCerrar={() => setRevisitaLectura(null)} 
+        />
+      )}
     </div>
   );
 }

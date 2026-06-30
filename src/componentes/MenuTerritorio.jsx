@@ -1,6 +1,6 @@
 // src/componentes/MenuTerritorio.jsx
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle2, RefreshCcw, Save, Map } from 'lucide-react';
+import { X, CheckCircle2, RefreshCcw, Save, Map, CalendarCheck } from 'lucide-react';
 
 export default function MenuTerritorio({
   territorio,
@@ -13,19 +13,16 @@ export default function MenuTerritorio({
 }) {
   const [notasTemp, setNotasTemp] = useState('');
 
-  // Sincroniza las notas cuando se abre el modal
   useEffect(() => {
     if (territorio) setNotasTemp(territorio.notas || '');
   }, [territorio]);
 
   if (!territorio) return null;
 
-  // Calculamos porcentajes en tiempo real
   const casasDeEstaSeccion = edificios.filter(e => e.seccion_id === territorio.id);
   const totalCasas = casasDeEstaSeccion.length;
   const casasCompletadas = casasDeEstaSeccion.filter(e => e.estado === 'completado').length;
   
-  // CORRECCIÓN MATEMÁTICA: Soporte para territorios sin casas
   let porcentaje = 0;
   if (totalCasas > 0) {
     porcentaje = Math.round((casasCompletadas / totalCasas) * 100);
@@ -47,7 +44,6 @@ export default function MenuTerritorio({
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl z-[4001] animate-slide-up border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
         
         <div className="p-6 space-y-5">
-          {/* CABECERA */}
           <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4">
             <div className="flex-1 pr-4">
               <h3 className="font-black text-xl text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -60,13 +56,22 @@ export default function MenuTerritorio({
                 <span className="text-[10px] font-bold text-slate-500">{porcentaje}%</span>
               </div>
               <p className="text-[10px] text-slate-400 mt-1">{totalCasas > 0 ? `${casasCompletadas} de ${totalCasas} casas completadas` : 'Territorio sin puntos marcados'}</p>
+              
+              {/* NUEVO: ETIQUETA DE FECHA CUANDO ESTÁ AL 100% */}
+              {porcentaje === 100 && (
+                <div className="mt-2.5 inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-md border border-emerald-100 dark:border-emerald-800/50">
+                  <CalendarCheck size={12} />
+                  <span className="text-[9px] font-bold uppercase tracking-wider">
+                    Terminado: {territorio.actualizado_en ? new Date(territorio.actualizado_en).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recientemente'}
+                  </span>
+                </div>
+              )}
             </div>
             <button onClick={alCerrar} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors flex-shrink-0">
               <X size={18} />
             </button>
           </div>
 
-          {/* OBSERVACIONES */}
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Notas del Territorio</label>
             <textarea 
@@ -78,7 +83,6 @@ export default function MenuTerritorio({
             />
           </div>
 
-          {/* BOTONES DE ACCIÓN RÁPIDA */}
           <div className="grid grid-cols-1 gap-2 pt-2">
             <button 
               disabled={porcentaje === 100} 
@@ -101,7 +105,6 @@ export default function MenuTerritorio({
               <Save size={18} /> Guardar Notas
             </button>
           </div>
-
         </div>
       </div>
     </>

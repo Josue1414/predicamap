@@ -1,15 +1,22 @@
 // src/componentes/ModalesRevisita.jsx
 import React, { useState } from 'react';
-import { BookmarkPlus, X } from 'lucide-react';
+import { BookmarkPlus, X, CalendarDays, Save } from 'lucide-react';
+import { useAlertas } from '../context/ContextoAlertas'; // ★ IMPORTAMOS LAS ALERTAS
 
 export function ModalFormularioRevisita({ marcadorEditando, alGuardar, alCancelar }) {
   const [titulo, setTitulo] = useState(marcadorEditando?.titulo || '');
   const [fecha, setFecha] = useState(marcadorEditando?.fechaProgramada || '');
   const [notas, setNotas] = useState(marcadorEditando?.notas || '');
+  
+  const { mostrarAlerta } = useAlertas(); // ★ EXTRAEMOS ALERTA
 
   const manejarSubmit = (e) => {
     e.preventDefault();
-    if (!titulo.trim()) return alert("El título o nombre es obligatorio");
+    if (!titulo.trim()) {
+      // ★ ADIÓS ALERT NATIVO
+      mostrarAlerta("Atención", "El título o nombre de la revisita es obligatorio.", "warning");
+      return;
+    }
     alGuardar({ titulo, fechaProgramada: fecha, notas });
   };
 
@@ -47,7 +54,29 @@ export function ModalFormularioRevisita({ marcadorEditando, alGuardar, alCancela
   );
 }
 
-export function ModalInfoLecturaRevisita({ titulo, fechaProgramada, notas, alCerrar }) {
+// ★ NUEVO MODAL INTERACTIVO: Permite reagendar y editar notas en tiempo real
+export function ModalInfoLecturaRevisita({ revisita, alCerrar, alGuardar }) {
+  const [fecha, setFecha] = useState(revisita?.fechaProgramada || '');
+  const [notas, setNotas] = useState(revisita?.notas || '');
+  const [huboCambios, setHuboCambios] = useState(false);
+
+  const manejarCambioFecha = (e) => {
+    setFecha(e.target.value);
+    setHuboCambios(true);
+  };
+
+  const manejarCambioNotas = (e) => {
+    setNotas(e.target.value);
+    setHuboCambios(true);
+  };
+
+  const guardarCambios = () => {
+    if (alGuardar) {
+      alGuardar(revisita.id, { titulo: revisita.titulo, fechaProgramada: fecha, notas });
+    }
+    setHuboCambios(false);
+  };
+
   return (
     <>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[4000] transition-opacity" onClick={alCerrar} />
@@ -55,25 +84,43 @@ export function ModalInfoLecturaRevisita({ titulo, fechaProgramada, notas, alCer
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
             <h3 className="font-black text-xl text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <BookmarkPlus size={24} className="text-purple-500" /> {titulo}
+              <BookmarkPlus size={24} className="text-purple-500 shrink-0" /> <span className="truncate">{revisita?.titulo}</span>
             </h3>
             <button onClick={alCerrar} className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors"><X size={18} /></button>
           </div>
+          
           <div className="mb-4">
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Estado de Visita</label>
-            <div className="font-black text-sm uppercase text-purple-500">
-              {fechaProgramada ? `Agendado: ${fechaProgramada}` : 'Sin fecha específica'}
-            </div>
+            <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <CalendarDays size={12} /> Reagendar Visita
+            </label>
+            <input 
+              type="date" 
+              value={fecha} 
+              onChange={manejarCambioFecha} 
+              className="w-full bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/50 rounded-xl p-2.5 text-sm font-bold text-purple-700 dark:text-purple-400 focus:outline-none focus:border-purple-500 transition-colors"
+            />
           </div>
+
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Notas u Observaciones</label>
-            <div className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-700 dark:text-slate-200 min-h-[80px] whitespace-pre-wrap">
-              {notas ? notas : <span className="italic text-slate-400">Sin detalles registrados...</span>}
-            </div>
+            <textarea 
+              value={notas}
+              onChange={manejarCambioNotas}
+              placeholder="Sin detalles registrados..."
+              rows="3"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-700 dark:text-slate-200 resize-none focus:outline-none focus:border-purple-500 transition-colors"
+            />
           </div>
-          <button onClick={alCerrar} className="w-full mt-6 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors">
-            Aceptar
-          </button>
+          
+          {huboCambios ? (
+            <button onClick={guardarCambios} className="w-full mt-6 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 active:scale-95 transition-all">
+              <Save size={18} /> Guardar Cambios
+            </button>
+          ) : (
+            <button onClick={alCerrar} className="w-full mt-6 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors">
+              Aceptar
+            </button>
+          )}
         </div>
       </div>
     </>

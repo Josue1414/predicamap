@@ -31,11 +31,13 @@ export default function useGestorProgreso() {
     }
   }, [datosProgreso]);
 
+  // ★ CORRECCIÓN: Obtener la fecha estrictamente en la zona horaria local del dispositivo ★
   const obtenerFechaHoyLocal = () => {
     const fecha = new Date();
-    const offsetMs = fecha.getTimezoneOffset() * 60000;
-    const fechaLocal = new Date(fecha.getTime() - offsetMs);
-    return fechaLocal.toISOString().split('T')[0];
+    const year = fecha.getFullYear();
+    const month = String(fecha.getMonth() + 1).padStart(2, '0');
+    const day = String(fecha.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const calcularDiasHastaAgosto = () => {
@@ -91,7 +93,6 @@ export default function useGestorProgreso() {
     return maxEstudios;
   };
 
-  // ★ MODIFICADO: Agrega o quita horas enteras respetando el límite de 18 ★
   const modificarHorasHoy = (cantidad) => {
     soyElEmisor.current = true;
     setDatosProgreso(prev => {
@@ -111,18 +112,16 @@ export default function useGestorProgreso() {
     });
   };
 
-  // ★ NUEVO: Función exclusiva para cambiar los minutos (0, 0.25, 0.5, 0.75) ★
   const setFraccionMinutosHoy = (fraccionDecimal) => {
     soyElEmisor.current = true;
     setDatosProgreso(prev => {
       const hoy = obtenerFechaHoyLocal();
       const registroHoy = prev.registrosDiarios[hoy] || { horas: 0, estudios: 0 };
       
-      // Separamos las horas enteras actuales y le sumamos la nueva fracción
       const horasEnteras = Math.floor(registroHoy.horas || 0);
       let nuevasHoras = horasEnteras + fraccionDecimal;
       
-      if (nuevasHoras > 18) nuevasHoras = 18; // Límite máximo
+      if (nuevasHoras > 18) nuevasHoras = 18; 
       
       return {
         ...prev,
@@ -194,7 +193,7 @@ export default function useGestorProgreso() {
     diasHastaAgosto: calcularDiasHastaAgosto(),
     mesesRestantes: calcularMesesRestantes(),
     modificarHorasHoy,
-    setFraccionMinutosHoy, // Exportamos la nueva función
+    setFraccionMinutosHoy, 
     setEstudiosHoy,
     actualizarMetas,
     fechaHoyStr: obtenerFechaHoyLocal(),
