@@ -1,5 +1,6 @@
 // src/hooks/modulos/useMarcadoresPersonales.js
 import { useState, useEffect } from 'react';
+import { useAlertas } from '../../context/ContextoAlertas'; // ★ Importamos el hook de alertas
 
 // Generador de ID único para cada pin
 const generarIdUnico = () => `pin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -7,8 +8,11 @@ const generarIdUnico = () => `pin_${Date.now()}_${Math.random().toString(36).sub
 export default function useMarcadoresPersonales() {
   const [marcadores, setMarcadores] = useState([]);
   const [cargando, setCargando] = useState(true);
+  
+  // ★ Extraemos las funciones de alerta
+  const { mostrarAlerta, mostrarConfirmacion } = useAlertas();
 
-  // 1. CARGAR DATOS AL INICIAR (Desde la memoria del celular)
+  // 1. CARGAR DATOS AL INICIAR
   useEffect(() => {
     const datosGuardados = localStorage.getItem('predicamap_marcadores_personales');
     if (datosGuardados) {
@@ -21,14 +25,14 @@ export default function useMarcadoresPersonales() {
     setCargando(false);
   }, []);
 
-  // 2. GUARDAR DATOS EN EL CELULAR (Cada vez que haya un cambio)
+  // 2. GUARDAR DATOS EN EL CELULAR
   useEffect(() => {
     if (!cargando) {
       localStorage.setItem('predicamap_marcadores_personales', JSON.stringify(marcadores));
     }
   }, [marcadores, cargando]);
 
-  // 3. FUNCIONES CRUD (Crear, Leer, Actualizar, Borrar)
+  // 3. FUNCIONES CRUD
   const agregarMarcador = (lat, lng, titulo, fechaProgramada, notas = '') => {
     const nuevoMarcador = {
       id: generarIdUnico(),
@@ -46,8 +50,16 @@ export default function useMarcadoresPersonales() {
     setMarcadores(prev => prev.map(m => m.id === id ? { ...m, ...nuevosDatos } : m));
   };
 
-  const eliminarMarcador = (id) => {
-    if (window.confirm("¿Estás seguro de eliminar esta revisita?")) {
+  const eliminarMarcador = async (id) => {
+    // ★ Alerta personalizada
+    const confirmado = await mostrarConfirmacion(
+      "Eliminar Revisita",
+      "¿Estás seguro de eliminar esta revisita?",
+      "danger",
+      "Sí, eliminar"
+    );
+    
+    if (confirmado) {
       setMarcadores(prev => prev.filter(m => m.id !== id));
     }
   };
@@ -55,16 +67,14 @@ export default function useMarcadoresPersonales() {
   // 4. SISTEMA DE BACKUP (EXPORTAR)
   const exportarBackup = () => {
     if (marcadores.length === 0) {
-      alert("No tienes revisitas para exportar.");
+      mostrarAlerta("Sin datos", "No tienes revisitas para exportar.", "info");
       return;
     }
     
-    // Crear un archivo JSON con los datos
     const datos = JSON.stringify(marcadores, null, 2);
     const blob = new Blob([datos], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
-    // Simular un clic para forzar la descarga
     const a = document.createElement('a');
     a.href = url;
     a.download = `Mis_Revisitas_PredicaMap_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
@@ -80,27 +90,34 @@ export default function useMarcadoresPersonales() {
     if (!archivo) return;
 
     const lector = new FileReader();
-    lector.onload = (e) => {
+    lector.onload = async (e) => {
       try {
         const datosImportados = JSON.parse(e.target.result);
         if (Array.isArray(datosImportados)) {
-          if (window.confirm(`Se encontraron ${datosImportados.length} revisitas en el archivo. ¿Deseas agregarlas a tu mapa?`)) {
-            // Unimos las que ya tiene con las del backup, evitando duplicados exactos si es posible
+          
+          // ★ Confirmación moderna
+          const confirmado = await mostrarConfirmacion(
+            "Importar Revisitas",
+            `Se encontraron ${datosImportados.length} revisitas en el archivo. ¿Deseas agregarlas a tu mapa?`,
+            "info",
+            "Aceptar"
+          );
+
+          if (confirmado) {
             setMarcadores(prev => {
               const nuevos = datosImportados.filter(imp => !prev.some(p => p.id === imp.id));
               return [...prev, ...nuevos];
             });
-            alert("Revisitas recuperadas con éxito.");
+            mostrarAlerta("Éxito", "Revisitas recuperadas con éxito.", "success");
           }
         } else {
-          alert("El archivo no tiene un formato válido de PredicaMap.");
+          mostrarAlerta("Error", "El archivo no tiene un formato válido.", "danger");
         }
       } catch (error) {
-        alert("Error al leer el archivo. Asegúrate de que sea el archivo correcto.");
+        mostrarAlerta("Error", "Error al leer el archivo. Asegúrate de que sea el correcto.", "danger");
       }
     };
     lector.readAsText(archivo);
-    // Limpiamos el input para permitir cargar el mismo archivo dos veces si se necesita
     evento.target.value = null; 
   };
 

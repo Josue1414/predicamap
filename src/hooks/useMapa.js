@@ -121,6 +121,10 @@ export default function useMapa() {
     guardarNuevaSeccionEnBD, guardarEdificioEnBD, eliminarEdificioEnBD, cambiarEstadoEdificioTemp,
     registrarPuntoTrazado: (coord) => ui.setPuntosTrazadoActual(prev => [...prev, coord]),
     modoAhorro: db.modoAhorro,
-    reactivarTiempoReal: db.reactivarTiempoReal
+    reactivarTiempoReal: db.reactivarTiempoReal,
+    cancelarTrazadoYSalir: () => {
+      ui.cancelarTrazadoYSalir(); // Limpia los puntos
+      limpiarModo();
+    }
   };
 }
