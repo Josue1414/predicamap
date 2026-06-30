@@ -1,11 +1,22 @@
 // src/hooks/modulos/useGestorTerritorios.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../../utilidades/clienteSupabase';
+import useEstadoGlobal from './useEstadoGlobal';
+import { useAlertas } from '../../context/ContextoAlertas'; // ★ Importamos el hook
 
 export default function useGestorTerritorios(targetCongId, esSimulacion, onCentrarMapa) {
+  // ★ EXTRAEMOS mostrarConfirmacion DEL CONTEXTO ★
+  const { mostrarConfirmacion } = useAlertas();
+
   const [secciones, setSecciones] = useState([]);
   const [edificios, setEdificios] = useState([]);
   const [cargandoTerritorios, setCargandoTerritorios] = useState(false);
+  
+  // ★ NUEVO: Estado para el modo de ahorro de datos
+  const [modoAhorro, setModoAhorro] = useState(false);
+
+  // Extraemos el perfil para saber si merece conexión Realtime
+  const { perfilUsuario } = useEstadoGlobal();
 
   const cargarTerritoriosYCasas = async (esCargaInicial = false) => {
     if (!targetCongId) return;
@@ -43,46 +54,128 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   };
 
   useEffect(() => { 
-    cargarTerritoriosYCasas(true); 
-    
-    // ★ SUSCRIPCIÓN EN TIEMPO REAL ★
     if (!targetCongId) return;
+    
+    // Carga HTTP normal (No mantiene conexiones abiertas)
+    cargarTerritoriosYCasas(true); 
 
-    const canalMapa = supabase.channel('cambios-mapa')
-      // Escuchar Territorios (Secciones)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'secciones', filter: `congregacion_id=eq.${targetCongId}` }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const nuevaSec = {
-            id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
-            coordenadas: payload.new.coordenadas, notas: payload.new.notas, asignado_a: payload.new.asignado_a,
-            estado: payload.new.estado, orden: payload.new.orden 
-          };
-          setSecciones(prev => [...prev, nuevaSec].sort((a, b) => a.orden - b.orden));
-        } else if (payload.eventType === 'UPDATE') {
-          const secAct = {
-            id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
-            coordenadas: payload.new.coordenadas, notas: payload.new.notas, asignado_a: payload.new.asignado_a,
-            estado: payload.new.estado, orden: payload.new.orden 
-          };
-          setSecciones(prev => prev.map(s => s.id === secAct.id ? secAct : s).sort((a, b) => a.orden - b.orden));
-        } else if (payload.eventType === 'DELETE') {
-          setSecciones(prev => prev.filter(s => s.id !== payload.old.id));
-        }
-      })
-      // Escuchar Calles y Casas (Edificios)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'edificios' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setEdificios(prev => [...prev, payload.new]);
-        } else if (payload.eventType === 'UPDATE') {
-          setEdificios(prev => prev.map(e => e.id === payload.new.id ? payload.new : e));
-        } else if (payload.eventType === 'DELETE') {
-          setEdificios(prev => prev.filter(e => e.id !== payload.old.id));
-        }
-      })
-      .subscribe();
+    let canalMapa = null;
+    let temporizadorInactividad = null;
+    const TIEMPO_LIMITE_INACTIVIDAD = 5 * 60 * 1000; // 5 minutos en milisegundos
 
-    return () => { supabase.removeChannel(canalMapa); };
-  }, [targetCongId]);
+    // ★ ESTRATEGIA 2: SOLO LOS LÍDERES TIENEN REALTIME ★
+    const esLider = perfilUsuario && ['Capitán', 'Administrador', 'Administrador Mayor'].includes(perfilUsuario.rol);
+
+    const conectarRealtime = () => {
+      // Si ya está conectado o no es un líder, no hacemos nada
+      if (canalMapa || !esLider) return;
+
+      canalMapa = supabase.channel('cambios-mapa')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'secciones', filter: `congregacion_id=eq.${targetCongId}` }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const nuevaSec = {
+              id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
+              coordenadas: payload.new.coordenadas, notas: payload.new.notas, asignado_a: payload.new.asignado_a,
+              estado: payload.new.estado, orden: payload.new.orden 
+            };
+            // ★ FILTRO ANTI-DUPLICADOS (Arregla el error de console de key única)
+            setSecciones(prev => {
+              if (prev.some(s => s.id === nuevaSec.id)) return prev;
+              return [...prev, nuevaSec].sort((a, b) => a.orden - b.orden);
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const secAct = {
+              id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
+              coordenadas: payload.new.coordenadas, notas: payload.new.notas, asignado_a: payload.new.asignado_a,
+              estado: payload.new.estado, orden: payload.new.orden 
+            };
+            setSecciones(prev => prev.map(s => s.id === secAct.id ? secAct : s).sort((a, b) => a.orden - b.orden));
+          } else if (payload.eventType === 'DELETE') {
+            setSecciones(prev => prev.filter(s => s.id !== payload.old.id));
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'edificios' }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+            // ★ FILTRO ANTI-DUPLICADOS PARA LAS CASAS
+            setEdificios(prev => {
+              if (prev.some(e => e.id === payload.new.id)) return prev;
+              return [...prev, payload.new];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setEdificios(prev => prev.map(e => e.id === payload.new.id ? payload.new : e));
+          } else if (payload.eventType === 'DELETE') {
+            setEdificios(prev => prev.filter(e => e.id !== payload.old.id));
+          }
+        })
+        .subscribe();
+    };
+
+    const desconectarRealtime = () => {
+      if (canalMapa) {
+        supabase.removeChannel(canalMapa);
+        canalMapa = null;
+      }
+    };
+
+    // ★ ESTRATEGIA 3: DESCONEXIÓN POR INACTIVIDAD (TEMPORIZADOR) ★
+    const reiniciarTemporizador = () => {
+      if (!esLider || modoAhorro) return; // Si ya estamos en ahorro, esperamos acción manual
+      
+      clearTimeout(temporizadorInactividad);
+      temporizadorInactividad = setTimeout(() => {
+        desconectarRealtime();
+        setModoAhorro(true); // Se acabaron los 5 minutos, activamos ahorro
+      }, TIEMPO_LIMITE_INACTIVIDAD);
+    };
+
+    // ★ ESTRATEGIA 1: DESCONEXIÓN POR VISIBILIDAD DE PANTALLA ★
+    const manejarCambioVisibilidad = () => {
+      if (document.visibilityState === 'visible') {
+        if (!modoAhorro) {
+           cargarTerritoriosYCasas(false);
+           conectarRealtime();
+           reiniciarTemporizador();
+        }
+      } else {
+        // Al minimizar, rompe la conexión al instante
+        desconectarRealtime();
+        clearTimeout(temporizadorInactividad);
+      }
+    };
+
+    // Intentamos conectar por primera vez
+    conectarRealtime();
+    reiniciarTemporizador();
+
+    // Eventos que representan "actividad" del usuario
+    const eventosActividad = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    eventosActividad.forEach(evento => document.addEventListener(evento, reiniciarTemporizador));
+
+    // ★ POLLING (RECARGA INVISIBLE) PARA PUBLICADORES ★
+    const intervaloPolling = setInterval(() => {
+      if (!esLider && document.visibilityState === 'visible') {
+        cargarTerritoriosYCasas(false);
+      }
+    }, 45000);
+
+    // Activamos el espía de la pantalla
+    document.addEventListener('visibilitychange', manejarCambioVisibilidad);
+
+    // Limpieza al desmontar el componente
+    return () => { 
+      desconectarRealtime(); 
+      clearTimeout(temporizadorInactividad);
+      clearInterval(intervaloPolling);
+      document.removeEventListener('visibilitychange', manejarCambioVisibilidad);
+      eventosActividad.forEach(evento => document.removeEventListener(evento, reiniciarTemporizador));
+    };
+  }, [targetCongId, perfilUsuario, modoAhorro]); // Observamos modoAhorro
+
+  // Función para reactivar manualmente el Realtime
+  const reactivarTiempoReal = () => {
+    setModoAhorro(false); // Esto disparará el useEffect de nuevo y lo reconectará
+    cargarTerritoriosYCasas(false); // Traemos la última info por si hubo cambios
+  };
 
   const reordenarTerritorioEnBD = async (id, direccion) => {
     const indexActual = secciones.findIndex(s => s.id === id);
@@ -104,10 +197,17 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   };
 
   const eliminarSeccionEnBD = async (id) => {
-    if (!window.confirm("¿Estás seguro de eliminar este territorio? Se borrarán en cascada todos los checks asociados a él.")) return;
+    // ★ IMPLEMENTACIÓN DE LA NUEVA ALERTA ★
+    const confirmado = await mostrarConfirmacion(
+      "Eliminar Territorio",
+      "¿Estás seguro de eliminar este territorio? Se borrarán en cascada todos los checks asociados a él.",
+      "danger", 
+      "Sí, eliminar"
+    );
+    if (!confirmado) return;
+    
     setCargandoTerritorios(true);
     await supabase.from('secciones').delete().eq('id', id);
-    // El realtime actualizará la pantalla automáticamente, solo quitamos el estado de carga
     setCargandoTerritorios(false);
   };
 
@@ -118,7 +218,15 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   };
 
   const reiniciarTerritorioEnBD = async (id) => {
-    if (!window.confirm("¿Estás seguro? Esto regresará el territorio y TODAS sus casas a Pendiente.")) return;
+    // ★ IMPLEMENTACIÓN DE LA NUEVA ALERTA ★
+    const confirmado = await mostrarConfirmacion(
+      "Reiniciar Territorio",
+      "¿Estás seguro? Esto regresará el territorio y TODAS sus casas a Pendiente.",
+      "warning",
+      "Sí, reiniciar"
+    );
+    if (!confirmado) return;
+
     setCargandoTerritorios(true);
     await supabase.from('secciones').update({ estado: 'pendiente' }).eq('id', id);
     await supabase.from('edificios').update({ estado: 'pendiente' }).eq('seccion_id', id);
@@ -126,7 +234,15 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   };
 
   const completarTerritorioEntero = async (id) => {
-    if (!window.confirm("¿Marcar este territorio y TODAS sus casas como completados?")) return;
+    // ★ IMPLEMENTACIÓN DE LA NUEVA ALERTA ★
+    const confirmado = await mostrarConfirmacion(
+      "Completar Territorio",
+      "¿Deseas marcar este territorio y TODAS sus casas como completados?",
+      "success",
+      "Completar"
+    );
+    if (!confirmado) return;
+
     setCargandoTerritorios(true);
     await supabase.from('secciones').update({ estado: 'completado' }).eq('id', id);
     await supabase.from('edificios').update({ estado: 'completado' }).eq('seccion_id', id);
@@ -145,6 +261,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   return {
     secciones, edificios, cargandoTerritorios, cargarTerritoriosYCasas,
     eliminarSeccionEnBD, asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD, completarTerritorioEntero,
-    crearSeccionBD, crearEdificioBD, actualizarEdificioBD, eliminarEdificioBD, reordenarTerritorioEnBD
+    crearSeccionBD, crearEdificioBD, actualizarEdificioBD, eliminarEdificioBD, reordenarTerritorioEnBD,
+    modoAhorro, reactivarTiempoReal
   };
 }

@@ -2,7 +2,8 @@
 import useEstadoGlobal from './modulos/useEstadoGlobal';
 import useControlesUI from './modulos/useControlesUI';
 import useGestorTerritorios from './modulos/useGestorTerritorios';
-import { useModoMapa } from '../context/ContextoModoMapa'; // Tu nuevo contexto
+import { useModoMapa } from '../context/ContextoModoMapa';
+import { useAlertas } from '../context/ContextoAlertas'; // ★ Importamos las alertas
 
 const verificarPuntoEnPoligono = (lat, lng, poligono) => {
   let x = lat, y = lng;
@@ -19,8 +20,13 @@ const verificarPuntoEnPoligono = (lat, lng, poligono) => {
 export default function useMapa() {
   const global = useEstadoGlobal();
   const ui = useControlesUI();
+  
   const db = useGestorTerritorios(global.targetCongId, !!global.congregacionContextoId, ui.setCoordenadasActuales);
+  
   const { enModoTrazado, enModoEdificios, limpiarModo } = useModoMapa();
+  
+  // ★ EXTRAEMOS LAS FUNCIONES DEL CONTEXTO
+  const { mostrarAlerta, mostrarConfirmacion } = useAlertas(); 
 
   const manejarClickMapa = (coordenada) => {
     const [lat, lng] = coordenada;
@@ -28,13 +34,18 @@ export default function useMapa() {
       ui.setPuntosTrazadoActual(prev => [...prev, coordenada]);
     } else if (enModoEdificios) {
       const seccionContenedora = db.secciones.find(sec => verificarPuntoEnPoligono(lat, lng, sec.coordenadas));
-      if (!seccionContenedora) { alert("📍 Toca adentro de un territorio de color válido."); return; }
+      
+      if (!seccionContenedora) { 
+        // ★ ADIÓS AL ALERT DE WINDOWS, BIENVENIDA ALERTA BONITA
+        mostrarAlerta("Ubicación inválida", "📍 Toca adentro de un territorio de color válido para sembrar una casa/calle.", "warning");
+        return; 
+      }
+      
       const casasEnSeccion = db.edificios.filter(e => e.seccion_id === seccionContenedora.id);
       
-      // ★ CAMBIO: Por defecto es 'calle' y el nombre predeterminado cambia
       ui.setEdificioSeleccionado({ 
         seccion_id: seccionContenedora.id, 
-        tipo_edificio: 'calle', // Marcador principal
+        tipo_edificio: 'calle', 
         direccion: `Tramo #${casasEnSeccion.length + 1} (${seccionContenedora.nombre})`, 
         lat, 
         lng, 
@@ -59,7 +70,7 @@ export default function useMapa() {
     limpiarModo();
   };
 
- const guardarEdificioEnBD = async () => {
+  const guardarEdificioEnBD = async () => {
     if (!ui.edificioSeleccionado) return;
     
     const datosAEnviar = { 
@@ -69,8 +80,6 @@ export default function useMapa() {
       lat: ui.edificioSeleccionado.lat, 
       lng: ui.edificioSeleccionado.lng, 
       estado: ui.edificioSeleccionado.estado, 
-      
-      // ★ AHORA SÍ LEEMOS DIRECTAMENTE DE LAS NOTAS ACTUALIZADAS ★
       notas: ui.edificioSeleccionado.notas || '' 
     };
     
@@ -81,7 +90,16 @@ export default function useMapa() {
   };
 
   const eliminarEdificioEnBD = async (idEdificio) => {
-    if (!window.confirm("¿Seguro que deseas eliminar este punto?")) return;
+    // ★ ADIÓS AL WINDOW.CONFIRM, BIENVENIDA CONFIRMACIÓN MODERNA
+    const confirmado = await mostrarConfirmacion(
+      "Eliminar Punto",
+      "¿Seguro que deseas eliminar este punto?",
+      "danger",
+      "Eliminar"
+    );
+    
+    if (!confirmado) return;
+
     await db.eliminarEdificioBD(idEdificio);
     await db.cargarTerritoriosYCasas();
     ui.setEdificioSeleccionado(null);
@@ -101,6 +119,8 @@ export default function useMapa() {
     cargando: global.cargandoGlobal || db.cargandoTerritorios,
     manejarClickMapa, deshacerUltimoPunto, limpiarTrazadoCompleto,
     guardarNuevaSeccionEnBD, guardarEdificioEnBD, eliminarEdificioEnBD, cambiarEstadoEdificioTemp,
-    registrarPuntoTrazado: (coord) => ui.setPuntosTrazadoActual(prev => [...prev, coord])
+    registrarPuntoTrazado: (coord) => ui.setPuntosTrazadoActual(prev => [...prev, coord]),
+    modoAhorro: db.modoAhorro,
+    reactivarTiempoReal: db.reactivarTiempoReal
   };
 }

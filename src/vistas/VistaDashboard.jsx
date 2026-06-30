@@ -51,7 +51,9 @@ export default function VistaDashboard() {
     listaCongregaciones, congregacionContextoId, alSeleccionarCongregacionContexto,
     congregacionActiva, guardarNombreCongregacionBD,
     asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD,
-    eliminarCongregacionMasterBD, targetCongId, actualizarNombrePerfilBD, reordenarTerritorioEnBD
+    eliminarCongregacionMasterBD, targetCongId, actualizarNombrePerfilBD, reordenarTerritorioEnBD,
+    // ★ NUEVO: Extraemos el estado de ahorro de datos y la función para reactivar
+    modoAhorro, reactivarTiempoReal 
   } = useMapa();
 
   const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD } = useGestorTachuelas(targetCongId);
@@ -135,10 +137,13 @@ export default function VistaDashboard() {
         />
       )}
 
+      {/* ★ PASAMOS LAS NUEVAS PROPIEDADES A LA CABECERA ★ */}
       <CabeceraCongregacion 
         nombreCongregacion={nombreCongregacionUI} 
         alAbrirMenu={() => setMenuAbierto(true)} 
         perfilUsuario={perfilUsuario}
+        modoAhorro={modoAhorro}
+        alReactivar={reactivarTiempoReal}
       />
 
       <MenuLateral 
@@ -149,7 +154,6 @@ export default function VistaDashboard() {
         resultadosCiudades={resultadosCiudades} alSeleccionarCiudad={seleccionarCiudad} nombreTerritorio={nombreNuevoTerritorio} alCambiarNombre={setNombreNuevoTerritorio}
         colorTerritorio={colorNuevoTerritorio} alCambiarColor={setColorNuevoTerritorio} notasTerritorio={notasNuevoTerritorio} alCambiarNotas={setNotasNuevoTerritorio}
         
-        // ★ MIRA CÓMO SIMPLIFICAMOS ESTO ★
         alEmpezarATrazar={() => cambiarModo(MODOS_MAPA.TRAZADO)}
         alActivarModoEdificios={() => cambiarModo(MODOS_MAPA.EDIFICIOS)}
         
@@ -179,14 +183,9 @@ export default function VistaDashboard() {
         alCerrar={() => setEdificioSeleccionado(null)} 
         alCambiarEstado={cambiarEstadoEdificioTemp} 
         alCambiarDireccion={(nuevaDir) => setEdificioSeleccionado(prev => ({ ...prev, direccion: nuevaDir }))} 
-        
-       
         alCambiarTipo={(nuevoTipo) => setEdificioSeleccionado(prev => ({ ...prev, tipo_edificio: nuevoTipo }))}
-        
-       
         notasTemp={edificioSeleccionado?.notas || ''} 
         alCambiarNotasTemp={(nuevasNotas) => setEdificioSeleccionado(prev => ({ ...prev, notas: nuevasNotas }))} 
-        
         alGuardar={manejarGuardarEdificio} 
         alEliminar={eliminarEdificioEnBD} 
       />

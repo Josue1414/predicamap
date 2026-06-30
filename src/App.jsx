@@ -6,7 +6,10 @@ import VistaLogin from './vistas/VistaLogin';
 import VistaDashboard from './vistas/VistaDashboard';
 import VistaPublicador from './vistas/VistaPublicador'; 
 import VistaRecuperar from './vistas/VistaRecuperar';
+
+// ★ IMPORTAMOS LOS PROVEEDORES ★
 import { ProveedorModoMapa } from './context/ContextoModoMapa';
+import { ProveedorAlertas } from './context/ContextoAlertas'; 
 
 export default function App() {
   const [sesion, setSesion] = useState(null);
@@ -22,10 +25,7 @@ export default function App() {
     // 2. Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, session) => {
       
-      // ★ NUEVA LÓGICA DE SEGURIDAD: Atrapar evento de recuperación ★
-      // Cuando Supabase lee el token del correo, emite 'PASSWORD_RECOVERY'
       if (evento === 'PASSWORD_RECOVERY') {
-        // Forzamos la navegación segura a la vista de nueva contraseña
         window.location.href = '/recuperar';
       }
       
@@ -46,46 +46,49 @@ export default function App() {
 
   return (
     <BrowserRouter>
-    <ProveedorModoMapa>
-      <Routes>
-        
-        {/* RUTA PÚBLICA (PUBLICADOR) */}
-        <Route 
-          path="/v/:enlaceCorto" 
-          element={<VistaPublicador />} 
-        />
+      {/* ★ ENVOLVEMOS TODO EN LOS PROVEEDORES ★ */}
+      <ProveedorAlertas>
+        <ProveedorModoMapa>
+          <Routes>
+            
+            {/* RUTA PÚBLICA (PUBLICADOR) */}
+            <Route 
+              path="/v/:enlaceCorto" 
+              element={<VistaPublicador />} 
+            />
 
-        {/* RUTA DE LOGIN */}
-        <Route 
-          path="/login" 
-          element={!sesion ? <VistaLogin /> : <Navigate to="/" replace />} 
-        />
+            {/* RUTA DE LOGIN */}
+            <Route 
+              path="/login" 
+              element={!sesion ? <VistaLogin /> : <Navigate to="/" replace />} 
+            />
 
-        {/* RUTA: REGISTRO PARA ATRAPAR INVITACIONES */}
-        <Route 
-          path="/registro" 
-          element={!sesion ? <VistaLogin /> : <Navigate to="/" replace />} 
-        />
+            {/* RUTA: REGISTRO PARA ATRAPAR INVITACIONES */}
+            <Route 
+              path="/registro" 
+              element={!sesion ? <VistaLogin /> : <Navigate to="/" replace />} 
+            />
 
-        {/* RUTA: RECUPERACIÓN DE CONTRASEÑA */}
-        <Route 
-          path="/recuperar" 
-          element={<VistaRecuperar />} 
-        />
+            {/* RUTA: RECUPERACIÓN DE CONTRASEÑA */}
+            <Route 
+              path="/recuperar" 
+              element={<VistaRecuperar />} 
+            />
 
-        {/* RUTA PRINCIPAL (MAPA DASHBOARD ADMINISTRATIVO) */}
-        <Route 
-          path="/" 
-          element={sesion ? <VistaDashboard /> : <Navigate to="/login" replace />} 
-        />
+            {/* RUTA PRINCIPAL (MAPA DASHBOARD ADMINISTRATIVO) */}
+            <Route 
+              path="/" 
+              element={sesion ? <VistaDashboard /> : <Navigate to="/login" replace />} 
+            />
 
-        {/* RUTA COMODÍN (Error 404 - Redirige al inicio) */}
-        <Route 
-          path="*" 
-          element={<Navigate to="/" replace />} 
-        />
-      </Routes>
-      </ProveedorModoMapa>
+            {/* RUTA COMODÍN (Error 404 - Redirige al inicio) */}
+            <Route 
+              path="*" 
+              element={<Navigate to="/" replace />} 
+            />
+          </Routes>
+        </ProveedorModoMapa>
+      </ProveedorAlertas>
     </BrowserRouter>
   );
 }
