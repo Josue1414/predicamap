@@ -1,6 +1,19 @@
 // src/componentes/menu-lateral/SeccionTerritorios.jsx
-import React from 'react';
-import { List, ChevronUp, ChevronDown, Star, UserCheck, Navigation, CheckCircle2, RefreshCcw, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { List, ChevronUp, ChevronDown, Star, UserCheck, Navigation, CheckCircle2, RefreshCcw, Trash2, Edit3 } from 'lucide-react';
+
+const PALETA_COLORES = [
+  { nombre: 'Carmesí', hex: '#e11d48' },   { nombre: 'Rojo', hex: '#715605' },
+  { nombre: 'Naranja', hex: '#f97316' },   { nombre: 'Ámbar', hex: '#f59e0b' },
+  { nombre: 'Amarillo', hex: '#eab308' },  { nombre: 'Lima', hex: '#84cc16' },
+  { nombre: 'Verde', hex: '#22c55e' },     { nombre: 'Esmeralda', hex: '#10b981' },
+  { nombre: 'Verde Mar', hex: '#14b8a6' }, { nombre: 'Cian', hex: '#06b6d4' },
+  { nombre: 'Celeste', hex: '#0ea5e9' },   { nombre: 'Azul', hex: '#3b82f6' },
+  { nombre: 'Índigo', hex: '#6366f1' },    { nombre: 'Violeta', hex: '#8b5cf6' },
+  { nombre: 'Morado', hex: '#a855f7' },    { nombre: 'Fucsia', hex: '#d946ef' },
+  { nombre: 'Rosa', hex: '#ec4899' },      { nombre: 'Rosa Palo', hex: '#f43fe8' },
+  { nombre: 'Marrón', hex: '#a8a29e' },    { nombre: 'Pizarra', hex: '#64748b' }
+];
 
 export default function SeccionTerritorios({
   territoriosOrdenados,
@@ -18,11 +31,23 @@ export default function SeccionTerritorios({
   alEliminarSeccion,
   alCompletarTerritorio,
   alVolarATerritorio,
-  alReordenarTerritorio, // <-- NUEVA PROP
+  alReordenarTerritorio,
+  actualizarDetallesSeccionEnBD, // <-- NUEVA PROP
   acordeonActivo,
   alternarAcordeon,
   alCerrar
 }) {
+  // Estados para manejar la edición del territorio
+  const [modoEdicionId, setModoEdicionId] = useState(null);
+  const [editNombre, setEditNombre] = useState('');
+  const [editColor, setEditColor] = useState('');
+
+  const guardarEdicion = async (id) => {
+    if (!editNombre.trim()) return;
+    await actualizarDetallesSeccionEnBD(id, editNombre, editColor);
+    setModoEdicionId(null);
+  };
+
   return (
     <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
       <button onClick={() => alternarAcordeon('lista')} className="w-full p-3 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -82,8 +107,8 @@ export default function SeccionTerritorios({
                   {territorioExpandido === sec.id && (
                     <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
                       
-                      {/* ★ REORDENAR (Exclusivo Capitán y Superior) ★ */}
-                      {esCapitanYSuperior && (
+                      {/* ★ REORDENAR (Exclusivo Administrador) ★ */}
+                      {esAdminOperativo && (
                         <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800/50 p-2.5 rounded-lg mb-3 border border-slate-200 dark:border-slate-700">
                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                             <List size={14}/> Ordenar en Lista
@@ -99,61 +124,105 @@ export default function SeccionTerritorios({
                         </div>
                       )}
 
-                      {esPrecursorYSuperior ? (
-                        <textarea 
-                          defaultValue={sec.notas}
-                          onBlur={(e) => actualizarNotasSeccionEnBD(sec.id, e.target.value)}
-                          placeholder="Añadir notas sobre el territorio..."
-                          className="w-full p-2 mb-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-1 focus:ring-indigo-500 transition-colors"
-                          rows="2"
-                        />
-                      ) : (
-                        <p className="text-xs text-slate-500 mb-3 italic">"{sec.notas || 'Sin observaciones'}"</p>
-                      )}
-                      
-                      <div className="flex justify-between text-[10px] text-slate-600 dark:text-slate-400 font-bold mb-3">
-                        <span>{totalCasas > 0 ? `${casasCompletadas} de ${totalCasas} completadas` : 'Sin puntos dibujados'}</span>
-                        <span className={porcentaje === 100 ? 'text-emerald-500' : ''}>{porcentaje}% Listo</span>
-                      </div>
-
-                      {esCapitanYSuperior && (
-                        <div className="mb-3">
-                          <label className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1"><UserCheck size={12}/> Asignar a:</label>
-                          <select 
-                            value={sec.asignado_a || ''} 
-                            onChange={(e) => asignarTerritorioEnBD(sec.id, e.target.value)}
-                            className="w-full p-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none"
-                          >
-                            <option value="">-- Opcional: Sin asignar --</option>
-                            {usuariosAsignables.map(u => (
-                              <option key={u.id} value={u.id}>{u.nombre} ({u.rol})</option>
+                      {/* ★ MODO EDICIÓN (Exclusivo Administrador) ★ */}
+                      {modoEdicionId === sec.id ? (
+                        <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-blue-200 dark:border-blue-800 mb-3 space-y-3 shadow-sm">
+                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Editar Territorio</span>
+                          
+                          <input
+                            type="text"
+                            value={editNombre}
+                            onChange={e => setEditNombre(e.target.value)}
+                            className="w-full p-2 text-xs border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 outline-none focus:ring-1 focus:ring-blue-500"
+                            placeholder="Nombre del territorio..."
+                          />
+                          
+                          <div className="grid grid-cols-5 gap-2">
+                            {PALETA_COLORES.map(color => (
+                              <button
+                                key={color.hex}
+                                onClick={() => setEditColor(color.hex)}
+                                className={`h-6 rounded-md border-2 transition-transform ${editColor === color.hex ? 'border-slate-900 dark:border-white scale-110 shadow-sm' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                style={{ backgroundColor: color.hex }}
+                                title={color.nombre}
+                              />
                             ))}
-                          </select>
+                          </div>
+                          
+                          <div className="flex gap-2 pt-1">
+                            <button onClick={() => guardarEdicion(sec.id)} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold py-2 rounded-lg transition-colors">
+                              Guardar Cambios
+                            </button>
+                            <button onClick={() => setModoEdicionId(null)} className="flex-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-[10px] font-bold py-2 rounded-lg transition-colors">
+                              Cancelar
+                            </button>
+                          </div>
                         </div>
+                      ) : (
+                        <>
+                          {esPrecursorYSuperior ? (
+                            <textarea 
+                              defaultValue={sec.notas}
+                              onBlur={(e) => actualizarNotasSeccionEnBD(sec.id, e.target.value)}
+                              placeholder="Añadir notas sobre el territorio..."
+                              className="w-full p-2 mb-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-1 focus:ring-indigo-500 transition-colors"
+                              rows="2"
+                            />
+                          ) : (
+                            <p className="text-xs text-slate-500 mb-3 italic">"{sec.notas || 'Sin observaciones'}"</p>
+                          )}
+                          
+                          <div className="flex justify-between text-[10px] text-slate-600 dark:text-slate-400 font-bold mb-3">
+                            <span>{totalCasas > 0 ? `${casasCompletadas} de ${totalCasas} completadas` : 'Sin puntos dibujados'}</span>
+                            <span className={porcentaje === 100 ? 'text-emerald-500' : ''}>{porcentaje}% Listo</span>
+                          </div>
+
+                          {esCapitanYSuperior && (
+                            <div className="mb-3">
+                              <label className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1"><UserCheck size={12}/> Asignar a:</label>
+                              <select 
+                                value={sec.asignado_a || ''} 
+                                onChange={(e) => asignarTerritorioEnBD(sec.id, e.target.value)}
+                                className="w-full p-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none"
+                              >
+                                <option value="">-- Opcional: Sin asignar --</option>
+                                {usuariosAsignables.map(u => (
+                                  <option key={u.id} value={u.id}>{u.nombre} ({u.rol})</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 gap-2">
+                            {/* ★ BOTÓN EDITAR NOMBRE Y COLOR (Solo Admin) ★ */}
+                            {esAdminOperativo && (
+                              <button onClick={() => { setModoEdicionId(sec.id); setEditNombre(sec.nombre); setEditColor(sec.colorHex); }} className="flex justify-center items-center gap-1.5 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg font-bold text-xs hover:bg-blue-100 transition-colors">
+                                <Edit3 size={14} /> Editar Nombre y Color
+                              </button>
+                            )}
+
+                            <button onClick={() => { alVolarATerritorio(sec.coordenadas); alCerrar(); }} className="flex justify-center items-center gap-1.5 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold text-xs hover:bg-indigo-100 transition-colors">
+                              <Navigation size={14} /> Volar al Territorio
+                            </button>
+                            
+                            <button disabled={porcentaje === 100} onClick={() => alCompletarTerritorio(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg font-bold text-xs hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                              <CheckCircle2 size={14} /> {porcentaje === 100 ? 'Territorio Terminado' : (totalCasas === 0 ? 'Marcar Territorio Completado' : 'Marcar TODO Completado')}
+                            </button>
+                            
+                            {esCapitanYSuperior && porcentaje > 0 && (
+                              <button onClick={() => reiniciarTerritorioEnBD(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg font-bold text-xs hover:bg-amber-100 transition-colors">
+                                <RefreshCcw size={14} /> Reiniciar Territorio
+                              </button>
+                            )}
+
+                            {esAdminOperativo && (
+                              <button onClick={() => alEliminarSeccion(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg font-bold text-xs hover:bg-rose-100 transition-colors">
+                                <Trash2 size={14} /> Eliminar Territorio
+                              </button>
+                            )}
+                          </div>
+                        </>
                       )}
-
-                      <div className="grid grid-cols-1 gap-2">
-                        <button onClick={() => { alVolarATerritorio(sec.coordenadas); alCerrar(); }} className="flex justify-center items-center gap-1.5 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold text-xs hover:bg-indigo-100 transition-colors">
-                          <Navigation size={14} /> Volar al Territorio
-                        </button>
-                        
-                        <button disabled={porcentaje === 100} onClick={() => alCompletarTerritorio(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg font-bold text-xs hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                          <CheckCircle2 size={14} /> {porcentaje === 100 ? 'Territorio Terminado' : (totalCasas === 0 ? 'Marcar Territorio Completado' : 'Marcar TODO Completado')}
-                        </button>
-                        
-                        {esCapitanYSuperior && porcentaje > 0 && (
-                          <button onClick={() => reiniciarTerritorioEnBD(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg font-bold text-xs hover:bg-amber-100 transition-colors">
-                            <RefreshCcw size={14} /> Reiniciar Territorio
-                          </button>
-                        )}
-
-                        {esAdminOperativo && (
-                          <button onClick={() => alEliminarSeccion(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg font-bold text-xs hover:bg-rose-100 transition-colors">
-                            <Trash2 size={14} /> Eliminar Territorio
-                          </button>
-                        )}
-                      </div>
-
                     </div>
                   )}
                 </div>

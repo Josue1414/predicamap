@@ -50,7 +50,7 @@ export default function VistaDashboard() {
     congregacionActiva, guardarNombreCongregacionBD,
     asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD,
     eliminarCongregacionMasterBD, targetCongId, actualizarNombrePerfilBD, reordenarTerritorioEnBD,
-    modoAhorro, reactivarTiempoReal 
+    modoAhorro, reactivarTiempoReal,actualizarDetallesSeccionEnBD,
   } = useMapa();
 
   const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD } = useGestorTachuelas(targetCongId);
@@ -156,7 +156,7 @@ export default function VistaDashboard() {
         mostrarCalles={mostrarCalles} alCambiarMostrarCalles={setMostrarCalles} mostrarLugares={mostrarLugares} alCambiarMostrarLugares={setMostrarLugares}
         perfilUsuario={perfilUsuario} usuariosEquipo={usuariosEquipo} alEliminarMiembro={eliminarMiembroEquipo} alCrearLinkInvitacion={crearLinkInvitacion}
         listaCongregaciones={listaCongregaciones} congregacionContextoId={congregacionContextoId} alSeleccionarCongregacionContexto={alSeleccionarCongregacionContexto}
-        asignarTerritorioEnBD={asignarTerritorioEnBD} actualizarNotasSeccionEnBD={actualizarNotasSeccionEnBD} alEliminarCongregacion={eliminarCongregacionMasterBD}
+        asignarTerritorioEnBD={asignarTerritorioEnBD} actualizarNotasSeccionEnBD={actualizarNotasSeccionEnBD} actualizarDetallesSeccionEnBD={actualizarDetallesSeccionEnBD} alEliminarCongregacion={eliminarCongregacionMasterBD}
         marcadoresPersonales={gestorRevisitas.marcadores} alVolarARevisita={(m) => { setCoordenadasActuales([m.lat, m.lng]); setZoomActual(19); setMenuAbierto(false); }}
         alEditarRevisita={(m) => { setRevisitaEditando(m); setMenuAbierto(false); }} alEliminarRevisita={gestorRevisitas.eliminarMarcador} alCompartirRevisita={gestorRevisitas.compartirMarcador}
         alExportarBackup={gestorRevisitas.exportarBackup} alImportarBackup={gestorRevisitas.importarBackup} revisitaExpandida={revisitaExpandida} setRevisitaExpandida={setRevisitaExpandida}

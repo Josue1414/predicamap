@@ -37,7 +37,7 @@ export default function MenuLateral({
   // ★ AÑADIDAS PROPS DE PAGINACIÓN ★
   pagina,
   totalPaginas,
-  alCambiarPagina
+  alCambiarPagina,actualizarDetallesSeccionEnBD,
 }) {
   const [acordeonActivo, setAcordeonActivo] = useState('lista'); 
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
@@ -177,7 +177,7 @@ export default function MenuLateral({
               territoriosOrdenados={territoriosOrdenados} edificiosGuardados={edificiosGuardados} perfilUsuario={perfilUsuario}
               territorioExpandido={territorioExpandido} setTerritorioExpandido={setTerritorioExpandido}
               esPrecursorYSuperior={esPrecursorYSuperior} esCapitanYSuperior={esCapitanYSuperior} esAdminOperativo={esAdminOperativo}
-              usuariosEquipo={usuariosEquipo} actualizarNotasSeccionEnBD={actualizarNotasSeccionEnBD}
+              usuariosEquipo={usuariosEquipo} actualizarNotasSeccionEnBD={actualizarNotasSeccionEnBD} actualizarDetallesSeccionEnBD={actualizarDetallesSeccionEnBD}
               asignarTerritorioEnBD={asignarTerritorioEnBD} reiniciarTerritorioEnBD={reiniciarTerritorioEnBD}
               alEliminarSeccion={alEliminarSeccion} alCompletarTerritorio={alCompletarTerritorio} alVolarATerritorio={alVolarATerritorio}
               alReordenarTerritorio={alReordenarTerritorio} acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}

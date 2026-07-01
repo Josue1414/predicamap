@@ -2,20 +2,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../utilidades/clienteSupabase';
 import useEstadoGlobal from './useEstadoGlobal';
-import { useAlertas } from '../../context/ContextoAlertas'; // ★ Importamos el hook
+import { useAlertas } from '../../context/ContextoAlertas'; 
 
 export default function useGestorTerritorios(targetCongId, esSimulacion, onCentrarMapa) {
-  // ★ EXTRAEMOS mostrarConfirmacion DEL CONTEXTO ★
   const { mostrarConfirmacion } = useAlertas();
 
   const [secciones, setSecciones] = useState([]);
   const [edificios, setEdificios] = useState([]);
   const [cargandoTerritorios, setCargandoTerritorios] = useState(false);
-  
-  // ★ NUEVO: Estado para el modo de ahorro de datos
   const [modoAhorro, setModoAhorro] = useState(false);
 
-  // Extraemos el perfil para saber si merece conexión Realtime
   const { perfilUsuario } = useEstadoGlobal();
 
   const cargarTerritoriosYCasas = async (esCargaInicial = false) => {
@@ -56,18 +52,15 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   useEffect(() => { 
     if (!targetCongId) return;
     
-    // Carga HTTP normal (No mantiene conexiones abiertas)
     cargarTerritoriosYCasas(true); 
 
     let canalMapa = null;
     let temporizadorInactividad = null;
-    const TIEMPO_LIMITE_INACTIVIDAD = 5 * 60 * 1000; // 5 minutos en milisegundos
+    const TIEMPO_LIMITE_INACTIVIDAD = 5 * 60 * 1000; 
 
-    // ★ ESTRATEGIA 2: SOLO LOS LÍDERES TIENEN REALTIME ★
     const esLider = perfilUsuario && ['Capitán', 'Administrador', 'Administrador Mayor'].includes(perfilUsuario.rol);
 
     const conectarRealtime = () => {
-      // Si ya está conectado o no es un líder, no hacemos nada
       if (canalMapa || !esLider) return;
 
       canalMapa = supabase.channel('cambios-mapa')
@@ -78,7 +71,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
               coordenadas: payload.new.coordenadas, notas: payload.new.notas, asignado_a: payload.new.asignado_a,
               estado: payload.new.estado, orden: payload.new.orden 
             };
-            // ★ FILTRO ANTI-DUPLICADOS (Arregla el error de console de key única)
             setSecciones(prev => {
               if (prev.some(s => s.id === nuevaSec.id)) return prev;
               return [...prev, nuevaSec].sort((a, b) => a.orden - b.orden);
@@ -96,7 +88,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'edificios' }, (payload) => {
           if (payload.eventType === 'INSERT') {
-            // ★ FILTRO ANTI-DUPLICADOS PARA LAS CASAS
             setEdificios(prev => {
               if (prev.some(e => e.id === payload.new.id)) return prev;
               return [...prev, payload.new];
@@ -117,18 +108,16 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       }
     };
 
-    // ★ ESTRATEGIA 3: DESCONEXIÓN POR INACTIVIDAD (TEMPORIZADOR) ★
     const reiniciarTemporizador = () => {
-      if (!esLider || modoAhorro) return; // Si ya estamos en ahorro, esperamos acción manual
+      if (!esLider || modoAhorro) return; 
       
       clearTimeout(temporizadorInactividad);
       temporizadorInactividad = setTimeout(() => {
         desconectarRealtime();
-        setModoAhorro(true); // Se acabaron los 5 minutos, activamos ahorro
+        setModoAhorro(true); 
       }, TIEMPO_LIMITE_INACTIVIDAD);
     };
 
-    // ★ ESTRATEGIA 1: DESCONEXIÓN POR VISIBILIDAD DE PANTALLA ★
     const manejarCambioVisibilidad = () => {
       if (document.visibilityState === 'visible') {
         if (!modoAhorro) {
@@ -137,31 +126,25 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
            reiniciarTemporizador();
         }
       } else {
-        // Al minimizar, rompe la conexión al instante
         desconectarRealtime();
         clearTimeout(temporizadorInactividad);
       }
     };
 
-    // Intentamos conectar por primera vez
     conectarRealtime();
     reiniciarTemporizador();
 
-    // Eventos que representan "actividad" del usuario
     const eventosActividad = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     eventosActividad.forEach(evento => document.addEventListener(evento, reiniciarTemporizador));
 
-    // ★ POLLING (RECARGA INVISIBLE) PARA PUBLICADORES ★
     const intervaloPolling = setInterval(() => {
       if (!esLider && document.visibilityState === 'visible') {
         cargarTerritoriosYCasas(false);
       }
     }, 45000);
 
-    // Activamos el espía de la pantalla
     document.addEventListener('visibilitychange', manejarCambioVisibilidad);
 
-    // Limpieza al desmontar el componente
     return () => { 
       desconectarRealtime(); 
       clearTimeout(temporizadorInactividad);
@@ -169,12 +152,11 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       document.removeEventListener('visibilitychange', manejarCambioVisibilidad);
       eventosActividad.forEach(evento => document.removeEventListener(evento, reiniciarTemporizador));
     };
-  }, [targetCongId, perfilUsuario, modoAhorro]); // Observamos modoAhorro
+  }, [targetCongId, perfilUsuario, modoAhorro]); 
 
-  // Función para reactivar manualmente el Realtime
   const reactivarTiempoReal = () => {
-    setModoAhorro(false); // Esto disparará el useEffect de nuevo y lo reconectará
-    cargarTerritoriosYCasas(false); // Traemos la última info por si hubo cambios
+    setModoAhorro(false); 
+    cargarTerritoriosYCasas(false); 
   };
 
   const reordenarTerritorioEnBD = async (id, direccion) => {
@@ -197,7 +179,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   };
 
   const eliminarSeccionEnBD = async (id) => {
-    // ★ IMPLEMENTACIÓN DE LA NUEVA ALERTA ★
     const confirmado = await mostrarConfirmacion(
       "Eliminar Territorio",
       "¿Estás seguro de eliminar este territorio? Se borrarán en cascada todos los checks asociados a él.",
@@ -218,7 +199,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   };
 
   const reiniciarTerritorioEnBD = async (id) => {
-    // ★ IMPLEMENTACIÓN DE LA NUEVA ALERTA ★
     const confirmado = await mostrarConfirmacion(
       "Reiniciar Territorio",
       "¿Estás seguro? Esto regresará el territorio y TODAS sus casas a Pendiente.",
@@ -234,7 +214,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   };
 
   const completarTerritorioEntero = async (id) => {
-    // ★ IMPLEMENTACIÓN DE LA NUEVA ALERTA ★
     const confirmado = await mostrarConfirmacion(
       "Completar Territorio",
       "¿Deseas marcar este territorio y TODAS sus casas como completados?",
@@ -253,6 +232,11 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     await supabase.from('secciones').update({ notas }).eq('id', id);
   };
 
+  // ★ NUEVA FUNCIÓN PARA EDITAR NOMBRE Y COLOR ★
+  const actualizarDetallesSeccionEnBD = async (id, nombre, colorHex) => {
+    await supabase.from('secciones').update({ nombre, color_hex: colorHex }).eq('id', id);
+  };
+
   const crearSeccionBD = async (data) => await supabase.from('secciones').insert([data]);
   const crearEdificioBD = async (data) => await supabase.from('edificios').insert([data]);
   const actualizarEdificioBD = async (id, data) => await supabase.from('edificios').update(data).eq('id', id);
@@ -262,6 +246,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     secciones, edificios, cargandoTerritorios, cargarTerritoriosYCasas,
     eliminarSeccionEnBD, asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD, completarTerritorioEntero,
     crearSeccionBD, crearEdificioBD, actualizarEdificioBD, eliminarEdificioBD, reordenarTerritorioEnBD,
+    actualizarDetallesSeccionEnBD, // <-- La exportamos aquí
     modoAhorro, reactivarTiempoReal
   };
 }
