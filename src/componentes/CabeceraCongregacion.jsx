@@ -1,5 +1,6 @@
+// src/componentes/CabeceraCongregacion.jsx
 import React, { useState, useEffect } from 'react';
-import { Menu, Sprout, Flower2, Gift, PartyPopper, WifiHigh } from 'lucide-react';
+import { Menu, Sprout, Flower2, Gift, PartyPopper, WifiHigh, FileText } from 'lucide-react';
 import useGestorProgreso from '../hooks/modulos/useGestorProgreso';
 
 const textosMotivacionales = {
@@ -21,11 +22,20 @@ const textosMotivacionales = {
   ]
 };
 
-// Hemos agregado modoAhorro y alReactivar a los parámetros (props)
 export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, perfilUsuario, modoAhorro, alReactivar }) {
   const { horasMesActual, metaMensual, metaAnual, horasTotalesAño, diasHastaAgosto } = useGestorProgreso();
   const [textoActual, setTextoActual] = useState(null);
   const [conectado, setConectado] = useState(navigator.onLine);
+
+  // --- LÓGICA DE FECHAS PARA EL INFORME ---
+  const fechaActual = new Date();
+  const diaActual = fechaActual.getDate();
+  const ultimoDiaDelMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0).getDate();
+  
+  const esUltimoDia = diaActual === ultimoDiaDelMes;
+  const esPrimerosDias = diaActual >= 1 && diaActual <= 3;
+  const mostrarAvisoInforme = esUltimoDia || esPrimerosDias;
+  // ---------------------------------------
 
   useEffect(() => {
     const manejarConexion = () => setConectado(true);
@@ -67,7 +77,6 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
     return <Sprout size={16} className="text-emerald-400" />;
   };
 
-  // ★ LÓGICA DE COLORES DEL INDICADOR DE CONEXIÓN ★
   let colorPuntoPrimario = 'bg-rose-500';
   let colorPuntoEfecto = 'bg-rose-400';
   let textoConexion = 'Local';
@@ -75,13 +84,11 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
 
   if (conectado) {
     if (modoAhorro) {
-      // Estado Amarillo: Hay internet, pero Realtime pausado
       colorPuntoPrimario = 'bg-amber-500';
       colorPuntoEfecto = 'bg-amber-400';
       textoConexion = 'Ahorro';
       colorTexto = 'text-amber-600 dark:text-amber-400';
     } else {
-      // Estado Verde: Todo En Vivo
       colorPuntoPrimario = 'bg-emerald-500';
       colorPuntoEfecto = 'bg-emerald-400';
       textoConexion = 'En vivo';
@@ -102,10 +109,8 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
           </div>
         </div>
         
-        {/* INDICADOR DE CONEXIÓN DINÁMICO */}
         <div className="flex items-center gap-1.5 shrink-0 ml-2 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-800 transition-colors">
           <span className="relative flex h-2.5 w-2.5">
-            {/* Solo hacemos 'ping' (latido) si está conectado y NO en modo ahorro */}
             {conectado && !modoAhorro && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${colorPuntoEfecto}`}></span>}
             <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${colorPuntoPrimario}`}></span>
           </span>
@@ -115,7 +120,6 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
         </div>
       </div>
 
-      {/* ★ BOTÓN FLOTANTE MODO AHORRO ★ */}
       {modoAhorro && conectado && (
         <div className="absolute top-full left-0 w-full flex justify-center mt-2 z-[60] animate-in fade-in slide-in-from-top-2">
           <button 
@@ -128,7 +132,6 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
         </div>
       )}
 
-      {/* TEXTO DINÁMICO MOTIVACIONAL */}
       {horasMesActual > 0 && textoActual && (
         <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border-t border-slate-100 dark:border-slate-800/50 px-4 py-1.5 flex items-center gap-2 overflow-hidden w-full">
           <div className="shrink-0 bg-white dark:bg-black/20 p-1 rounded-full shadow-sm">
@@ -142,6 +145,18 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
               "{textoActual.texto}"
             </p>
           </div>
+        </div>
+      )}
+
+      {/* --- FRANJA DE AVISO DE INFORME EN EL HEADER --- */}
+      {mostrarAvisoInforme && (
+        <div className={`px-4 py-1.5 flex items-center justify-center gap-2 shadow-inner border-t ${esUltimoDia ? 'bg-indigo-100 border-indigo-200 text-indigo-700 dark:bg-indigo-900/50 dark:border-indigo-800 dark:text-indigo-300' : 'bg-emerald-100 border-emerald-200 text-emerald-700 dark:bg-emerald-900/50 dark:border-emerald-800 dark:text-emerald-300'}`}>
+          <FileText size={12} className="shrink-0" />
+          <span className="text-[10px] font-bold tracking-wide uppercase truncate">
+            {esUltimoDia 
+              ? '¡Excelente mes! Prepara tu informe para entregarlo.' 
+              : '¡Iniciamos nuevo mes! ¿Ya entregaste tu informe anterior?'}
+          </span>
         </div>
       )}
     </div>
