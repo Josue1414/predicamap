@@ -64,9 +64,17 @@ export default function VistaPublicador() {
         if (errCong || !cong) throw new Error("La congregación no existe o el enlace expiró.");
         setCongregacion(cong);
 
-        const { data: secs } = await supabase.from('secciones').select('*').eq('congregacion_id', cong.id);
+        // ★ AQUÍ PEDIMOS EL ORDEN A LA BASE DE DATOS ★
+        const { data: secs } = await supabase.from('secciones')
+          .select('*')
+          .eq('congregacion_id', cong.id)
+          .order('orden', { ascending: true })
+          .order('creado_en', { ascending: true });
+
         const formateadas = (secs || []).map(item => ({
-          id: item.id, nombre: item.nombre, colorHex: item.color_hex, coordenadas: item.coordenadas, notas: item.notas, estado: item.estado
+          id: item.id, nombre: item.nombre, colorHex: item.color_hex, 
+          coordenadas: item.coordenadas, notas: item.notas, estado: item.estado,
+          orden: item.orden // ★ IMPORTANTE: Guardamos el orden en el estado ★
         }));
         setSecciones(formateadas);
 
@@ -91,7 +99,7 @@ export default function VistaPublicador() {
     cargarDatos();
   }, []);
 
-  // ★ NUEVO BLOQUE: Escuchar cambios en Tiempo Real para los Publicadores ★
+  // Escuchar cambios en Tiempo Real para los Publicadores
   useEffect(() => {
     if (!congregacion?.id) return;
 
@@ -99,9 +107,16 @@ export default function VistaPublicador() {
       // Escuchar Territorios
       .on('postgres_changes', { event: '*', schema: 'public', table: 'secciones', filter: `congregacion_id=eq.${congregacion.id}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setSecciones(prev => [...prev, { id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, coordenadas: payload.new.coordenadas, notas: payload.new.notas, estado: payload.new.estado }]);
+          setSecciones(prev => [...prev, { 
+            id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
+            coordenadas: payload.new.coordenadas, notas: payload.new.notas, estado: payload.new.estado,
+            orden: payload.new.orden // ★ Sincronizar el orden al crear
+          }].sort((a, b) => (a.orden || 0) - (b.orden || 0)));
         } else if (payload.eventType === 'UPDATE') {
-          setSecciones(prev => prev.map(s => s.id === payload.new.id ? { ...s, ...payload.new, colorHex: payload.new.color_hex } : s));
+          // ★ Reordenar si el administrador movió un renglón
+          setSecciones(prev => prev.map(s => s.id === payload.new.id ? { 
+            ...s, ...payload.new, colorHex: payload.new.color_hex, orden: payload.new.orden 
+          } : s).sort((a, b) => (a.orden || 0) - (b.orden || 0)));
         } else if (payload.eventType === 'DELETE') {
           setSecciones(prev => prev.filter(s => s.id !== payload.old.id));
         }

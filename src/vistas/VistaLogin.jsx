@@ -182,17 +182,7 @@ export default function VistaLogin() {
               <p className="text-white font-semibold text-sm">{correo}</p>
             </div>
 
-            <button 
-              onClick={() => { 
-                setRegistroExitoso(false); 
-                setEsRegistro(false); 
-                setContrasena(''); 
-                setMensaje({tipo:'', texto:''}); 
-              }}
-              className="w-full py-3 text-white font-bold rounded-xl shadow-lg bg-indigo-600 hover:bg-indigo-500 transition-colors"
-            >
-              Ya confirmé mi correo, Iniciar Sesión
-            </button>
+            
           </div>
         ) : (
           <>

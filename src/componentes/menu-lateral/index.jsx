@@ -233,6 +233,17 @@ export default function MenuLateral({
             acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}
           />
 
+          
+          {/* ★ FOOTER AL FINAL DEL SCROLL ★ */}
+          <div className="mt-8 mb-2 pt-4 border-t border-slate-200 dark:border-slate-800 text-center">
+            <p className="text-[10px] text-slate-400">
+              Soporte y contacto:<br/>
+              <a href="mailto:hola.predicamap@gmail.com" className="font-bold text-indigo-500 hover:text-indigo-600 transition-colors">
+                hola.predicamap@gmail.com
+              </a>
+            </p>
+          </div>
+
         </div>
       </div>
     </>
