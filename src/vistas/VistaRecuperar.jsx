@@ -19,13 +19,11 @@ export default function VistaRecuperar() {
     setMensaje({ tipo: '', texto: '' });
 
     try {
-      // Supabase actualizará la contraseña del usuario que acaba de entrar mediante el link seguro
       const { error } = await supabase.auth.updateUser({ password: nuevaContrasena });
       if (error) throw error;
       
       setMensaje({ tipo: 'exito', texto: '✅ Contraseña actualizada con éxito. Redirigiendo al sistema...' });
       
-      // Redirigir al inicio después de 2 segundos (limpiando la URL)
       setTimeout(() => {
         window.location.href = '/';
       }, 2000);
@@ -45,8 +43,13 @@ export default function VistaRecuperar() {
       <div className="w-full max-w-sm bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 shadow-2xl relative z-10 text-xs">
         
         <div className="flex flex-col items-center mb-6">
-          <div className="p-3 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-600/30 text-white mb-2">
-            <Lock size={28} />
+          {/* ★ LOGO AÑADIDO EN LA RECUPERACIÓN ★ */}
+          <div className="w-20 h-20 bg-white rounded-2xl shadow-lg shadow-emerald-600/20 p-1.5 mb-3 flex items-center justify-center">
+            <img 
+              src="https://mzardqwfmxdabsjmzwkk.supabase.co/storage/v1/object/public/Logo%20PredicaMap/Logo-PredicaMap.svg" 
+              alt="Logo PredicaMap" 
+              className="w-full h-full object-contain" 
+            />
           </div>
           <h2 className="text-xl font-black text-white tracking-tight">Nueva Contraseña</h2>
           <p className="text-slate-400 text-[11px] mt-1 text-center">Escribe tu nueva contraseña segura</p>

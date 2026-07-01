@@ -1,11 +1,12 @@
 // src/vistas/VistaLogin.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utilidades/clienteSupabase';
-import { MapPin, Mail, Lock, User, LogIn, UserPlus, Send, Eye, EyeOff, RefreshCcw } from 'lucide-react';
+import { MapPin, Mail, Lock, User, LogIn, UserPlus, Send, Eye, EyeOff, RefreshCcw, CheckCircle } from 'lucide-react';
 
 export default function VistaLogin() {
   const [esRegistro, setEsRegistro] = useState(false);
   const [esRecuperacion, setEsRecuperacion] = useState(false);
+  const [registroExitoso, setRegistroExitoso] = useState(false); 
   
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -28,7 +29,7 @@ export default function VistaLogin() {
         const decoded = JSON.parse(decodeURIComponent(atob(key))); 
         if (decoded.r) {
           setRolInvitado(decoded.r);
-          setEsRegistro(true); // Solo se activa el registro si hay invitación válida
+          setEsRegistro(true); 
         }
         if (decoded.c) setCongregacionInvitadaId(decoded.c);
         if (decoded.nc === 1) setRequiereNuevaCongregacion(true);
@@ -69,6 +70,20 @@ export default function VistaLogin() {
 
     try {
       if (esRegistro) {
+        
+        // ★ 1. VALIDACIONES DE SEGURIDAD DE LA CONTRASEÑA ★
+        if (contrasena.length < 6) {
+          throw new Error('Tu contraseña es muy corta. Debe tener al menos 6 caracteres.');
+        }
+
+        const contrasenasObvias = ['123456', '12345678', '123456789', 'contraseña', 'contrasena', 'password', 'qwerty', '123123'];
+        
+        // Verifica si está en la lista de obvias o si son puros caracteres repetidos (ej. 111111, aaaaaa)
+        if (contrasenasObvias.includes(contrasena.toLowerCase()) || /^(.)\1+$/.test(contrasena)) {
+          throw new Error('Esa contraseña es demasiado fácil de adivinar. Por tu seguridad, no uses nueros continuos, ni números repetidos.');
+        }
+
+        // Si pasa las validaciones, procedemos con Supabase
         const metadatosAuth = {
           nombre: nombre,
           rol: rolInvitado || 'Publicador',
@@ -78,7 +93,7 @@ export default function VistaLogin() {
           metadatosAuth.congregacion_id = congregacionInvitadaId;
         }
 
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email: correo,
           password: contrasena,
           options: {
@@ -89,20 +104,20 @@ export default function VistaLogin() {
         
         if (error) throw error;
 
+        setRegistroExitoso(true);
+        
         if (requiereNuevaCongregacion) {
           setMensaje({ 
             tipo: 'exito', 
-            texto: '¡Cuenta creada! 📧 Por favor, revisa tu correo electrónico (y la carpeta de SPAM). Haz clic en el enlace de confirmación para poder iniciar sesión y configurar tu congregación.' 
+            texto: '¡Cuenta creada con éxito! Por favor, ve a tu correo electrónico y busca el mensaje de confirmación de PredicaMap (revisa también en SPAM).' 
           });
         } else {
           setMensaje({ 
             tipo: 'exito', 
-            texto: `¡Registro completado! 📧 Revisa tu bandeja de entrada o SPAM y confirma tu correo para poder entrar como ${rolInvitado || 'Publicador'}.` 
+            texto: `¡Registro completado! Ve a tu bandeja de entrada o SPAM y confirma tu correo haciendo clic en el enlace para entrar como ${rolInvitado || 'Publicador'}.` 
           });
         }
         
-        setContrasena('');
-        setEsRegistro(false);
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: correo,
@@ -111,7 +126,7 @@ export default function VistaLogin() {
         
         if (error) {
           if (error.message.includes('Email not confirmed') || error.message.includes('Invalid login credentials')) {
-            throw new Error('Credenciales inválidas o falta confirmar tu correo. Por favor revisa tu bandeja de entrada.');
+            throw new Error('Credenciales inválidas o falta confirmar tu correo. Por favor revisa tu bandeja de entrada o SPAM.');
           }
           throw error;
         }
@@ -131,107 +146,162 @@ export default function VistaLogin() {
       <div className="w-full max-w-sm bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 shadow-2xl relative z-10 text-xs">
         
         <div className="flex flex-col items-center mb-6">
-          <div className={`p-3 rounded-2xl shadow-lg text-white mb-2 transition-colors ${esRecuperacion ? 'bg-rose-600 shadow-rose-600/30' : 'bg-indigo-600 shadow-indigo-600/30'}`}>
-            {esRecuperacion ? <RefreshCcw size={28} /> : <MapPin size={28} className="animate-pulse" />}
+          <div className="w-20 h-20 bg-white rounded-2xl shadow-lg shadow-indigo-600/20 p-1.5 mb-3 flex items-center justify-center">
+            <img 
+              src="https://mzardqwfmxdabsjmzwkk.supabase.co/storage/v1/object/public/Logo%20PredicaMap/Logo-PredicaMap.svg" 
+              alt="Logo PredicaMap" 
+              className="w-full h-full object-contain" 
+            />
           </div>
+          
           <h2 className="text-xl font-black text-white tracking-tight">
             {esRecuperacion ? 'Recuperar Acceso' : 'PredicaMap'}
           </h2>
           
-          {rolInvitado && !esRecuperacion ? (
+          {rolInvitado && !esRecuperacion && !registroExitoso ? (
             <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold px-2.5 py-1 rounded-full mt-2 flex items-center gap-1">
               <UserPlus size={12}/> Invitación para: {rolInvitado}
             </span>
           ) : (
             <p className="text-slate-400 text-[11px] mt-1 text-center">
-              {esRecuperacion ? 'Te enviaremos un enlace seguro a tu correo' : 'Control y marcación de territorios de predicación'}
+              {esRecuperacion ? 'Te enviaremos un enlace seguro a tu correo' : 'Control y marcación de territorios'}
             </p>
           )}
         </div>
 
-        {mensaje.texto && (
-          <div className={`p-3 rounded-xl mb-4 border font-medium flex items-start gap-2 leading-tight ${
-            mensaje.tipo === 'error' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-          }`}>
-            {mensaje.tipo === 'exito' && <Send size={16} className="mt-0.5 flex-shrink-0" />}
-            <span>{mensaje.texto}</span>
-          </div>
-        )}
-
-        <form onSubmit={manejarAutenticacion} className="space-y-3.5">
-          {!esRecuperacion && esRegistro && (
-            <div>
-              <label className="block text-slate-400 font-semibold mb-1">Nombre Completo</label>
-              <div className="relative flex items-center">
-                <User size={14} className="absolute left-3 text-slate-500" />
-                <input required type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Hermano Silva" className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-              </div>
+        {registroExitoso ? (
+          <div className="text-center animate-fade-in">
+            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-5 rounded-2xl mb-4">
+              <CheckCircle size={40} className="mx-auto mb-3 text-emerald-400" />
+              <h3 className="text-base font-bold text-white mb-2">¡Casi listo!</h3>
+              <p className="text-sm leading-relaxed">{mensaje.texto}</p>
             </div>
-          )}
-
-          <div>
-            <label className="block text-slate-400 font-semibold mb-1">Correo Electrónico</label>
-            <div className="relative flex items-center">
-              <Mail size={14} className="absolute left-3 text-slate-500" />
-              <input required type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="correo_hermano@gmail.com" className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+            
+            <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-700 mb-6">
+              <p className="text-slate-400 text-[11px] mb-1">Tu cuenta está enlazada a:</p>
+              <p className="text-white font-semibold text-sm">{correo}</p>
             </div>
-          </div>
 
-          {!esRecuperacion && (
-            <div>
-              <label className="block text-slate-400 font-semibold mb-1">Contraseña</label>
-              <div className="relative flex items-center">
-                <Lock size={14} className="absolute left-3 text-slate-500" />
-                <input 
-                  required 
-                  type={mostrarContrasena ? "text" : "password"} 
-                  value={contrasena} 
-                  onChange={(e) => setContrasena(e.target.value)} 
-                  placeholder="••••••••" 
-                  className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setMostrarContrasena(!mostrarContrasena)}
-                  className="absolute right-3 text-slate-500 hover:text-indigo-400 transition-colors p-1"
-                >
-                  {mostrarContrasena ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
+            <button 
+              onClick={() => { 
+                setRegistroExitoso(false); 
+                setEsRegistro(false); 
+                setContrasena(''); 
+                setMensaje({tipo:'', texto:''}); 
+              }}
+              className="w-full py-3 text-white font-bold rounded-xl shadow-lg bg-indigo-600 hover:bg-indigo-500 transition-colors"
+            >
+              Ya confirmé mi correo, Iniciar Sesión
+            </button>
+          </div>
+        ) : (
+          <>
+            {mensaje.texto && (
+              <div className={`p-3 rounded-xl mb-4 border font-medium flex items-start gap-2 leading-tight ${
+                mensaje.tipo === 'error' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              }`}>
+                {mensaje.tipo === 'exito' && <Send size={16} className="mt-0.5 flex-shrink-0" />}
+                <span>{mensaje.texto}</span>
               </div>
-              
-              {!esRegistro && (
-                <div className="flex justify-end mt-2">
-                  <button 
-                    type="button" 
-                    onClick={() => { setEsRecuperacion(true); setMensaje({ tipo: '', texto: '' }); }}
-                    className="text-[10px] text-slate-400 hover:text-rose-400 transition-colors"
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </button>
+            )}
+
+            <form onSubmit={manejarAutenticacion} className="space-y-3.5">
+              {!esRecuperacion && esRegistro && (
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1 leading-tight">
+                    Nombre 
+                    <span className="block text-[10px] font-normal text-slate-500 mt-0.5">
+                      (No uses tu nombre completo para proteger tu identidad)
+                    </span>
+                  </label>
+                  <div className="relative flex items-center mt-1">
+                    <User size={14} className="absolute left-3 text-slate-500" />
+                    <input required type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Josue Hernandez" className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+                  </div>
                 </div>
               )}
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Correo Electrónico</label>
+                <div className="relative flex items-center">
+                  <Mail size={14} className="absolute left-3 text-slate-500" />
+                  <input required type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="correo@ejemplo.com" className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+                </div>
+              </div>
+
+              {!esRecuperacion && (
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Contraseña</label>
+                  <div className="relative flex items-center">
+                    <Lock size={14} className="absolute left-3 text-slate-500" />
+                    <input 
+                      required 
+                      type={mostrarContrasena ? "text" : "password"} 
+                      value={contrasena} 
+                      onChange={(e) => setContrasena(e.target.value)} 
+                      placeholder="••••••••" 
+                      className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setMostrarContrasena(!mostrarContrasena)}
+                      className="absolute right-3 text-slate-500 hover:text-indigo-400 transition-colors p-1"
+                    >
+                      {mostrarContrasena ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                  
+                  {!esRegistro && (
+                    <div className="flex justify-end mt-2">
+                      <button 
+                        type="button" 
+                        onClick={() => { setEsRecuperacion(true); setMensaje({ tipo: '', texto: '' }); }}
+                        className="text-[10px] text-slate-400 hover:text-rose-400 transition-colors"
+                      >
+                        ¿Olvidaste tu contraseña?
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button 
+                disabled={cargando} 
+                type="submit" 
+                className={`w-full py-3 mt-2 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 active:scale-[0.99] disabled:opacity-70 ${esRecuperacion ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/10'}`}
+              >
+                {esRecuperacion ? <Send size={15} /> : <LogIn size={15} />}
+                {cargando ? 'Procesando...' : esRecuperacion ? 'Enviar Enlace de Recuperación' : esRegistro ? 'Crear Cuenta' : 'Entrar al Sistema'}
+              </button>
+            </form>
+
+            <div className="mt-5 text-center flex flex-col gap-3">
+              {!esRecuperacion && esRegistro && (
+                <button 
+                  onClick={() => { setEsRegistro(false); setMensaje({tipo:'', texto:''}); }} 
+                  className="text-[11px] text-slate-400 hover:text-white transition-colors"
+                >
+                  ¿Ya tienes cuenta? <span className="text-indigo-400 font-bold">Inicia sesión aquí</span>
+                </button>
+              )}
+              
+              {!esRecuperacion && !esRegistro && rolInvitado && (
+                <button 
+                  onClick={() => { setEsRegistro(true); setMensaje({tipo:'', texto:''}); }} 
+                  className="text-[11px] text-slate-400 hover:text-white transition-colors"
+                >
+                  ¿Tienes una invitación? <span className="text-indigo-400 font-bold">Regístrate aquí</span>
+                </button>
+              )}
+
+              {esRecuperacion && (
+                <button onClick={() => { setEsRecuperacion(false); setMensaje({ tipo: '', texto: '' }); }} className="text-slate-400 hover:text-white transition-colors">
+                  Cancelar y volver al inicio
+                </button>
+              )}
             </div>
-          )}
-
-          <button 
-            disabled={cargando} 
-            type="submit" 
-            className={`w-full py-3 mt-2 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 active:scale-[0.99] disabled:opacity-70 ${esRecuperacion ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/10'}`}
-          >
-            {esRecuperacion ? <Send size={15} /> : <LogIn size={15} />}
-            {cargando ? 'Procesando...' : esRecuperacion ? 'Enviar Enlace de Recuperación' : esRegistro ? 'Confirmar Registro' : 'Entrar al Sistema'}
-          </button>
-        </form>
-
-        <div className="mt-5 text-center">
-          {/* ★ AQUI QUITAMOS LA OPCIÓN DE REGISTRO LIBRE ★ */}
-          {esRecuperacion && (
-            <button onClick={() => { setEsRecuperacion(false); setMensaje({ tipo: '', texto: '' }); }} className="text-slate-400 hover:text-white transition-colors">
-              Cancelar y volver al inicio
-            </button>
-          )}
-        </div>
-
+          </>
+        )}
       </div>
     </div>
   );
