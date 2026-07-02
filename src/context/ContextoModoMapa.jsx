@@ -1,9 +1,8 @@
-// src/context/ContextoModoMapa.jsx
+//src/context/ContextoModoMapa.jsx
 import React, { createContext, useContext, useState } from 'react';
 
 const ModoMapaContext = createContext();
 
-// Definimos los modos como constantes para evitar errores de dedo (typos)
 export const MODOS_MAPA = {
   NINGUNO: 'ninguno',
   TRAZADO: 'trazado',
@@ -14,6 +13,9 @@ export const MODOS_MAPA = {
 
 export function ProveedorModoMapa({ children }) {
   const [modoActivo, setModoActivo] = useState(MODOS_MAPA.NINGUNO);
+  
+  // ★ NUEVO ESTADO: Estilo del mapa, por defecto en satélite
+  const [estiloMapa, setEstiloMapa] = useState('satelite_puro');
 
   const cambiarModo = (nuevoModo) => {
     setModoActivo(nuevoModo);
@@ -21,7 +23,6 @@ export function ProveedorModoMapa({ children }) {
 
   const limpiarModo = () => setModoActivo(MODOS_MAPA.NINGUNO);
 
-  // Derivamos booleanos dinámicos para mantener compatibilidad con tus componentes actuales
   const enModoTrazado = modoActivo === MODOS_MAPA.TRAZADO;
   const enModoEdificios = modoActivo === MODOS_MAPA.EDIFICIOS;
   const enModoTachuela = modoActivo === MODOS_MAPA.TACHUELA;
@@ -36,14 +37,16 @@ export function ProveedorModoMapa({ children }) {
       enModoEdificios,
       enModoTachuela,
       enModoRevisita,
-      MODOS_MAPA
+      MODOS_MAPA,
+      // ★ EXPORTAMOS EL NUEVO ESTADO Y SU FUNCIÓN
+      estiloMapa,
+      setEstiloMapa
     }}>
       {children}
     </ModoMapaContext.Provider>
   );
 }
 
-// Hook personalizado para consumir el contexto fácilmente
 export function useModoMapa() {
   const contexto = useContext(ModoMapaContext);
   if (!contexto) {

@@ -1,5 +1,6 @@
+//src/componentes/menu-lateral/SeccionMiPerfil.jsx
 import React, { useState, useEffect } from 'react';
-import { Users, Key, LogOut, ChevronUp, ChevronDown, Mail, Edit2, Save, X, Layers } from 'lucide-react';
+import { Users, Key, LogOut, ChevronUp, ChevronDown, Mail, Edit2, Save, X, Layers, Map } from 'lucide-react';
 import { supabase } from '../../utilidades/clienteSupabase';
 
 export default function SeccionMiPerfil({
@@ -9,11 +10,14 @@ export default function SeccionMiPerfil({
   alCerrar,
   acordeonActivo,
   alternarAcordeon,
-  // Props nuevas traídas de AjustesGenerales
+  // Props de visualización
   mostrarCalles,
   alCambiarMostrarCalles,
   mostrarLugares,
-  alCambiarMostrarLugares
+  alCambiarMostrarLugares,
+  // Nuevas props para el estilo del mapa
+  estiloMapa,
+  alCambiarEstiloMapa
 }) {
   const [editandoNombre, setEditandoNombre] = useState(false);
   const [nombreTemp, setNombreTemp] = useState('');
@@ -79,9 +83,30 @@ export default function SeccionMiPerfil({
             </button>
           </div>
 
-          {/* CAPAS DEL MAPA (Traídas de Ajustes Generales) */}
+          {/* CAPAS DEL MAPA */}
           <div className="pt-4 pb-2 border-t border-slate-100 dark:border-slate-800">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Layers size={12} /> Capas del Mapa</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Layers size={12} /> Capas y Estilo del Mapa
+            </p>
+
+            {/* Nuevo selector de estilo base */}
+           <div className="mb-3 space-y-1.5">
+              <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                <Map size={12} /> Estilo de Vista
+              </label>
+              <select 
+                value={estiloMapa} 
+                onChange={(e) => alCambiarEstiloMapa(e.target.value)}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all cursor-pointer"
+              >
+                <option value="satelite_hibrido">Satélite (Con Calles)</option>
+                <option value="satelite_puro">Satélite (Sin Calles)</option>
+                <option value="gris">Claro (Gris moderno)</option>
+                <option value="calles">Calles (Beige clásico)</option>
+                <option value="oscuro">Modo Oscuro</option>
+              </select>
+            </div>
+
             <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-2.5 cursor-pointer hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
               <input type="checkbox" checked={mostrarCalles} onChange={(e) => alCambiarMostrarCalles(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
               Mostrar Calles y Rutas

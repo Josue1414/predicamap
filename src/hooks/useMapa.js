@@ -21,19 +21,28 @@ export default function useMapa() {
   const global = useEstadoGlobal();
   const ui = useControlesUI();
   
-  // ★ CORRECCIÓN AQUÍ: Cuando el gestor encuentre la congregación, actualiza coordenadas Y el zoom
+  // Cuando el gestor encuentre la congregación, actualiza coordenadas Y el zoom
   const db = useGestorTerritorios(
     global.targetCongId, 
     !!global.congregacionContextoId, 
     (coordenadas) => {
       ui.setCoordenadasActuales(coordenadas);
-      ui.setZoomActual(16); // <-- Esto provocará el vuelo en picada
+      ui.setZoomActual(16); 
     }
   );
   
-  const { enModoTrazado, enModoEdificios, limpiarModo } = useModoMapa();
+  const { enModoTrazado, enModoEdificios, limpiarModo, estiloMapa, setEstiloMapa } = useModoMapa();
   
   const { mostrarAlerta, mostrarConfirmacion } = useAlertas(); 
+
+  // Lógica inteligente: Intercepta el cambio de mapa y apaga capas innecesarias
+  const manejarCambioEstiloMapa = (nuevoEstilo) => {
+    setEstiloMapa(nuevoEstilo);
+    if (nuevoEstilo === 'satelite_hibrido' || nuevoEstilo === 'gris' || nuevoEstilo === 'calles') {
+      ui.setMostrarCalles(false);
+      ui.setMostrarLugares(false);
+    }
+  };
 
   const manejarClickMapa = (coordenada) => {
     const [lat, lng] = coordenada;
@@ -124,6 +133,8 @@ export default function useMapa() {
     cargando: global.cargandoGlobal || db.cargandoTerritorios,
     manejarClickMapa, deshacerUltimoPunto, limpiarTrazadoCompleto,
     guardarNuevaSeccionEnBD, guardarEdificioEnBD, eliminarEdificioEnBD, cambiarEstadoEdificioTemp,
+    estiloMapa,
+    alCambiarEstiloMapa: manejarCambioEstiloMapa,
     registrarPuntoTrazado: (coord) => ui.setPuntosTrazadoActual(prev => [...prev, coord]),
     modoAhorro: db.modoAhorro,
     reactivarTiempoReal: db.reactivarTiempoReal,

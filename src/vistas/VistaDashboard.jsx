@@ -32,7 +32,7 @@ export default function VistaDashboard() {
     enModoTachuela, 
     enModoRevisita, 
     cambiarModo, 
-    limpiarModo 
+    limpiarModo
   } = useModoMapa();
 
   const {
@@ -50,7 +50,7 @@ export default function VistaDashboard() {
     congregacionActiva, guardarNombreCongregacionBD,
     asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD,
     eliminarCongregacionMasterBD, targetCongId, actualizarNombrePerfilBD, reordenarTerritorioEnBD,
-    modoAhorro, reactivarTiempoReal,actualizarDetallesSeccionEnBD,
+    modoAhorro, reactivarTiempoReal,actualizarDetallesSeccionEnBD,estiloMapa,alCambiarEstiloMapa
   } = useMapa();
 
   const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD } = useGestorTachuelas(targetCongId);
@@ -171,6 +171,9 @@ export default function VistaDashboard() {
         pagina={pagina}
         totalPaginas={totalPaginas}
         alCambiarPagina={cambiarPagina}
+
+        estiloMapa={estiloMapa}
+        alCambiarEstiloMapa={alCambiarEstiloMapa}
       />
 
       <MenuEdificio 
@@ -245,7 +248,7 @@ export default function VistaDashboard() {
             else if (enModoRevisita) setMarcadorRevisitaTemporal({ lat: coords[0], lng: coords[1] });
             else manejarClickMapa(coords);
           }} 
-          mostrarCalles={mostrarCalles} mostrarLugares={mostrarLugares} alSeleccionarTerritorio={setTerritorioSeleccionado}
+          mostrarCalles={mostrarCalles} estiloMapa={estiloMapa} mostrarLugares={mostrarLugares} alSeleccionarTerritorio={setTerritorioSeleccionado}
           enModoTachuela={enModoTachuela} tachuelasGrupales={tachuelas} alSeleccionarTachuela={setTachuelaLeida} tachuelaTemporal={tachuelaTemporal}
           enModoRevisita={enModoRevisita} marcadoresPersonales={gestorRevisitas.marcadores} alSeleccionarRevisita={setRevisitaLectura} marcadorTemporal={marcadorRevisitaTemporal}
         />

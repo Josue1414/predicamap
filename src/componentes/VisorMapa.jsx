@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Marker, Toolt
 import L from 'leaflet'; 
 import ManejadorClicksMapa from './ManejadorClicksMapa';
 import { LocateFixed, Info } from 'lucide-react'; 
-import { useAlertas } from '../context/ContextoAlertas'; // ★ IMPORTAMOS LAS ALERTAS
+import { useAlertas } from '../context/ContextoAlertas';
 import 'leaflet/dist/leaflet.css';
 
 const crearPinSVG = (color, opacidad = 1) => `
@@ -53,7 +53,7 @@ function ControladorVistaInteligente({ centro, zoomConfigurado, setZoomActual })
 
 function RastreadorGPS({ rastreando, setRastreando, setMiUbicacion }) {
   const map = useMap();
-  const { mostrarAlerta } = useAlertas(); // ★ USAMOS EL CONTEXTO AQUÍ
+  const { mostrarAlerta } = useAlertas(); 
   
   useEffect(() => {
     if (rastreando) {
@@ -61,7 +61,6 @@ function RastreadorGPS({ rastreando, setRastreando, setMiUbicacion }) {
       map.once('locationfound', (e) => map.flyTo(e.latlng, 18, { duration: 1.5 }));
       map.on('locationfound', (e) => setMiUbicacion(e.latlng));
       map.on('locationerror', (e) => {
-        // ★ ADIÓS ALERT NATIVO, HOLA ALERTA BONITA
         mostrarAlerta("GPS no disponible", "⚠️ No se pudo acceder a tu ubicación. Verifica que el GPS esté encendido y tenga permisos.", "warning");
         setRastreando(false);
       });
@@ -80,10 +79,17 @@ export default function VisorMapa({
   puntosTrazadoActual, colorTrazadoActual, alRegistrarPuntoTrazado,
   mostrarCalles, mostrarLugares, alSeleccionarTerritorio, marcadoresPersonales = [], 
   alSeleccionarRevisita, marcadorTemporal, enModoTachuela = false, tachuelasGrupales = [],
-  alSeleccionarTachuela, tachuelaTemporal
+  alSeleccionarTachuela, tachuelaTemporal, estiloMapa, alCambiarEstiloMapa
 }) {
   
-  const urlSateliteGoogle = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";
+  
+  const urlSateliteHibrido = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"; // "y" = Híbrido
+  const urlSatelitePuro = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";    // "s" = Solo satélite
+  const urlCallesBeige = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
+  const urlGrisConCalles = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"; // Mapa gris moderno
+  const urlOscuroCarto = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+
+
   const urlCallesEsri = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}";
   const urlLugaresEsri = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
 
@@ -97,6 +103,14 @@ export default function VisorMapa({
   const [miUbicacion, setMiUbicacion] = useState(null);
 
   const mapaActivoClics = enModoTrazado || enModoEdificios || !!marcadorTemporal || (alSeleccionarRevisita !== undefined) || enModoTachuela;
+
+  // ★ LÓGICA DINÁMICA: Determinamos qué URL usar como fondo base
+  let urlFondoActivo = urlSateliteHibrido; // Por defecto
+  
+  if (estiloMapa === 'satelite_puro') urlFondoActivo = urlSatelitePuro;
+  if (estiloMapa === 'calles') urlFondoActivo = urlCallesBeige;
+  if (estiloMapa === 'gris') urlFondoActivo = urlGrisConCalles;
+  if (estiloMapa === 'oscuro') urlFondoActivo = urlOscuroCarto;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -176,7 +190,9 @@ export default function VisorMapa({
         
         <RastreadorGPS rastreando={rastreando} setRastreando={setRastreando} setMiUbicacion={setMiUbicacion} />
 
-        <TileLayer url={urlSateliteGoogle} attribution="© Google Maps" maxNativeZoom={21} maxZoom={22} />
+        {/* ★ EL SECRETO ESTÁ AQUÍ: Le agregamos key={urlFondoActivo} */}
+        <TileLayer key={urlFondoActivo} url={urlFondoActivo} attribution="PredicaMap" maxNativeZoom={21} maxZoom={22} />
+        
         {mostrarCalles && <TileLayer url={urlCallesEsri} zIndex={10} maxNativeZoom={20} maxZoom={22} />}
         {mostrarLugares && <TileLayer url={urlLugaresEsri} zIndex={11} maxNativeZoom={20} maxZoom={22} />}
 

@@ -24,8 +24,11 @@ export default function VistaPublicador() {
   
   const [coordenadasActuales, setCoordenadasActuales] = useState([25.6565, -100.2930]);
   const [zoomActual, setZoomActual] = useState(15);
+  
+  // ESTADOS DEL MAPA Y ESTILOS
   const [mostrarCalles, setMostrarCalles] = useState(true);
   const [mostrarLugares, setMostrarLugares] = useState(true);
+  const [estiloMapa, setEstiloMapa] = useState('satelite_puro');
 
   const [textoBusqueda, setTextoBusqueda] = useState('');
   const [resultadosCiudades, setResultadosCiudades] = useState([]);
@@ -39,12 +42,20 @@ export default function VistaPublicador() {
   const [revisitaEditando, setRevisitaEditando] = useState(null); 
   const [revisitaLectura, setRevisitaLectura] = useState(null);   
 
+  // Función inteligente para el publicador
+  const manejarCambioEstiloMapa = (nuevoEstilo) => {
+    setEstiloMapa(nuevoEstilo);
+    if (nuevoEstilo === 'satelite_hibrido' || nuevoEstilo === 'gris' || nuevoEstilo === 'calles') {
+      setMostrarCalles(false);
+      setMostrarLugares(false);
+    }
+  };
+
   useEffect(() => {
     if (modoOscuro) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [modoOscuro]);
 
-  // Carga inicial anónima mediante el enlace encriptado
   useEffect(() => {
     const cargarDatos = async () => {
       try {
@@ -64,7 +75,6 @@ export default function VistaPublicador() {
         if (errCong || !cong) throw new Error("La congregación no existe o el enlace expiró.");
         setCongregacion(cong);
 
-        // ★ AQUÍ PEDIMOS EL ORDEN A LA BASE DE DATOS ★
         const { data: secs } = await supabase.from('secciones')
           .select('*')
           .eq('congregacion_id', cong.id)
@@ -74,7 +84,7 @@ export default function VistaPublicador() {
         const formateadas = (secs || []).map(item => ({
           id: item.id, nombre: item.nombre, colorHex: item.color_hex, 
           coordenadas: item.coordenadas, notas: item.notas, estado: item.estado,
-          orden: item.orden // ★ IMPORTANTE: Guardamos el orden en el estado ★
+          orden: item.orden 
         }));
         setSecciones(formateadas);
 
@@ -99,21 +109,18 @@ export default function VistaPublicador() {
     cargarDatos();
   }, []);
 
-  // Escuchar cambios en Tiempo Real para los Publicadores
   useEffect(() => {
     if (!congregacion?.id) return;
 
     const canalPublicador = supabase.channel(`publicador-${congregacion.id}`)
-      // Escuchar Territorios
       .on('postgres_changes', { event: '*', schema: 'public', table: 'secciones', filter: `congregacion_id=eq.${congregacion.id}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setSecciones(prev => [...prev, { 
             id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
             coordenadas: payload.new.coordenadas, notas: payload.new.notas, estado: payload.new.estado,
-            orden: payload.new.orden // ★ Sincronizar el orden al crear
+            orden: payload.new.orden 
           }].sort((a, b) => (a.orden || 0) - (b.orden || 0)));
         } else if (payload.eventType === 'UPDATE') {
-          // ★ Reordenar si el administrador movió un renglón
           setSecciones(prev => prev.map(s => s.id === payload.new.id ? { 
             ...s, ...payload.new, colorHex: payload.new.color_hex, orden: payload.new.orden 
           } : s).sort((a, b) => (a.orden || 0) - (b.orden || 0)));
@@ -121,7 +128,6 @@ export default function VistaPublicador() {
           setSecciones(prev => prev.filter(s => s.id !== payload.old.id));
         }
       })
-      // Escuchar Casas y Calles
       .on('postgres_changes', { event: '*', schema: 'public', table: 'edificios' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setEdificios(prev => [...prev, payload.new]);
@@ -131,7 +137,6 @@ export default function VistaPublicador() {
           setEdificios(prev => prev.filter(e => e.id !== payload.old.id));
         }
       })
-      // Escuchar Tachuelas/Avisos
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tachuelas', filter: `congregacion_id=eq.${congregacion.id}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setTachuelasGrupales(prev => [...prev, payload.new]);
@@ -195,6 +200,7 @@ export default function VistaPublicador() {
         secciones={secciones} edificios={edificios} alVolarATerritorio={volarATerritorio}
         mostrarCalles={mostrarCalles} alCambiarMostrarCalles={setMostrarCalles}
         mostrarLugares={mostrarLugares} alCambiarMostrarLugares={setMostrarLugares}
+        estiloMapa={estiloMapa} alCambiarEstiloMapa={manejarCambioEstiloMapa}
         textoBusqueda={textoBusqueda} alCambiarTextoBusqueda={setTextoBusqueda} alBuscar={buscarCiudadEnServidor}
         resultadosCiudades={resultadosCiudades} alSeleccionarCiudad={seleccionarCiudad}
         marcadoresPersonales={gestorRevisitas.marcadores}
@@ -246,6 +252,7 @@ export default function VistaPublicador() {
             if (enModoRevisita) setMarcadorTemporal({ lat: coords[0], lng: coords[1] });
           }}
           mostrarCalles={mostrarCalles} mostrarLugares={mostrarLugares}
+          estiloMapa={estiloMapa}
           enModoRevisita={enModoRevisita}
           marcadoresPersonales={gestorRevisitas.marcadores}
           alSeleccionarRevisita={setRevisitaLectura}

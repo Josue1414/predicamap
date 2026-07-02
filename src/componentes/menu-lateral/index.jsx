@@ -38,6 +38,10 @@ export default function MenuLateral({
   pagina,
   totalPaginas,
   alCambiarPagina,actualizarDetallesSeccionEnBD,
+
+  //vista de mapa
+  estiloMapa,
+  alCambiarEstiloMapa
 }) {
   const [acordeonActivo, setAcordeonActivo] = useState('lista'); 
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
@@ -215,6 +219,8 @@ export default function MenuLateral({
             acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} actualizarNombrePerfilBD={actualizarNombrePerfilBD}
             mostrarCalles={mostrarCalles} alCambiarMostrarCalles={alCambiarMostrarCalles}
             mostrarLugares={mostrarLugares} alCambiarMostrarLugares={alCambiarMostrarLugares}
+            estiloMapa={estiloMapa}
+            alCambiarEstiloMapa={alCambiarEstiloMapa}
           />
           
           <SeccionHistorial 

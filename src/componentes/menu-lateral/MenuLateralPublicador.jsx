@@ -15,6 +15,8 @@ export default function MenuLateralPublicador({
   alCambiarMostrarCalles,
   mostrarLugares,
   alCambiarMostrarLugares,
+  estiloMapa,
+  alCambiarEstiloMapa,
   textoBusqueda,
   alCambiarTextoBusqueda,
   alBuscar,
@@ -147,17 +149,34 @@ export default function MenuLateralPublicador({
             <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
               <button onClick={() => alternarAcordeon('capas')} className="w-full p-3 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <span className="font-bold text-xs text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <Layers size={16} className="text-orange-500"/> Capas del Mapa
+                  <Layers size={16} className="text-orange-500"/> Capas y Estilo del Mapa
                 </span>
                 {acordeonActivo === 'capas' ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
               </button>
               {acordeonActivo === 'capas' && (
-                <div className="p-3">
-                  <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 mb-3 cursor-pointer">
+                <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="mb-3 space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                      <Map size={12} /> Estilo de Vista
+                    </label>
+                    <select 
+                      value={estiloMapa} 
+                      onChange={(e) => alCambiarEstiloMapa(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all cursor-pointer"
+                    >
+                      <option value="satelite_hibrido">Satélite (Con Calles)</option>
+                      <option value="satelite_puro">Satélite (Sin Calles)</option>
+                      <option value="gris">Claro (Gris moderno)</option>
+                      <option value="calles">Calles (Beige clásico)</option>
+                      <option value="oscuro">Modo Oscuro</option>
+                    </select>
+                  </div>
+
+                  <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-2.5 cursor-pointer hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
                     <input type="checkbox" checked={mostrarCalles} onChange={(e) => alCambiarMostrarCalles(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
                     Mostrar Calles y Rutas
                   </label>
-                  <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 cursor-pointer hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
                     <input type="checkbox" checked={mostrarLugares} onChange={(e) => alCambiarMostrarLugares(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
                     Mostrar Nombres de Lugares
                   </label>
@@ -192,7 +211,7 @@ export default function MenuLateralPublicador({
             </div>
           </div>
 
-          {/* ★ FOOTER AL FINAL DEL SCROLL ★ */}
+          {/* FOOTER AL FINAL DEL SCROLL */}
           <div className="mt-8 mb-2 pt-4 border-t border-slate-200 dark:border-slate-800 text-center">
             <p className="text-[10px] text-slate-400">
               Soporte y contacto:<br/>
