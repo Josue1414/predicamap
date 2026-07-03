@@ -8,6 +8,8 @@ import { Home, Map as MapIcon, X, BookmarkPlus } from 'lucide-react';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 
 import { ModalInfoTachuela } from '../componentes/ModalTachuela';
+// ★ IMPORTAMOS AMBOS MODALES DESDE TU COMPONENTE REUTILIZABLE ★
+import { ModalFormularioRevisita, ModalInfoLecturaRevisita } from '../componentes/ModalesRevisita';
 
 export default function VistaPublicador() {
   const [cargando, setCargando] = useState(true);
@@ -40,9 +42,9 @@ export default function VistaPublicador() {
   const [enModoRevisita, setEnModoRevisita] = useState(false);
   const [marcadorTemporal, setMarcadorTemporal] = useState(null); 
   const [revisitaEditando, setRevisitaEditando] = useState(null); 
+  // ★ RESTAURAMOS EL ESTADO PARA LA LECTURA/EDICIÓN RÁPIDA ★
   const [revisitaLectura, setRevisitaLectura] = useState(null);   
 
-  // Función inteligente para el publicador
   const manejarCambioEstiloMapa = (nuevoEstilo) => {
     setEstiloMapa(nuevoEstilo);
     if (nuevoEstilo === 'satelite_hibrido' || nuevoEstilo === 'gris' || nuevoEstilo === 'calles') {
@@ -255,6 +257,7 @@ export default function VistaPublicador() {
           estiloMapa={estiloMapa}
           enModoRevisita={enModoRevisita}
           marcadoresPersonales={gestorRevisitas.marcadores}
+          // ★ ENLAZAMOS EL CLIC DEL MAPA AL ESTADO DE LECTURA ★
           alSeleccionarRevisita={setRevisitaLectura}
           marcadorTemporal={marcadorTemporal}
           tachuelasGrupales={tachuelasGrupales}
@@ -265,7 +268,18 @@ export default function VistaPublicador() {
 
       {territorioLeido && <ModalInfoLectura icono={<MapIcon size={24} className="text-indigo-500" />} titulo={territorioLeido.nombre} notas={territorioLeido.notas} alCerrar={() => setTerritorioLeido(null)} />}
       {casaLeida && <ModalInfoLectura icono={<Home size={24} className="text-emerald-500" />} titulo={casaLeida.direccion} estado={casaLeida.estado} notas={casaLeida.notas} alCerrar={() => setCasaLeida(null)} />}
-      {revisitaLectura && <ModalInfoLectura icono={<BookmarkPlus size={24} className="text-purple-500" />} titulo={revisitaLectura.titulo} estado={revisitaLectura.fechaProgramada ? `Agendado: ${revisitaLectura.fechaProgramada}` : 'Sin fecha específica'} estadoColor="text-purple-500" notas={revisitaLectura.notas} alCerrar={() => setRevisitaLectura(null)} />}
+
+      {/* ★ EL MODAL REUTILIZADO QUE PERMITE EDITAR NOTAS/FECHA RÁPIDAMENTE ★ */}
+      {revisitaLectura && (
+        <ModalInfoLecturaRevisita 
+          revisita={revisitaLectura} 
+          alGuardar={(id, datos) => {
+            gestorRevisitas.editarMarcador(id, datos);
+            setRevisitaLectura({ ...revisitaLectura, ...datos }); 
+          }} 
+          alCerrar={() => setRevisitaLectura(null)} 
+        />
+      )}
 
       {tachuelaLeida && (
         <ModalInfoTachuela 
@@ -295,55 +309,7 @@ export default function VistaPublicador() {
   );
 }
 
-function ModalFormularioRevisita({ marcadorEditando, alGuardar, alCancelar }) {
-  const [titulo, setTitulo] = useState(marcadorEditando?.titulo || '');
-  const [fecha, setFecha] = useState(marcadorEditando?.fechaProgramada || '');
-  const [notas, setNotas] = useState(marcadorEditando?.notas || '');
-
-  const manejarSubmit = (e) => {
-    e.preventDefault();
-    if (!titulo.trim()) return alert("El título o nombre es obligatorio");
-    alGuardar({ titulo, fechaProgramada: fecha, notas });
-  };
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[4000] transition-opacity" onClick={alCancelar} />
-      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl z-[4001] animate-slide-up overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800">
-        <div className="p-6">
-          <div className="flex justify-between items-start mb-5">
-            <h3 className="font-black text-xl text-purple-700 dark:text-purple-400 flex items-center gap-2">
-              <BookmarkPlus size={24} /> {marcadorEditando ? 'Editar Revisita' : 'Guardar Revisita'}
-            </h3>
-            <button onClick={alCancelar} className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors"><X size={18} /></button>
-          </div>
-          
-          <form onSubmit={manejarSubmit} className="space-y-4">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 mb-1">Nombre / Título *</label>
-              <input type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ej: Familia López, Casa Azul..." autoFocus className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 text-slate-800 dark:text-slate-100" />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 mb-1">Día programado (Opcional)</label>
-              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 text-slate-800 dark:text-slate-100" />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 mb-1">Observaciones / Hora</label>
-              <textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Ej: Visitar por la tarde a las 5:00 PM, llevar folleto..." rows="3" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 resize-none text-slate-800 dark:text-slate-100" />
-            </div>
-
-            <button type="submit" className="w-full mt-2 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow-lg shadow-purple-600/20 active:scale-95 transition-all">
-              {marcadorEditando ? 'Actualizar Datos' : 'Guardar en mi Mapa'}
-            </button>
-          </form>
-        </div>
-      </div>
-    </>
-  );
-}
-
+// Este es el componente local genérico para casas y territorios, ya no lo usamos para revisitas.
 function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, alCerrar }) {
   let color = estadoColor || 'text-slate-500';
   let textoEstado = estado || '';

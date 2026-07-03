@@ -1,4 +1,3 @@
-// src/componentes/VisorMapa.jsx
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Marker, Tooltip, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
 import L from 'leaflet'; 
@@ -82,14 +81,14 @@ export default function VisorMapa({
   alSeleccionarTachuela, tachuelaTemporal, estiloMapa, alCambiarEstiloMapa
 }) {
   
-  
-  const urlSateliteHibrido = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"; // "y" = Híbrido
-  const urlSatelitePuro = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";    // "s" = Solo satélite
-  const urlCallesBeige = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
-  const urlGrisConCalles = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"; // Mapa gris moderno
+  const urlSateliteGoogle = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";
+  const urlCallesEstandar = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
   const urlOscuroCarto = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-
-
+  const urlSateliteHibrido = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"; 
+  const urlSatelitePuro = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";    
+  const urlCallesBeige = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
+  const urlGrisConCalles = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"; 
+  
   const urlCallesEsri = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}";
   const urlLugaresEsri = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
 
@@ -104,9 +103,8 @@ export default function VisorMapa({
 
   const mapaActivoClics = enModoTrazado || enModoEdificios || !!marcadorTemporal || (alSeleccionarRevisita !== undefined) || enModoTachuela;
 
-  // ★ LÓGICA DINÁMICA: Determinamos qué URL usar como fondo base
-  let urlFondoActivo = urlSateliteHibrido; // Por defecto
-  
+  let urlFondoActivo = urlSatelitePuro; 
+  if (estiloMapa === 'satelite_hibrido') urlFondoActivo = urlSateliteHibrido;
   if (estiloMapa === 'satelite_puro') urlFondoActivo = urlSatelitePuro;
   if (estiloMapa === 'calles') urlFondoActivo = urlCallesBeige;
   if (estiloMapa === 'gris') urlFondoActivo = urlGrisConCalles;
@@ -190,7 +188,6 @@ export default function VisorMapa({
         
         <RastreadorGPS rastreando={rastreando} setRastreando={setRastreando} setMiUbicacion={setMiUbicacion} />
 
-        {/* ★ EL SECRETO ESTÁ AQUÍ: Le agregamos key={urlFondoActivo} */}
         <TileLayer key={urlFondoActivo} url={urlFondoActivo} attribution="PredicaMap" maxNativeZoom={21} maxZoom={22} />
         
         {mostrarCalles && <TileLayer url={urlCallesEsri} zIndex={10} maxNativeZoom={20} maxZoom={22} />}
@@ -247,7 +244,8 @@ export default function VisorMapa({
         {marcadorTemporal && <CircleMarker center={[marcadorTemporal.lat, marcadorTemporal.lng]} radius={8} pathOptions={{ color: '#ffffff', fillColor: '#c084fc', fillOpacity: 0.8, weight: 3, dashArray: '4' }} />}
 
         {secciones.map((seccion) => {
-          const casasDeEstaSeccion = edificios.filter(e => e.seccion_id === seccion.id);
+          // ★ CÁLCULO ACTUALIZADO: Ignoramos las casas marcadas como alerta ('no_responde')
+          const casasDeEstaSeccion = edificios.filter(e => e.seccion_id === seccion.id && e.estado !== 'no_responde');
           const totalCasas = casasDeEstaSeccion.length;
           const completadas = casasDeEstaSeccion.filter(e => e.estado === 'completado').length;
           

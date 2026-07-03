@@ -201,7 +201,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   const reiniciarTerritorioEnBD = async (id) => {
     const confirmado = await mostrarConfirmacion(
       "Reiniciar Territorio",
-      "¿Estás seguro? Esto regresará el territorio y TODAS sus casas a Pendiente.",
+      "¿Estás seguro? Esto regresará el territorio y TODAS sus casas a Pendiente (respetando las alertas rojas).",
       "warning",
       "Sí, reiniciar"
     );
@@ -209,14 +209,20 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
 
     setCargandoTerritorios(true);
     await supabase.from('secciones').update({ estado: 'pendiente' }).eq('id', id);
-    await supabase.from('edificios').update({ estado: 'pendiente' }).eq('seccion_id', id);
+    
+    // ★ BLOQUEO: Ignoramos las casas que están marcadas como no_responde (Rojas)
+    await supabase.from('edificios')
+      .update({ estado: 'pendiente' })
+      .eq('seccion_id', id)
+      .neq('estado', 'no_responde');
+      
     setCargandoTerritorios(false);
   };
 
   const completarTerritorioEntero = async (id) => {
     const confirmado = await mostrarConfirmacion(
       "Completar Territorio",
-      "¿Deseas marcar este territorio y TODAS sus casas como completados?",
+      "¿Deseas marcar este territorio y TODAS sus casas como completados (respetando las alertas rojas)?",
       "success",
       "Completar"
     );
@@ -224,7 +230,13 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
 
     setCargandoTerritorios(true);
     await supabase.from('secciones').update({ estado: 'completado' }).eq('id', id);
-    await supabase.from('edificios').update({ estado: 'completado' }).eq('seccion_id', id);
+    
+    // ★ BLOQUEO: Ignoramos las casas que están marcadas como no_responde (Rojas)
+    await supabase.from('edificios')
+      .update({ estado: 'completado' })
+      .eq('seccion_id', id)
+      .neq('estado', 'no_responde');
+      
     setCargandoTerritorios(false);
   };
 
@@ -232,7 +244,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     await supabase.from('secciones').update({ notas }).eq('id', id);
   };
 
-  // ★ NUEVA FUNCIÓN PARA EDITAR NOMBRE Y COLOR ★
   const actualizarDetallesSeccionEnBD = async (id, nombre, colorHex) => {
     await supabase.from('secciones').update({ nombre, color_hex: colorHex }).eq('id', id);
   };
@@ -246,7 +257,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     secciones, edificios, cargandoTerritorios, cargarTerritoriosYCasas,
     eliminarSeccionEnBD, asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD, completarTerritorioEntero,
     crearSeccionBD, crearEdificioBD, actualizarEdificioBD, eliminarEdificioBD, reordenarTerritorioEnBD,
-    actualizarDetallesSeccionEnBD, // <-- La exportamos aquí
+    actualizarDetallesSeccionEnBD,
     modoAhorro, reactivarTiempoReal
   };
 }
