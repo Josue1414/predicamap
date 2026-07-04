@@ -1,8 +1,10 @@
 // src/componentes/menu-lateral/MenuLateralPublicador.jsx
 import React, { useState } from 'react';
-import { X, Search, Map, MapPin, Layers, Navigation, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Search, Map, MapPin, Layers, Navigation, ChevronDown, ChevronRight } from 'lucide-react';
 import SeccionMiProgreso from './SeccionMiProgreso';
 import SeccionMisRevisitas from './SeccionMisRevisitas';
+import VentanaFlotante from '../VentanaFlotante'; // ★ IMPORTAMOS LA VENTANA FLOTANTE
+import BuscadorCiudad from '../BuscadorCiudad';
 
 export default function MenuLateralPublicador({
   abierto,
@@ -31,7 +33,8 @@ export default function MenuLateralPublicador({
   alImportarBackup,
   perfilUsuario,
 }) {
-  const [acordeonActivo, setAcordeonActivo] = useState('territorios');
+  // ★ INICIALIZAMOS EN NULL PARA QUE EL MAPA SE VEA COMPLETO AL ENTRAR ★
+  const [acordeonActivo, setAcordeonActivo] = useState(null);
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
   const [revisitaExpandida, setRevisitaExpandida] = useState(null);
 
@@ -60,7 +63,7 @@ export default function MenuLateralPublicador({
               (Publicador)
             </span>
           </div>
-          <button onClick={alCerrar} className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors">
+          <button onClick={alCerrar} className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -93,48 +96,63 @@ export default function MenuLateralPublicador({
                   alternarAcordeon={alternarAcordeon} 
               />
 
-            <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-              <button onClick={() => alternarAcordeon('territorios')} className="w-full p-3 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <span className="font-bold text-xs text-slate-700 dark:text-slate-200 flex items-center gap-2">
+            {/* ★ SECCIÓN TERRITORIOS (AHORA CON VENTANA FLOTANTE) ★ */}
+            <div className="mb-2">
+              <button onClick={() => alternarAcordeon('territorios')} className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 shadow-sm transition-colors">
+                <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <Map size={16} className="text-emerald-500"/> Territorios ({territoriosAcomodados.length})
                 </span>
-                {acordeonActivo === 'territorios' ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                <ChevronRight size={16} className="text-slate-400" />
               </button>
-              {acordeonActivo === 'territorios' && (
-                <div className="p-3 bg-white dark:bg-slate-950 max-h-80 overflow-y-auto space-y-2 scroll-limpio">
+              
+              <VentanaFlotante
+                abierta={acordeonActivo === 'territorios'}
+                alCerrar={() => alternarAcordeon('territorios')}
+                titulo={`Territorios (${territoriosAcomodados.length})`}
+                icono={Map}
+              >
+                <div className="p-4 bg-white dark:bg-slate-950 flex-1 overflow-y-auto scroll-limpio space-y-3">
                   {territoriosAcomodados.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-2">No hay territorios creados.</p>
+                    <p className="text-sm text-slate-500 text-center py-8 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                      No hay territorios creados en esta congregación.
+                    </p>
                   ) : (
-                    territoriosAcomodados.map(sec => {
+                    territoriosAcomodados.map((sec, index) => {
                       const casasDeEstaSeccion = edificios.filter(e => e.seccion_id === sec.id);
                       const totalCasas = casasDeEstaSeccion.length;
                       const completadas = casasDeEstaSeccion.filter(e => e.estado === 'completado').length;
                       let porcentaje = totalCasas > 0 ? Math.round((completadas / totalCasas) * 100) : (sec.estado === 'completado' ? 100 : 0);
 
                       return (
-                        <div key={sec.id} className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden shadow-sm">
-                          <div onClick={() => setTerritorioExpandido(territorioExpandido === sec.id ? null : sec.id)} className="p-2.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                            <div className="flex items-center gap-2 w-full pr-3">
-                              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: sec.colorHex }} />
+                        <div key={sec.id} className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm bg-slate-50 dark:bg-slate-900/50 transition-colors">
+                          <div onClick={() => setTerritorioExpandido(territorioExpandido === sec.id ? null : sec.id)} className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                            <div className="flex items-center gap-3 w-full pr-3">
+                              <div className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm border border-black/10 dark:border-white/10" style={{ backgroundColor: sec.colorHex }} />
                               <div className="flex flex-col flex-1">
-                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-none mb-1.5">{sec.nombre}</span>
-                                <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 overflow-hidden">
-                                  <div className="bg-emerald-500 h-1 rounded-full" style={{ width: `${porcentaje}%` }}></div>
+                                <span className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-none mb-2">
+                                  <span className="text-slate-400 mr-1">#{index + 1}</span> {sec.nombre}
+                                </span>
+                                <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                  <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${porcentaje}%` }}></div>
                                 </div>
                               </div>
                             </div>
-                            <ChevronDown size={14} className={`text-slate-400 transition-transform ${territorioExpandido === sec.id ? 'rotate-180' : ''}`} />
+                            <ChevronDown size={18} className={`text-slate-400 transition-transform duration-300 ${territorioExpandido === sec.id ? 'rotate-180' : ''}`} />
                           </div>
                           
                           {territorioExpandido === sec.id && (
-                            <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
-                              <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 italic">"{sec.notas || 'Sin observaciones'}"</p>
-                              <div className="flex justify-between text-[10px] text-slate-500 font-bold mb-3">
+                            <div className="p-4 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 animate-slide-up">
+                              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 italic bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                                "{sec.notas || 'Sin observaciones'}"
+                              </p>
+                              <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-900 px-4 py-2.5 rounded-lg text-xs text-slate-600 dark:text-slate-400 font-bold mb-4 border border-slate-200 dark:border-slate-800">
                                 <span>{totalCasas > 0 ? `${completadas} de ${totalCasas} completadas` : 'Sin puntos marcados'}</span>
-                                <span className={porcentaje === 100 ? 'text-emerald-500' : ''}>{porcentaje}% Listo</span>
+                                <span className={`px-2 py-1 rounded-md ${porcentaje === 100 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-white dark:bg-slate-800 shadow-sm'}`}>
+                                  {porcentaje}% Listo
+                                </span>
                               </div>
-                              <button onClick={() => { alVolarATerritorio(sec.coordenadas); alCerrar(); }} className="w-full flex justify-center items-center gap-1.5 py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-xs hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-500/20">
-                                <Navigation size={14} /> Volar al Territorio
+                              <button onClick={() => { alVolarATerritorio(sec.coordenadas); alCerrar(); alternarAcordeon('territorios'); }} className="w-full flex justify-center items-center gap-2 py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/20">
+                                <Navigation size={16} /> Volar al Territorio
                               </button>
                             </div>
                           )}
@@ -143,26 +161,33 @@ export default function MenuLateralPublicador({
                     })
                   )}
                 </div>
-              )}
+              </VentanaFlotante>
             </div>
 
-            <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-              <button onClick={() => alternarAcordeon('capas')} className="w-full p-3 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <span className="font-bold text-xs text-slate-700 dark:text-slate-200 flex items-center gap-2">
+            {/* ★ SECCIÓN CAPAS DEL MAPA (AHORA CON VENTANA FLOTANTE) ★ */}
+            <div className="mb-2">
+              <button onClick={() => alternarAcordeon('capas')} className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-orange-50 dark:hover:bg-orange-900/10 shadow-sm transition-colors">
+                <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <Layers size={16} className="text-orange-500"/> Capas y Estilo del Mapa
                 </span>
-                {acordeonActivo === 'capas' ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                <ChevronRight size={16} className="text-slate-400" />
               </button>
-              {acordeonActivo === 'capas' && (
-                <div className="p-4 border-t border-slate-100 dark:border-slate-800">
-                  <div className="mb-3 space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                      <Map size={12} /> Estilo de Vista
+              
+              <VentanaFlotante
+                abierta={acordeonActivo === 'capas'}
+                alCerrar={() => alternarAcordeon('capas')}
+                titulo="Capas y Estilo del Mapa"
+                icono={Layers}
+              >
+                <div className="p-5 bg-white dark:bg-slate-950 flex-1 space-y-6">
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <Map size={14} className="text-slate-400" /> Estilo de Vista
                     </label>
                     <select 
                       value={estiloMapa} 
                       onChange={(e) => alCambiarEstiloMapa(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all cursor-pointer"
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all cursor-pointer shadow-sm"
                     >
                       <option value="satelite_hibrido">Satélite (Con Calles)</option>
                       <option value="satelite_puro">Satélite (Sin Calles)</option>
@@ -172,43 +197,54 @@ export default function MenuLateralPublicador({
                     </select>
                   </div>
 
-                  <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-2.5 cursor-pointer hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
-                    <input type="checkbox" checked={mostrarCalles} onChange={(e) => alCambiarMostrarCalles(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                    Mostrar Calles y Rutas
-                  </label>
-                  <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 cursor-pointer hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
-                    <input type="checkbox" checked={mostrarLugares} onChange={(e) => alCambiarMostrarLugares(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                    Mostrar Nombres de Lugares
-                  </label>
+                  <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+                    <label className="flex items-center gap-3 text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                      <input type="checkbox" checked={mostrarCalles} onChange={(e) => alCambiarMostrarCalles(e.target.checked)} className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 dark:bg-slate-800" />
+                      Mostrar Calles y Rutas
+                    </label>
+                    <label className="flex items-center gap-3 text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                      <input type="checkbox" checked={mostrarLugares} onChange={(e) => alCambiarMostrarLugares(e.target.checked)} className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 dark:bg-slate-800" />
+                      Mostrar Nombres de Lugares
+                    </label>
+                  </div>
                 </div>
-              )}
+              </VentanaFlotante>
             </div>
 
-            <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-              <button onClick={() => alternarAcordeon('buscador')} className="w-full p-3 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <span className="font-bold text-xs text-slate-700 dark:text-slate-200 flex items-center gap-2">
+            {/* ★ SECCIÓN BUSCAR ★ */}
+            <div className="mb-2">
+              <button onClick={() => alternarAcordeon('buscador')} className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 shadow-sm transition-colors">
+                <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <Search size={16} className="text-indigo-500"/> Buscar en el Mapa
                 </span>
-                {acordeonActivo === 'buscador' ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                <ChevronRight size={16} className="text-slate-400" />
               </button>
-              {acordeonActivo === 'buscador' && (
-                <div className="p-3">
-                  <form onSubmit={alBuscar} className="flex gap-2">
-                    <input type="text" value={textoBusqueda} onChange={(e) => alCambiarTextoBusqueda(e.target.value)} placeholder="Ej: Zapopan, Jalisco..." className="w-full border rounded-lg p-2 text-xs dark:bg-slate-900 dark:border-slate-700 dark:text-white focus:ring-1 focus:ring-indigo-500 outline-none" />
-                    <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold transition-colors">Ir</button>
-                  </form>
-                  {resultadosCiudades.length > 0 && (
-                    <ul className="mt-2 border rounded-lg max-h-40 overflow-y-auto text-[11px] dark:border-slate-700 scroll-limpio">
-                      {resultadosCiudades.map((c, i) => (
-                        <li key={i} onClick={() => { alSeleccionarCiudad(c); alCerrar(); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer border-b last:border-0 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                          {c.display_name}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+              
+              <VentanaFlotante
+                abierta={acordeonActivo === 'buscador'}
+                alCerrar={() => alternarAcordeon('buscador')}
+                titulo="Buscar en el Mapa"
+                icono={Search}
+              >
+                <div className="p-5 flex flex-col h-full bg-slate-50 dark:bg-slate-950 flex-1">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mb-4 ml-1">Escribe la ciudad, municipio o colonia que deseas buscar.</p>
+
+                  {/* ★ AQUÍ REUTILIZAMOS TU COMPONENTE ★ */}
+                  <BuscadorCiudad 
+                    textoBusqueda={textoBusqueda}
+                    alCambiarTextoBusqueda={alCambiarTextoBusqueda}
+                    alBuscar={alBuscar}
+                    resultadosCiudades={resultadosCiudades}
+                    alSeleccionarCiudad={(c) => { 
+                      alSeleccionarCiudad(c); 
+                      alCerrar(); // Cierra el menú lateral
+                      alternarAcordeon('buscador'); // Cierra la ventana flotante
+                    }}
+                  />
                 </div>
-              )}
+              </VentanaFlotante>
             </div>
+
           </div>
 
           {/* FOOTER AL FINAL DEL SCROLL */}

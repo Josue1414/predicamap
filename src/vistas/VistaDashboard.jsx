@@ -53,7 +53,7 @@ export default function VistaDashboard() {
     modoAhorro, reactivarTiempoReal,actualizarDetallesSeccionEnBD,estiloMapa,alCambiarEstiloMapa
   } = useMapa();
 
-  const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD } = useGestorTachuelas(targetCongId);
+  const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD, editarTachuelaBD} = useGestorTachuelas(targetCongId);
   const [tachuelaTemporal, setTachuelaTemporal] = useState(null);
   const [tachuelaLeida, setTachuelaLeida] = useState(null);
   const puedeCrearTachuela = perfilUsuario && ['Administrador Mayor', 'Administrador', 'Capitán'].includes(perfilUsuario.rol);
@@ -100,6 +100,12 @@ export default function VistaDashboard() {
     await eliminarTachuelaBD(id);
     if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Eliminado', 'tachuela', `Se borró el aviso: ${titulo}`);
     setTachuelaLeida(null);
+  };
+
+  const manejarEditarTachuela = async (id, datosActualizados) => {
+    await editarTachuelaBD(id, datosActualizados.titulo, datosActualizados.notas);
+    if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Editado', 'tachuela', `Se editó el aviso: ${datosActualizados.titulo}`);
+    setTachuelaLeida(null); // Esto cierra la ventana al terminar de guardar
   };
 
   useEffect(() => {
@@ -264,7 +270,7 @@ export default function VistaDashboard() {
       </main>
 
       {tachuelaTemporal && <ModalFormularioTachuela alGuardar={manejarGuardarTachuela} alCancelar={() => { setTachuelaTemporal(null); limpiarModo(); }} />}
-      {tachuelaLeida && <ModalInfoTachuela tachuela={tachuelaLeida} puedeEliminar={puedeCrearTachuela} alEliminar={() => manejarEliminarTachuela(tachuelaLeida.id, tachuelaLeida.titulo)} alCerrar={() => setTachuelaLeida(null)} />}
+      {tachuelaLeida && <ModalInfoTachuela tachuela={tachuelaLeida} puedeEliminar={puedeCrearTachuela} alEliminar={() => manejarEliminarTachuela(tachuelaLeida.id, tachuelaLeida.titulo)} alEditar={manejarEditarTachuela} alCerrar={() => setTachuelaLeida(null)} />}
 
       {(marcadorRevisitaTemporal || revisitaEditando) && (
         <ModalFormularioRevisita marcadorEditando={revisitaEditando}

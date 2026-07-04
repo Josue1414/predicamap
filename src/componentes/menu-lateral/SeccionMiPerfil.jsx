@@ -1,7 +1,7 @@
-//src/componentes/menu-lateral/SeccionMiPerfil.jsx
 import React, { useState, useEffect } from 'react';
-import { Users, Key, LogOut, ChevronUp, ChevronDown, Mail, Edit2, Save, X, Layers, Map } from 'lucide-react';
+import { Users, Key, LogOut, ChevronRight, Mail, Edit2, Save, X, Layers, Map, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../utilidades/clienteSupabase';
+import VentanaFlotante from '../VentanaFlotante';
 
 export default function SeccionMiPerfil({
   perfilUsuario,
@@ -10,12 +10,10 @@ export default function SeccionMiPerfil({
   alCerrar,
   acordeonActivo,
   alternarAcordeon,
-  // Props de visualización
   mostrarCalles,
   alCambiarMostrarCalles,
   mostrarLugares,
   alCambiarMostrarLugares,
-  // Nuevas props para el estilo del mapa
   estiloMapa,
   alCambiarEstiloMapa
 }) {
@@ -35,95 +33,151 @@ export default function SeccionMiPerfil({
     setEditandoNombre(false);
   };
 
+  const estaAbierta = acordeonActivo === 'mi_perfil';
+
+  // ★ ARREGLO DE OPCIONES PARA EL MAPA ★
+  const opcionesMapa = [
+    { id: 'satelite_hibrido', label: 'Satélite (Con Calles)', icono: '🌍' },
+    { id: 'satelite_puro', label: 'Satélite (Sin Calles)', icono: '🛰️' },
+    { id: 'gris', label: 'Claro (Gris moderno)', icono: '🏙️' },
+    { id: 'calles', label: 'Calles (Beige clásico)', icono: '🗺️' },
+    { id: 'oscuro', label: 'Modo Oscuro', icono: '🌙' }
+  ];
+
   return (
-    <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-      <button onClick={() => alternarAcordeon('mi_perfil')} className="w-full p-3 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-        <span className="font-bold text-xs text-slate-700 dark:text-slate-200 flex items-center gap-2">
+    <div className="mb-2">
+      {/* BOTÓN DEL MENÚ LATERAL */}
+      <button 
+        onClick={() => alternarAcordeon('mi_perfil')} 
+        className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-sm transition-colors"
+      >
+        <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
           <Users size={16} className="text-slate-500"/> Mi Perfil
         </span>
-        {acordeonActivo === 'mi_perfil' ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+        <ChevronRight size={16} className="text-slate-400" />
       </button>
       
-      {acordeonActivo === 'mi_perfil' && (
-        <div className="p-4 bg-white dark:bg-slate-950 space-y-4 text-xs">
+      {/* NUEVA VENTANA FLOTANTE */}
+      <VentanaFlotante
+        abierta={estaAbierta}
+        alCerrar={() => alternarAcordeon('mi_perfil')}
+        titulo="Mi Perfil"
+        icono={Users}
+      >
+        <div className="p-5 bg-white dark:bg-slate-950 space-y-6 flex-1 overflow-y-auto scroll-limpio text-sm">
           
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
-              <Mail size={12} /> Correo Electrónico
-            </p>
-            <div className="font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 truncate">
-              {perfilUsuario?.email || 'Cargando correo...'}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
-              <Users size={12} /> Nombre
-            </p>
-            {editandoNombre ? (
-              <div className="flex items-center gap-2 animate-slide-up">
-                <input 
-                  type="text" value={nombreTemp} onChange={(e) => setNombreTemp(e.target.value)} autoFocus
-                  className="flex-1 bg-white dark:bg-slate-900 border border-indigo-300 dark:border-indigo-500/50 rounded-lg p-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold"
-                />
-                <button onClick={manejarGuardado} className="p-2.5 bg-emerald-100 text-emerald-600 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 rounded-lg transition-colors"><Save size={14} /></button>
-                <button onClick={() => { setEditandoNombre(false); setNombreTemp(perfilUsuario?.nombre); }} className="p-2.5 bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors"><X size={14} /></button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 group">
-                <span className="font-bold text-slate-700 dark:text-slate-300 truncate">{perfilUsuario?.nombre || 'Cargando...'}</span>
-                <button onClick={() => setEditandoNombre(true)} className="text-slate-400 hover:text-indigo-500 transition-colors p-1" title="Editar nombre"><Edit2 size={14} /></button>
-              </div>
-            )}
-          </div>
-          
-          <div className="pt-2">
-            <button onClick={manejarRestablecerPassword} className="w-full py-2.5 border border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-900 dark:text-indigo-400 dark:hover:bg-indigo-950/30 rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 transition-colors">
-              <Key size={14} /> Restablecer Contraseña
-            </button>
-          </div>
-
-          {/* CAPAS DEL MAPA */}
-          <div className="pt-4 pb-2 border-t border-slate-100 dark:border-slate-800">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Layers size={12} /> Capas y Estilo del Mapa
-            </p>
-
-            {/* Nuevo selector de estilo base */}
-           <div className="mb-3 space-y-1.5">
-              <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                <Map size={12} /> Estilo de Vista
+          {/* SECCIÓN: INFORMACIÓN DEL USUARIO */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                <Mail size={14} /> Correo Electrónico
               </label>
-              <select 
-                value={estiloMapa} 
-                onChange={(e) => alCambiarEstiloMapa(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all cursor-pointer"
-              >
-                <option value="satelite_hibrido">Satélite (Con Calles)</option>
-                <option value="satelite_puro">Satélite (Sin Calles)</option>
-                <option value="gris">Claro (Gris moderno)</option>
-                <option value="calles">Calles (Beige clásico)</option>
-                <option value="oscuro">Modo Oscuro</option>
-              </select>
+              <div className="font-semibold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 truncate">
+                {perfilUsuario?.email || 'Cargando correo...'}
+              </div>
             </div>
 
-            <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-2.5 cursor-pointer hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
-              <input type="checkbox" checked={mostrarCalles} onChange={(e) => alCambiarMostrarCalles(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-              Mostrar Calles y Rutas
-            </label>
-            <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 cursor-pointer hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
-              <input type="checkbox" checked={mostrarLugares} onChange={(e) => alCambiarMostrarLugares(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-              Mostrar Nombres de Lugares
-            </label>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                <Users size={14} /> Nombre
+              </label>
+              {editandoNombre ? (
+                <div className="flex items-center gap-2 animate-slide-up">
+                  <input 
+                    type="text" value={nombreTemp} onChange={(e) => setNombreTemp(e.target.value)} autoFocus
+                    className="flex-1 bg-slate-50 dark:bg-slate-900 border border-indigo-300 dark:border-indigo-500/50 rounded-xl p-3 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold shadow-sm"
+                  />
+                  <button onClick={manejarGuardado} className="p-3 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-900/60 rounded-xl transition-colors shadow-sm"><Save size={18} /></button>
+                  <button onClick={() => { setEditandoNombre(false); setNombreTemp(perfilUsuario?.nombre); }} className="p-3 bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl transition-colors shadow-sm"><X size={18} /></button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 group shadow-sm">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 truncate text-base">{perfilUsuario?.nombre || 'Cargando...'}</span>
+                  <button onClick={() => setEditandoNombre(true)} className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1" title="Editar nombre">
+                    <Edit2 size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <div className="pt-2">
+              <button onClick={manejarRestablecerPassword} className="w-full py-3 bg-white dark:bg-slate-950 border border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/30 rounded-xl font-bold flex justify-center items-center gap-2 transition-colors shadow-sm">
+                <Key size={16} /> Restablecer Contraseña
+              </button>
+            </div>
+          </div>
+
+          {/* SECCIÓN: CAPAS DEL MAPA */}
+          <div className="pt-5 border-t border-slate-200 dark:border-slate-800 space-y-4">
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <Layers size={16} /> Capas y Estilo del Mapa
+            </h4>
+
+            {/* ★ NUEVO SELECTOR VISUAL DE MAPA ★ */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">
+                <Map size={14} className="text-slate-400" /> Elige el Estilo de Vista
+              </label>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {opcionesMapa.map((opcion) => {
+                  const estaSeleccionado = estiloMapa === opcion.id;
+                  return (
+                    <button
+                      key={opcion.id}
+                      onClick={() => alCambiarEstiloMapa(opcion.id)}
+                      className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 text-left ${
+                        estaSeleccionado 
+                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-400 shadow-sm' 
+                          : 'border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800'
+                      }`}
+                    >
+                      <span className="text-xl shrink-0">{opcion.icono}</span>
+                      <span className={`text-xs font-bold flex-1 ${estaSeleccionado ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-400'}`}>
+                        {opcion.label}
+                      </span>
+                      {estaSeleccionado && (
+                        <CheckCircle2 size={18} className="text-indigo-500 dark:text-indigo-400 shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm mt-4">
+              <label className="flex items-center gap-3 text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={mostrarCalles} 
+                  onChange={(e) => alCambiarMostrarCalles(e.target.checked)} 
+                  className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 dark:bg-slate-800" 
+                />
+                Mostrar Calles y Rutas
+              </label>
+              <label className="flex items-center gap-3 text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={mostrarLugares} 
+                  onChange={(e) => alCambiarMostrarLugares(e.target.checked)} 
+                  className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 dark:bg-slate-800" 
+                />
+                Mostrar Nombres de Lugares
+              </label>
+            </div>
           </div>
           
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-            <button onClick={async () => { await supabase.auth.signOut(); alCerrar(); }} className="w-full py-2.5 flex items-center justify-center gap-2 text-rose-500 bg-rose-50/50 hover:bg-rose-100 dark:bg-rose-950/20 border border-transparent hover:border-rose-200 rounded-xl font-bold transition-colors shadow-sm">
-              <LogOut size={16} /> Cerrar Sesión Segura
+          {/* SECCIÓN: CERRAR SESIÓN */}
+          <div className="pt-6 mt-4 border-t border-slate-200 dark:border-slate-800">
+            <button 
+              onClick={async () => { await supabase.auth.signOut(); alCerrar(); }} 
+              className="w-full py-3.5 flex items-center justify-center gap-2 text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50 hover:border-rose-200 rounded-xl font-bold transition-colors shadow-sm"
+            >
+              <LogOut size={18} /> Cerrar Sesión Segura
             </button>
           </div>
         </div>
-      )}
+      </VentanaFlotante>
     </div>
   );
 }

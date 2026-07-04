@@ -1,6 +1,7 @@
 // src/componentes/menu-lateral/SeccionTerritorios.jsx
 import React, { useState } from 'react';
-import { List, ChevronUp, ChevronDown, Star, UserCheck, Navigation, CheckCircle2, RefreshCcw, Trash2, Edit3 } from 'lucide-react';
+import { List, ChevronUp, ChevronDown, ChevronRight, Star, UserCheck, Navigation, CheckCircle2, RefreshCcw, Trash2, Edit3 } from 'lucide-react';
+import VentanaFlotante from '../VentanaFlotante'; // IMPORTAMOS LA VENTANA FLOTANTE
 
 const PALETA_COLORES = [
   { nombre: 'Carmesí', hex: '#e11d48' },   { nombre: 'Rojo', hex: '#715605' },
@@ -32,7 +33,7 @@ export default function SeccionTerritorios({
   alCompletarTerritorio,
   alVolarATerritorio,
   alReordenarTerritorio,
-  actualizarDetallesSeccionEnBD, // <-- NUEVA PROP
+  actualizarDetallesSeccionEnBD,
   acordeonActivo,
   alternarAcordeon,
   alCerrar
@@ -48,19 +49,33 @@ export default function SeccionTerritorios({
     setModoEdicionId(null);
   };
 
+  const estaAbierta = acordeonActivo === 'lista';
+
   return (
-    <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-      <button onClick={() => alternarAcordeon('lista')} className="w-full p-3 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-        <span className="font-bold text-xs text-slate-700 dark:text-slate-200 flex items-center gap-2">
+    <div className="mb-2">
+      {/* BOTÓN DEL MENÚ LATERAL */}
+      <button 
+        onClick={() => alternarAcordeon('lista')} 
+        className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 shadow-sm transition-colors"
+      >
+        <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
           <List size={16} className="text-indigo-500"/> Territorios ({territoriosOrdenados?.length || 0})
         </span>
-        {acordeonActivo === 'lista' ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+        <ChevronRight size={16} className="text-slate-400" />
       </button>
       
-      {acordeonActivo === 'lista' && (
-        <div className="p-3 bg-white dark:bg-slate-950 max-h-80 overflow-y-auto space-y-2 scroll-limpio">
+      {/* NUEVA VENTANA FLOTANTE */}
+      <VentanaFlotante
+        abierta={estaAbierta}
+        alCerrar={() => alternarAcordeon('lista')}
+        titulo={`Territorios Disponibles (${territoriosOrdenados?.length || 0})`}
+        icono={List}
+      >
+        <div className="p-4 space-y-3">
           {territoriosOrdenados?.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-2">No hay territorios creados aún.</p>
+            <p className="text-sm text-slate-500 text-center py-8 bg-white dark:bg-slate-950 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+              No hay territorios creados aún.
+            </p>
           ) : (
             territoriosOrdenados.map((sec, index) => {
               const casasDeEstaSeccion = edificiosGuardados?.filter(e => e.seccion_id === sec.id) || [];
@@ -85,40 +100,43 @@ export default function SeccionTerritorios({
               });
 
               return (
-                <div key={sec.id} className={`border rounded-lg overflow-hidden shadow-sm transition-colors ${esMio ? 'border-amber-400 dark:border-amber-600/50' : 'border-slate-100 dark:border-slate-800'}`}>
-                  <div onClick={() => setTerritorioExpandido(territorioExpandido === sec.id ? null : sec.id)} className={`p-2.5 flex items-center justify-between cursor-pointer ${esMio ? 'bg-amber-50/50 dark:bg-amber-900/10 hover:bg-amber-100/50 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-900'}`}>
-                    <div className="flex items-center gap-2 w-full pr-3">
-                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: sec.colorHex }} />
+                <div key={sec.id} className={`border rounded-xl overflow-hidden shadow-sm transition-colors ${esMio ? 'border-amber-400 dark:border-amber-600/50 bg-white dark:bg-slate-950' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950'}`}>
+                  
+                  {/* CABECERA DEL TERRITORIO */}
+                  <div onClick={() => setTerritorioExpandido(territorioExpandido === sec.id ? null : sec.id)} className={`p-4 flex items-center justify-between cursor-pointer ${esMio ? 'bg-amber-50/40 dark:bg-amber-900/10 hover:bg-amber-100/50 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-900'}`}>
+                    <div className="flex items-center gap-3 w-full pr-3">
+                      <div className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm border border-black/10 dark:border-white/10" style={{ backgroundColor: sec.colorHex }} />
                       <div className="flex flex-col flex-1">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-none">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-none">
                             <span className="text-slate-400 mr-1">#{index + 1}</span> {sec.nombre}
                           </span>
-                          {esMio && <span className="flex items-center gap-0.5 text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 px-1.5 py-0.5 rounded-md font-bold uppercase"><Star size={10}/> Mi Asignación</span>}
+                          {esMio && <span className="flex items-center gap-1 text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 px-2 py-0.5 rounded-md font-bold uppercase tracking-wider"><Star size={12}/> Mi Asignación</span>}
                         </div>
-                        <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-0.5 overflow-hidden">
-                          <div className="bg-emerald-500 h-1 rounded-full transition-all duration-500" style={{ width: `${porcentaje}%` }}></div>
+                        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                          <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${porcentaje}%` }}></div>
                         </div>
                       </div>
                     </div>
-                    <ChevronDown size={14} className={`text-slate-400 flex-shrink-0 transition-transform ${territorioExpandido === sec.id ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={18} className={`text-slate-400 flex-shrink-0 transition-transform duration-300 ${territorioExpandido === sec.id ? 'rotate-180' : ''}`} />
                   </div>
                   
+                  {/* CONTENIDO DESPLEGABLE DEL TERRITORIO */}
                   {territorioExpandido === sec.id && (
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 animate-slide-up">
                       
                       {/* ★ REORDENAR (Exclusivo Administrador) ★ */}
                       {esAdminOperativo && (
-                        <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800/50 p-2.5 rounded-lg mb-3 border border-slate-200 dark:border-slate-700">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                            <List size={14}/> Ordenar en Lista
+                        <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-xl mb-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                            <List size={16}/> Ordenar en Lista
                           </span>
-                          <div className="flex gap-1.5">
-                            <button disabled={index === 0} onClick={() => alReordenarTerritorio(sec.id, 'arriba')} className="p-1.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded shadow-sm hover:text-indigo-500 disabled:opacity-30 transition-colors">
-                              <ChevronUp size={14} />
+                          <div className="flex gap-2">
+                            <button disabled={index === 0} onClick={() => alReordenarTerritorio(sec.id, 'arriba')} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg shadow-sm hover:text-indigo-500 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
+                              <ChevronUp size={16} />
                             </button>
-                            <button disabled={index === territoriosOrdenados.length - 1} onClick={() => alReordenarTerritorio(sec.id, 'abajo')} className="p-1.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded shadow-sm hover:text-indigo-500 disabled:opacity-30 transition-colors">
-                              <ChevronDown size={14} />
+                            <button disabled={index === territoriosOrdenados.length - 1} onClick={() => alReordenarTerritorio(sec.id, 'abajo')} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg shadow-sm hover:text-indigo-500 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
+                              <ChevronDown size={16} />
                             </button>
                           </div>
                         </div>
@@ -126,34 +144,36 @@ export default function SeccionTerritorios({
 
                       {/* ★ MODO EDICIÓN (Exclusivo Administrador) ★ */}
                       {modoEdicionId === sec.id ? (
-                        <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-blue-200 dark:border-blue-800 mb-3 space-y-3 shadow-sm">
-                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Editar Territorio</span>
+                        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-blue-800/50 mb-4 space-y-4 shadow-sm">
+                          <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                            <Edit3 size={14}/> Editar Territorio
+                          </span>
                           
                           <input
                             type="text"
                             value={editNombre}
                             onChange={e => setEditNombre(e.target.value)}
-                            className="w-full p-2 text-xs border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full p-3 text-sm border rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500/50 text-slate-800 dark:text-slate-100 font-bold"
                             placeholder="Nombre del territorio..."
                           />
                           
-                          <div className="grid grid-cols-5 gap-2">
+                          <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
                             {PALETA_COLORES.map(color => (
                               <button
                                 key={color.hex}
                                 onClick={() => setEditColor(color.hex)}
-                                className={`h-6 rounded-md border-2 transition-transform ${editColor === color.hex ? 'border-slate-900 dark:border-white scale-110 shadow-sm' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                className={`h-8 rounded-lg border-2 transition-all ${editColor === color.hex ? 'border-slate-900 dark:border-white scale-110 shadow-md' : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'}`}
                                 style={{ backgroundColor: color.hex }}
                                 title={color.nombre}
                               />
                             ))}
                           </div>
                           
-                          <div className="flex gap-2 pt-1">
-                            <button onClick={() => guardarEdicion(sec.id)} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold py-2 rounded-lg transition-colors">
+                          <div className="flex gap-3 pt-2">
+                            <button onClick={() => guardarEdicion(sec.id)} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2.5 rounded-xl transition-colors shadow-sm">
                               Guardar Cambios
                             </button>
-                            <button onClick={() => setModoEdicionId(null)} className="flex-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-[10px] font-bold py-2 rounded-lg transition-colors">
+                            <button onClick={() => setModoEdicionId(null)} className="flex-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold py-2.5 rounded-xl transition-colors">
                               Cancelar
                             </button>
                           </div>
@@ -165,25 +185,31 @@ export default function SeccionTerritorios({
                               defaultValue={sec.notas}
                               onBlur={(e) => actualizarNotasSeccionEnBD(sec.id, e.target.value)}
                               placeholder="Añadir notas sobre el territorio..."
-                              className="w-full p-2 mb-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-1 focus:ring-indigo-500 transition-colors"
+                              className="w-full p-3 mb-4 text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/50 transition-colors text-slate-700 dark:text-slate-300"
                               rows="2"
                             />
                           ) : (
-                            <p className="text-xs text-slate-500 mb-3 italic">"{sec.notas || 'Sin observaciones'}"</p>
+                            <div className="bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 mb-4">
+                              <p className="text-sm text-slate-600 dark:text-slate-400 italic">
+                                "{sec.notas || 'Sin observaciones'}"
+                              </p>
+                            </div>
                           )}
                           
-                          <div className="flex justify-between text-[10px] text-slate-600 dark:text-slate-400 font-bold mb-3">
+                          <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-900 px-4 py-2.5 rounded-lg text-xs text-slate-600 dark:text-slate-400 font-bold mb-4 border border-slate-200 dark:border-slate-800">
                             <span>{totalCasas > 0 ? `${casasCompletadas} de ${totalCasas} completadas` : 'Sin puntos dibujados'}</span>
-                            <span className={porcentaje === 100 ? 'text-emerald-500' : ''}>{porcentaje}% Listo</span>
+                            <span className={`px-2 py-1 rounded-md ${porcentaje === 100 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-white dark:bg-slate-800 shadow-sm'}`}>
+                              {porcentaje}% Listo
+                            </span>
                           </div>
 
                           {esCapitanYSuperior && (
-                            <div className="mb-3">
-                              <label className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1"><UserCheck size={12}/> Asignar a:</label>
+                            <div className="mb-4">
+                              <label className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5"><UserCheck size={14}/> Asignar territorio a:</label>
                               <select 
                                 value={sec.asignado_a || ''} 
                                 onChange={(e) => asignarTerritorioEnBD(sec.id, e.target.value)}
-                                className="w-full p-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                className="w-full p-3 text-sm font-medium bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500/50 outline-none shadow-sm cursor-pointer"
                               >
                                 <option value="">-- Opcional: Sin asignar --</option>
                                 {usuariosAsignables.map(u => (
@@ -193,31 +219,31 @@ export default function SeccionTerritorios({
                             </div>
                           )}
 
-                          <div className="grid grid-cols-1 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {/* ★ BOTÓN EDITAR NOMBRE Y COLOR (Solo Admin) ★ */}
                             {esAdminOperativo && (
-                              <button onClick={() => { setModoEdicionId(sec.id); setEditNombre(sec.nombre); setEditColor(sec.colorHex); }} className="flex justify-center items-center gap-1.5 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg font-bold text-xs hover:bg-blue-100 transition-colors">
-                                <Edit3 size={14} /> Editar Nombre y Color
+                              <button onClick={() => { setModoEdicionId(sec.id); setEditNombre(sec.nombre); setEditColor(sec.colorHex); }} className="flex justify-center items-center gap-2 py-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl font-bold text-xs hover:bg-blue-100 transition-colors">
+                                <Edit3 size={16} /> Editar Info
                               </button>
                             )}
 
-                            <button onClick={() => { alVolarATerritorio(sec.coordenadas); alCerrar(); }} className="flex justify-center items-center gap-1.5 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold text-xs hover:bg-indigo-100 transition-colors">
-                              <Navigation size={14} /> Volar al Territorio
+                            <button onClick={() => { alVolarATerritorio(sec.coordenadas); alCerrar(); }} className="flex justify-center items-center gap-2 py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors sm:col-span-full">
+                              <Navigation size={16} /> Volar al Territorio
                             </button>
                             
-                            <button disabled={porcentaje === 100} onClick={() => alCompletarTerritorio(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg font-bold text-xs hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                              <CheckCircle2 size={14} /> {porcentaje === 100 ? 'Territorio Terminado' : (totalCasas === 0 ? 'Marcar Territorio Completado' : 'Marcar TODO Completado')}
+                            <button disabled={porcentaje === 100} onClick={() => alCompletarTerritorio(sec.id)} className="flex justify-center items-center gap-2 py-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold text-xs hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                              <CheckCircle2 size={16} /> {porcentaje === 100 ? 'Terminado' : 'Marcar Todo Completo'}
                             </button>
                             
                             {esCapitanYSuperior && porcentaje > 0 && (
-                              <button onClick={() => reiniciarTerritorioEnBD(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg font-bold text-xs hover:bg-amber-100 transition-colors">
-                                <RefreshCcw size={14} /> Reiniciar Territorio
+                              <button onClick={() => reiniciarTerritorioEnBD(sec.id)} className="flex justify-center items-center gap-2 py-3 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-xl font-bold text-xs hover:bg-amber-100 transition-colors">
+                                <RefreshCcw size={16} /> Reiniciar
                               </button>
                             )}
 
                             {esAdminOperativo && (
-                              <button onClick={() => alEliminarSeccion(sec.id)} className="flex justify-center items-center gap-1.5 py-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg font-bold text-xs hover:bg-rose-100 transition-colors">
-                                <Trash2 size={14} /> Eliminar Territorio
+                              <button onClick={() => alEliminarSeccion(sec.id)} className="flex justify-center items-center gap-2 py-3 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl font-bold text-xs hover:bg-rose-100 transition-colors sm:col-span-full">
+                                <Trash2 size={16} /> Eliminar Territorio
                               </button>
                             )}
                           </div>
@@ -230,7 +256,7 @@ export default function SeccionTerritorios({
             })
           )}
         </div>
-      )}
+      </VentanaFlotante>
     </div>
   );
 }

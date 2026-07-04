@@ -1,4 +1,3 @@
-// src/hooks/modulos/useGestorTachuelas.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../../utilidades/clienteSupabase';
 
@@ -45,14 +44,21 @@ export default function useGestorTachuelas(targetCongId) {
     setCargandoTachuelas(false);
   };
 
+  // ★ NUEVA FUNCIÓN PARA EDITAR EL AVISO ★
+  const editarTachuelaBD = async (id, titulo, notas) => {
+    setCargandoTachuelas(true);
+    await supabase.from('tachuelas').update({ titulo, notas }).eq('id', id);
+    setCargandoTachuelas(false);
+  };
+
   const eliminarTachuelaBD = async (id) => {
-    if (!window.confirm("¿Seguro que deseas eliminar esta tachuela grupal del mapa?")) return;
+    // 🗑️ AQUÍ ELIMINAMOS EL window.confirm NATIVO QUE CAUSABA EL DOBLE MENSAJE
     setCargandoTachuelas(true);
     await supabase.from('tachuelas').delete().eq('id', id);
     setCargandoTachuelas(false);
   };
 
   return { 
-    tachuelas, cargandoTachuelas, agregarTachuelaBD, eliminarTachuelaBD, recargarTachuelas: cargarTachuelas
+    tachuelas, cargandoTachuelas, agregarTachuelaBD, editarTachuelaBD, eliminarTachuelaBD, recargarTachuelas: cargarTachuelas
   };
 }

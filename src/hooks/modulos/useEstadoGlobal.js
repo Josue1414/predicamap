@@ -84,7 +84,7 @@ export default function useEstadoGlobal() {
   };
 
   const eliminarMiembroEquipo = async (idMiembro) => {
-    if (!window.confirm("¿Revocar el acceso a este usuario? Se eliminará su cuenta por completo.")) return;
+    
     setCargandoGlobal(true);
     
     // Agregamos manejo de errores para detectar bloqueos de RLS en Supabase
