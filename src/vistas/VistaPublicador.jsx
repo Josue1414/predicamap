@@ -1,5 +1,5 @@
 // src/vistas/VistaPublicador.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../utilidades/clienteSupabase';
 import VisorMapa from '../componentes/VisorMapa';
 import MenuLateralPublicador from '../componentes/menu-lateral/MenuLateralPublicador';
@@ -8,7 +8,6 @@ import { Home, Map as MapIcon, X, BookmarkPlus } from 'lucide-react';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 
 import { ModalInfoTachuela } from '../componentes/ModalTachuela';
-// ★ IMPORTAMOS AMBOS MODALES DESDE TU COMPONENTE REUTILIZABLE ★
 import { ModalFormularioRevisita, ModalInfoLecturaRevisita } from '../componentes/ModalesRevisita';
 
 export default function VistaPublicador() {
@@ -27,7 +26,6 @@ export default function VistaPublicador() {
   const [coordenadasActuales, setCoordenadasActuales] = useState([25.6565, -100.2930]);
   const [zoomActual, setZoomActual] = useState(15);
   
-  // ESTADOS DEL MAPA Y ESTILOS
   const [mostrarCalles, setMostrarCalles] = useState(true);
   const [mostrarLugares, setMostrarLugares] = useState(true);
   const [estiloMapa, setEstiloMapa] = useState('satelite_puro');
@@ -42,7 +40,6 @@ export default function VistaPublicador() {
   const [enModoRevisita, setEnModoRevisita] = useState(false);
   const [marcadorTemporal, setMarcadorTemporal] = useState(null); 
   const [revisitaEditando, setRevisitaEditando] = useState(null); 
-  // ★ RESTAURAMOS EL ESTADO PARA LA LECTURA/EDICIÓN RÁPIDA ★
   const [revisitaLectura, setRevisitaLectura] = useState(null);   
 
   const manejarCambioEstiloMapa = (nuevoEstilo) => {
@@ -58,8 +55,47 @@ export default function VistaPublicador() {
     else document.documentElement.classList.remove('dark');
   }, [modoOscuro]);
 
+  // ★ 1. NUEVA FUNCIÓN: Descarga los datos silenciosamente sin mostrar la pantalla de carga principal
+  const recargarDatosMapa = useCallback(async (congId, centrarMapa = false) => {
+    try {
+      const { data: secs } = await supabase.from('secciones')
+        .select('*')
+        .eq('congregacion_id', congId)
+        .order('orden', { ascending: true })
+        .order('creado_en', { ascending: true });
+
+      const formateadas = (secs || []).map(item => ({
+        id: item.id, nombre: item.nombre, colorHex: item.color_hex, 
+        coordenadas: item.coordenadas, notas: item.notas, estado: item.estado,
+        orden: item.orden 
+      }));
+      setSecciones(formateadas);
+
+      const { data: tachs } = await supabase.from('tachuelas').select('*').eq('congregacion_id', congId);
+      setTachuelasGrupales(tachs || []);
+
+      if (formateadas.length > 0) {
+        if (centrarMapa) {
+          let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+          formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
+            if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+            if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+          }));
+          setCoordenadasActuales([(minLat + maxLat) / 2, (minLng + maxLng) / 2]);
+        }
+
+        const secIds = formateadas.map(s => s.id);
+        const { data: edis } = await supabase.from('edificios').select('*').in('seccion_id', secIds);
+        setEdificios(edis || []);
+      }
+    } catch (err) {
+      console.error("Error recargando datos del mapa:", err.message);
+    }
+  }, []);
+
+  // ★ 2. CARGA INICIAL: Descifra la URL y carga los datos la primera vez
   useEffect(() => {
-    const cargarDatos = async () => {
+    const inicializarPublicador = async () => {
       try {
         const ruta = window.location.pathname; 
         const payloadCifrado = ruta.split('/v/')[1];
@@ -75,85 +111,47 @@ export default function VistaPublicador() {
 
         const { data: cong, error: errCong } = await supabase.from('congregaciones').select('*').eq('enlace_corto', enlaceCorto).single();
         if (errCong || !cong) throw new Error("La congregación no existe o el enlace expiró.");
+        
         setCongregacion(cong);
+        await recargarDatosMapa(cong.id, true); // Centramos el mapa solo la primera vez
 
-        const { data: secs } = await supabase.from('secciones')
-          .select('*')
-          .eq('congregacion_id', cong.id)
-          .order('orden', { ascending: true })
-          .order('creado_en', { ascending: true });
-
-        const formateadas = (secs || []).map(item => ({
-          id: item.id, nombre: item.nombre, colorHex: item.color_hex, 
-          coordenadas: item.coordenadas, notas: item.notas, estado: item.estado,
-          orden: item.orden 
-        }));
-        setSecciones(formateadas);
-
-        const { data: tachs } = await supabase.from('tachuelas').select('*').eq('congregacion_id', cong.id);
-        setTachuelasGrupales(tachs || []);
-
-        if (formateadas.length > 0) {
-          let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-          formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
-            if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
-            if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
-          }));
-          setCoordenadasActuales([(minLat + maxLat) / 2, (minLng + maxLng) / 2]);
-
-          const secIds = formateadas.map(s => s.id);
-          const { data: edis } = await supabase.from('edificios').select('*').in('seccion_id', secIds);
-          setEdificios(edis || []);
-        }
-      } catch (err) { setError(err.message); } 
-      finally { setCargando(false); }
+      } catch (err) { 
+        setError(err.message); 
+      } finally { 
+        setCargando(false); 
+      }
     };
-    cargarDatos();
-  }, []);
+    
+    inicializarPublicador();
+  }, [recargarDatosMapa]);
 
+  // ★ 3. EL CEREBRO DE AHORRO: Polling cada 45s y pausa por inactividad
   useEffect(() => {
     if (!congregacion?.id) return;
 
-    const canalPublicador = supabase.channel(`publicador-${congregacion.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'secciones', filter: `congregacion_id=eq.${congregacion.id}` }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setSecciones(prev => [...prev, { 
-            id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
-            coordenadas: payload.new.coordenadas, notas: payload.new.notas, estado: payload.new.estado,
-            orden: payload.new.orden 
-          }].sort((a, b) => (a.orden || 0) - (b.orden || 0)));
-        } else if (payload.eventType === 'UPDATE') {
-          setSecciones(prev => prev.map(s => s.id === payload.new.id ? { 
-            ...s, ...payload.new, colorHex: payload.new.color_hex, orden: payload.new.orden 
-          } : s).sort((a, b) => (a.orden || 0) - (b.orden || 0)));
-        } else if (payload.eventType === 'DELETE') {
-          setSecciones(prev => prev.filter(s => s.id !== payload.old.id));
-        }
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'edificios' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setEdificios(prev => [...prev, payload.new]);
-        } else if (payload.eventType === 'UPDATE') {
-          setEdificios(prev => prev.map(e => e.id === payload.new.id ? payload.new : e));
-        } else if (payload.eventType === 'DELETE') {
-          setEdificios(prev => prev.filter(e => e.id !== payload.old.id));
-        }
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tachuelas', filter: `congregacion_id=eq.${congregacion.id}` }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setTachuelasGrupales(prev => [...prev, payload.new]);
-        } else if (payload.eventType === 'UPDATE') {
-          setTachuelasGrupales(prev => prev.map(t => t.id === payload.new.id ? payload.new : t));
-        } else if (payload.eventType === 'DELETE') {
-          setTachuelasGrupales(prev => prev.filter(t => t.id !== payload.old.id));
-        }
-      })
-      .subscribe();
+    // Ciclo que se repite cada 45 segundos
+    const intervaloPolling = setInterval(() => {
+      // SOLO consulta a Supabase si el usuario tiene la pestaña abierta y visible
+      if (document.visibilityState === 'visible') {
+        recargarDatosMapa(congregacion.id, false);
+      }
+    }, 45000);
 
-    return () => {
-      supabase.removeChannel(canalPublicador);
+    // Si el usuario se fue a otra app y regresa a esta pestaña, actualizamos inmediatamente
+    const manejarVisibilidad = () => {
+      if (document.visibilityState === 'visible') {
+        recargarDatosMapa(congregacion.id, false);
+      }
     };
-  }, [congregacion]);
+    
+    document.addEventListener('visibilitychange', manejarVisibilidad);
+
+    // Limpiamos los eventos si el usuario sale de la vista
+    return () => {
+      clearInterval(intervaloPolling);
+      document.removeEventListener('visibilitychange', manejarVisibilidad);
+    };
+  }, [congregacion, recargarDatosMapa]);
 
   const buscarCiudadEnServidor = async (e) => {
     e.preventDefault();
@@ -257,7 +255,6 @@ export default function VistaPublicador() {
           estiloMapa={estiloMapa}
           enModoRevisita={enModoRevisita}
           marcadoresPersonales={gestorRevisitas.marcadores}
-          // ★ ENLAZAMOS EL CLIC DEL MAPA AL ESTADO DE LECTURA ★
           alSeleccionarRevisita={setRevisitaLectura}
           marcadorTemporal={marcadorTemporal}
           tachuelasGrupales={tachuelasGrupales}
@@ -269,7 +266,6 @@ export default function VistaPublicador() {
       {territorioLeido && <ModalInfoLectura icono={<MapIcon size={24} className="text-indigo-500" />} titulo={territorioLeido.nombre} notas={territorioLeido.notas} alCerrar={() => setTerritorioLeido(null)} />}
       {casaLeida && <ModalInfoLectura icono={<Home size={24} className="text-emerald-500" />} titulo={casaLeida.direccion} estado={casaLeida.estado} notas={casaLeida.notas} alCerrar={() => setCasaLeida(null)} />}
 
-      {/* ★ EL MODAL REUTILIZADO QUE PERMITE EDITAR NOTAS/FECHA RÁPIDAMENTE ★ */}
       {revisitaLectura && (
         <ModalInfoLecturaRevisita 
           revisita={revisitaLectura} 
@@ -309,7 +305,6 @@ export default function VistaPublicador() {
   );
 }
 
-// Este es el componente local genérico para casas y territorios, ya no lo usamos para revisitas.
 function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, alCerrar }) {
   let color = estadoColor || 'text-slate-500';
   let textoEstado = estado || '';

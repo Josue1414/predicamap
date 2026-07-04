@@ -1,5 +1,5 @@
 // src/vistas/VistaDashboard.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BookmarkPlus } from 'lucide-react'; 
 
 import CabeceraCongregacion from '../componentes/CabeceraCongregacion';
@@ -17,8 +17,11 @@ import useMapa from '../hooks/useMapa';
 import useGestorTachuelas from '../hooks/modulos/useGestorTachuelas';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 import useGestorHistorial from '../hooks/modulos/useGestorHistorial';
+import useBotonAtrasCelular from '../hooks/useBotonAtrasCelular';
 
 import { useModoMapa, MODOS_MAPA } from '../context/ContextoModoMapa';
+// ★ 1. Importamos el contexto de alertas que ya tienes creado
+import { useAlertas } from '../context/ContextoAlertas'; 
 
 export default function VistaDashboard() {
   const [modoOscuro, setModoOscuro] = useState(false);
@@ -50,10 +53,10 @@ export default function VistaDashboard() {
     congregacionActiva, guardarNombreCongregacionBD,
     asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD,
     eliminarCongregacionMasterBD, targetCongId, actualizarNombrePerfilBD, reordenarTerritorioEnBD,
-    modoAhorro, reactivarTiempoReal,actualizarDetallesSeccionEnBD,estiloMapa,alCambiarEstiloMapa
+    modoAhorro, reactivarTiempoReal, actualizarDetallesSeccionEnBD, estiloMapa, alCambiarEstiloMapa
   } = useMapa();
 
-  const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD, editarTachuelaBD} = useGestorTachuelas(targetCongId);
+  const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD, editarTachuelaBD } = useGestorTachuelas(targetCongId);
   const [tachuelaTemporal, setTachuelaTemporal] = useState(null);
   const [tachuelaLeida, setTachuelaLeida] = useState(null);
   const puedeCrearTachuela = perfilUsuario && ['Administrador Mayor', 'Administrador', 'Capitán'].includes(perfilUsuario.rol);
@@ -65,14 +68,12 @@ export default function VistaDashboard() {
   const [revisitaExpandida, setRevisitaExpandida] = useState(null); 
 
   const { 
-    logs, 
-    cargandoLogs, 
-    cargarLogs, 
-    registrarLog,
-    pagina, 
-    totalPaginas, 
-    cambiarPagina 
+    logs, cargandoLogs, cargarLogs, registrarLog,
+    pagina, totalPaginas, cambiarPagina 
   } = useGestorHistorial(targetCongId);
+
+  // ★ 2. Obtenemos la función mostrarConfirmacion de tu contexto de alertas
+  const { mostrarConfirmacion } = useAlertas();
 
   const manejarCompletarTerritorio = async (id) => {
     await completarTerritorioEntero(id);
@@ -105,7 +106,7 @@ export default function VistaDashboard() {
   const manejarEditarTachuela = async (id, datosActualizados) => {
     await editarTachuelaBD(id, datosActualizados.titulo, datosActualizados.notas);
     if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Editado', 'tachuela', `Se editó el aviso: ${datosActualizados.titulo}`);
-    setTachuelaLeida(null); // Esto cierra la ventana al terminar de guardar
+    setTachuelaLeida(null); 
   };
 
   useEffect(() => {
@@ -127,6 +128,68 @@ export default function VistaDashboard() {
   }, [nombreCongregacionUI]);
 
   const mostrarModalBienvenida = congregacionActiva?.nombre === 'Nueva Congregación';
+
+  // ★ 3. LOGICA PRINCIPAL DEL BOTON ATRÁS (Convertida a async)
+  const manejarBotonAtras = useCallback(async () => {
+    
+    // Prioridad 1: Cerrar ventanas de información, lectura o edición (Capa superior)
+    if (territorioSeleccionado || edificioSeleccionado || tachuelaLeida || revisitaLectura || revisitaEditando || revisitaExpandida) {
+      setTerritorioSeleccionado(null);
+      setEdificioSeleccionado(null);
+      setTachuelaLeida(null);
+      setRevisitaLectura(null);
+      setRevisitaEditando(null);
+      setRevisitaExpandida(null);
+      return false; // Quédate en la app
+    }
+
+    // Prioridad 2: Cerrar menú lateral (Capa media)
+    if (menuAbierto) {
+      setMenuAbierto(false);
+      return false; // Quédate en la app
+    }
+
+    // Prioridad 3: Estás creando/dibujando algo. Usamos TU alerta personalizada.
+    if (enModoTrazado || enModoEdificios || enModoTachuela || enModoRevisita || tachuelaTemporal || marcadorRevisitaTemporal) {
+      // Tu componente pausa el código hasta que el usuario decida
+      const confirmar = await mostrarConfirmacion(
+        "Cancelar acción",
+        "¿Deseas cancelar lo que estás haciendo y volver al mapa principal?",
+        "warning",
+        "Sí, salir"
+      );
+      
+      // Si el usuario da "Sí, salir", limpiamos los estados de dibujo
+      if (confirmar) {
+        cancelarTrazadoYSalir(); 
+        limpiarModo(); 
+        setTachuelaTemporal(null);
+        setMarcadorRevisitaTemporal(null);
+      }
+      
+      // Sin importar lo que elija, NO queremos que salga de la aplicación, solo del modo dibujo.
+      return false; 
+    }
+
+    // Prioridad 4: Mapa limpio. Aquí sí preguntamos si quiere abandonar PredicaMap
+    const confirmarSalir = await mostrarConfirmacion(
+      "Salir de PredicaMap",
+      "¿Estás seguro que deseas salir de la aplicación?",
+      "danger",
+      "Salir de la app"
+    );
+    
+    // Si confirma, devolvemos true (que le dirá al hook que lo deje irse)
+    return confirmarSalir;
+    
+  }, [
+    menuAbierto, territorioSeleccionado, edificioSeleccionado, tachuelaLeida, revisitaLectura, revisitaEditando, revisitaExpandida,
+    enModoTrazado, enModoEdificios, enModoTachuela, enModoRevisita, tachuelaTemporal, marcadorRevisitaTemporal,
+    cancelarTrazadoYSalir, limpiarModo, mostrarConfirmacion
+  ]);
+
+  // ★ 4. Conectamos la función al hook
+  useBotonAtrasCelular(manejarBotonAtras);
 
   return (
     <div className="w-screen h-[100dvh] overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
@@ -286,7 +349,7 @@ export default function VistaDashboard() {
           revisita={revisitaLectura} 
           alGuardar={(id, datos) => {
             gestorRevisitas.editarMarcador(id, datos);
-            setRevisitaLectura({ ...revisitaLectura, ...datos }); // Actualizamos la vista inmediatamente
+            setRevisitaLectura({ ...revisitaLectura, ...datos }); 
           }} 
           alCerrar={() => setRevisitaLectura(null)} 
         />

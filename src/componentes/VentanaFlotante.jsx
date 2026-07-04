@@ -1,26 +1,38 @@
 // src/componentes/VentanaFlotante.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export default function VentanaFlotante({ abierta, alCerrar, titulo, children, icono: Icono }) {
-  // Prevenir el scroll del fondo cuando la ventana está abierta
+  const alCerrarRef = useRef(alCerrar);
+  useEffect(() => { alCerrarRef.current = alCerrar; }, [alCerrar]);
+
   useEffect(() => {
     if (abierta) {
       document.body.style.overflow = 'hidden';
+      
+      // Nos anotamos en la lista global de ventanas abiertas
+      window.modalesAbiertos = window.modalesAbiertos || [];
+      window.modalesAbiertos.push(alCerrarRef);
+
+      return () => {
+        // Al cerrarse (sin importar cómo), nos borramos de la lista global
+        if (window.modalesAbiertos) {
+          window.modalesAbiertos = window.modalesAbiertos.filter(ref => ref !== alCerrarRef);
+        }
+        document.body.style.overflow = 'unset';
+      };
     } else {
       document.body.style.overflow = 'unset';
     }
-    return () => { document.body.style.overflow = 'unset'; };
   }, [abierta]);
 
   if (!abierta) return null;
 
-  // createPortal inyecta este HTML directamente al final del <body>, por encima de todo.
   return createPortal(
     <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4 sm:p-6">
       
-      {/* Fondo oscuro desenfocado. Al hacer clic aquí, se cierra la ventana. */}
+      {/* Fondo oscuro desenfocado */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={alCerrar}
@@ -38,7 +50,6 @@ export default function VentanaFlotante({ abierta, alCerrar, titulo, children, i
             </h3>
           </div>
           
-          {/* Botón de cerrar para volver al menú */}
           <button 
             onClick={alCerrar}
             className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-600 hover:text-rose-600 dark:text-slate-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all active:scale-95"
@@ -48,7 +59,7 @@ export default function VentanaFlotante({ abierta, alCerrar, titulo, children, i
           </button>
         </div>
 
-        {/* Contenido scrolleable de tu sección */}
+        {/* Contenido scrolleable */}
         <div className="p-4 overflow-y-auto scroll-limpio flex-1 bg-slate-50/50 dark:bg-slate-900/50">
           {children}
         </div>

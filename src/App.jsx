@@ -11,6 +11,9 @@ import VistaRecuperar from './vistas/VistaRecuperar';
 import { ProveedorModoMapa } from './context/ContextoModoMapa';
 import { ProveedorAlertas } from './context/ContextoAlertas'; 
 
+// ★ 1. IMPORTAMOS EL MODAL DE PRIVACIDAD ★
+import ModalPrivacidad from './componentes/ModalPrivacidad';
+
 export default function App() {
   const [sesion, setSesion] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -49,6 +52,10 @@ export default function App() {
       {/* ★ ENVOLVEMOS TODO EN LOS PROVEEDORES ★ */}
       <ProveedorAlertas>
         <ProveedorModoMapa>
+          
+          {/* ★ 2. AGREGAMOS EL MODAL AQUÍ ★ */}
+          <ModalPrivacidad />
+
           <Routes>
             
             {/* RUTA PÚBLICA (PUBLICADOR) */}
