@@ -27,7 +27,7 @@ export default function useMapa() {
     !!global.congregacionContextoId, 
     (coordenadas) => {
       ui.setCoordenadasActuales(coordenadas);
-      ui.setZoomActual(16); 
+      ui.setZoomActual(15); 
     }
   );
   

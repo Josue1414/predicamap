@@ -10,6 +10,10 @@ export default function VistaLogin() {
   
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
+  
+  // ★ 1. NUEVO ESTADO para confirmar la contraseña
+  const [confirmarContrasena, setConfirmarContrasena] = useState(''); 
+  
   const [nombre, setNombre] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
@@ -71,19 +75,22 @@ export default function VistaLogin() {
     try {
       if (esRegistro) {
         
-        // ★ 1. VALIDACIONES DE SEGURIDAD DE LA CONTRASEÑA ★
+        // ★ 2. NUEVA VALIDACIÓN: Verificar que las contraseñas coincidan
+        if (contrasena !== confirmarContrasena) {
+          throw new Error('Las contraseñas no coinciden. Revisa que estén escritas exactamente igual.');
+        }
+
+        // VALIDACIONES DE SEGURIDAD DE LA CONTRASEÑA
         if (contrasena.length < 6) {
           throw new Error('Tu contraseña es muy corta. Debe tener al menos 6 caracteres.');
         }
 
         const contrasenasObvias = ['123456', '12345678', '123456789', 'contraseña', 'contrasena', 'password', 'qwerty', '123123'];
         
-        // Verifica si está en la lista de obvias o si son puros caracteres repetidos (ej. 111111, aaaaaa)
         if (contrasenasObvias.includes(contrasena.toLowerCase()) || /^(.)\1+$/.test(contrasena)) {
           throw new Error('Esa contraseña es demasiado fácil de adivinar. Por tu seguridad, no uses nueros continuos, ni números repetidos.');
         }
 
-        // Si pasa las validaciones, procedemos con Supabase
         const metadatosAuth = {
           nombre: nombre,
           rol: rolInvitado || 'Publicador',
@@ -114,7 +121,7 @@ export default function VistaLogin() {
         } else {
           setMensaje({ 
             tipo: 'exito', 
-            texto: `¡Registro completado! Ve a tu bandeja de entrada o SPAM y confirma tu correo haciendo clic en el enlace para entrar como ${rolInvitado || 'Publicador'}.` 
+            texto: `¡Registro completado! Ve a tu bandeja de entrada o SPAM y confirma tu correo electrónico haciendo clic en el enlace para entrar como ${rolInvitado || 'Publicador'}.` 
           });
         }
         
@@ -181,8 +188,6 @@ export default function VistaLogin() {
               <p className="text-slate-400 text-[11px] mb-1">Tu cuenta está enlazada a:</p>
               <p className="text-white font-semibold text-sm">{correo}</p>
             </div>
-
-            
           </div>
         ) : (
           <>
@@ -220,39 +225,67 @@ export default function VistaLogin() {
               </div>
 
               {!esRecuperacion && (
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Contraseña</label>
-                  <div className="relative flex items-center">
-                    <Lock size={14} className="absolute left-3 text-slate-500" />
-                    <input 
-                      required 
-                      type={mostrarContrasena ? "text" : "password"} 
-                      value={contrasena} 
-                      onChange={(e) => setContrasena(e.target.value)} 
-                      placeholder="••••••••" 
-                      className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" 
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => setMostrarContrasena(!mostrarContrasena)}
-                      className="absolute right-3 text-slate-500 hover:text-indigo-400 transition-colors p-1"
-                    >
-                      {mostrarContrasena ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                  
-                  {!esRegistro && (
-                    <div className="flex justify-end mt-2">
+                <>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Contraseña</label>
+                    <div className="relative flex items-center">
+                      <Lock size={14} className="absolute left-3 text-slate-500" />
+                      <input 
+                        required 
+                        type={mostrarContrasena ? "text" : "password"} 
+                        value={contrasena} 
+                        onChange={(e) => setContrasena(e.target.value)} 
+                        placeholder="••••••••" 
+                        className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" 
+                      />
                       <button 
                         type="button" 
-                        onClick={() => { setEsRecuperacion(true); setMensaje({ tipo: '', texto: '' }); }}
-                        className="text-[10px] text-slate-400 hover:text-rose-400 transition-colors"
+                        onClick={() => setMostrarContrasena(!mostrarContrasena)}
+                        className="absolute right-3 text-slate-500 hover:text-indigo-400 transition-colors p-1"
                       >
-                        ¿Olvidaste tu contraseña?
+                        {mostrarContrasena ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
+                    
+                    {!esRegistro && (
+                      <div className="flex justify-end mt-2">
+                        <button 
+                          type="button" 
+                          onClick={() => { setEsRecuperacion(true); setMensaje({ tipo: '', texto: '' }); }}
+                          className="text-[10px] text-slate-400 hover:text-rose-400 transition-colors"
+                        >
+                          ¿Olvidaste tu contraseña?
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ★ 3. NUEVO CAMPO en la UI: Confirmar contraseña (solo visible en registro) */}
+                  {esRegistro && (
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1">Confirmar Contraseña</label>
+                      <div className="relative flex items-center">
+                        <Lock size={14} className="absolute left-3 text-slate-500" />
+                        <input 
+                          required 
+                          type={mostrarContrasena ? "text" : "password"} 
+                          value={confirmarContrasena} 
+                          onChange={(e) => setConfirmarContrasena(e.target.value)} 
+                          placeholder="••••••••" 
+                          className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors" 
+                        />
+                        {/* ★ Botón del ojito agregado aquí */}
+                        <button 
+                          type="button" 
+                          onClick={() => setMostrarContrasena(!mostrarContrasena)}
+                          className="absolute right-3 text-slate-500 hover:text-indigo-400 transition-colors p-1"
+                        >
+                          {mostrarContrasena ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </div>
+                </>
               )}
 
               <button 
@@ -268,7 +301,12 @@ export default function VistaLogin() {
             <div className="mt-5 text-center flex flex-col gap-3">
               {!esRecuperacion && esRegistro && (
                 <button 
-                  onClick={() => { setEsRegistro(false); setMensaje({tipo:'', texto:''}); }} 
+                  onClick={() => { 
+                    setEsRegistro(false); 
+                    setMensaje({tipo:'', texto:''}); 
+                    // Limpiamos el campo por si cambian de opinión
+                    setConfirmarContrasena(''); 
+                  }} 
                   className="text-[11px] text-slate-400 hover:text-white transition-colors"
                 >
                   ¿Ya tienes cuenta? <span className="text-indigo-400 font-bold">Inicia sesión aquí</span>

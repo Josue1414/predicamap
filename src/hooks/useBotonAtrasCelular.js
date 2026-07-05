@@ -1,39 +1,44 @@
-// src/hooks/useBotonAtrasCelular.js
 import { useEffect, useRef } from 'react';
 
 export default function useBotonAtrasCelular(manejarBotonAtras) {
-  // 1. Guardamos tu función del Dashboard en una referencia.
-  // Esto evita que el escudo se reinicie cada vez que abres o cierras un menú.
   const manejarRef = useRef(manejarBotonAtras);
+  const procesandoRef = useRef(false);
   
   useEffect(() => {
     manejarRef.current = manejarBotonAtras;
   }, [manejarBotonAtras]);
 
   useEffect(() => {
-    // 2. Colocamos el registro falso en el historial SOLO UNA VEZ
+    // 1. Colocamos el candado principal al iniciar la app
     window.history.pushState({ trampaApp: true }, '');
 
-    const interceptarAtras = async (evento) => {
-      // 3. Volvemos a colocar el escudo inmediatamente
-      window.history.pushState({ trampaApp: true }, '');
-
-      // 4. CAPA 1: Revisamos si hay Ventanas Flotantes abiertas
-      if (window.modalesAbiertos && window.modalesAbiertos.length > 0) {
-        // Obtenemos la última ventana que se abrió
-        const modalRef = window.modalesAbiertos[window.modalesAbiertos.length - 1];
-        if (modalRef && modalRef.current) {
-          modalRef.current(); // Cerramos SOLAMENTE la ventana
-        }
-        return; // Detenemos la función. El Menú Lateral se queda abierto.
+    const interceptarAtras = async () => {
+      // Ignoramos cierres provocados por botones dentro de la app
+      if (window.ignorarSiguientePopstate) {
+        window.ignorarSiguientePopstate = false;
+        return;
       }
 
-      // 5. CAPA 2: No hay ventanas, le preguntamos al Dashboard
-      // Usamos manejarRef para tener los datos más actualizados sin reiniciar el hook
-      const debeSalir = await manejarRef.current();
+      // ★ SOLUCIÓN AL CIERRE INESPERADO: Reponemos el candado INMEDIATAMENTE
+      // Al presionar el botón físico se gastó un candado, lo restauramos antes 
+      // de evaluar cualquier otra cosa para que la app nunca quede desprotegida.
+      window.history.pushState({ trampaApp: true }, '');
 
+      // Detectamos si hay Ventanas Flotantes abiertas (ej. Secciones del menú lateral)
+      const hayModalesAbiertos = window.modalesAbiertos && window.modalesAbiertos.length > 0;
+
+      // Seguro para evitar que se ejecute doble si el usuario presiona muy rápido
+      if (procesandoRef.current) return;
+      procesandoRef.current = true;
+
+      // ★ NUEVA CONEXIÓN: Le enviamos a tu función principal el estado de los modales.
+      // Así el Dashboard sabrá si debe cerrar el menú lateral completo.
+      const debeSalir = await manejarRef.current(hayModalesAbiertos);
+
+      procesandoRef.current = false;
+
+      // Si el usuario confirmó que quiere salir de PredicaMap, lo dejamos ir
       if (debeSalir) {
-        // Si el usuario confirmó la alerta de salir, lo dejamos ir
         window.removeEventListener('popstate', interceptarAtras);
         window.history.go(-2); 
       }
@@ -41,9 +46,8 @@ export default function useBotonAtrasCelular(manejarBotonAtras) {
 
     window.addEventListener('popstate', interceptarAtras);
 
-    // Limpiamos solo cuando se cierre el Dashboard por completo
     return () => {
       window.removeEventListener('popstate', interceptarAtras);
     };
-  }, []); // <-- ARREGLO VACÍO: ¡Esto garantiza que el escudo nunca parpadee ni te saque!
+  }, []); 
 }

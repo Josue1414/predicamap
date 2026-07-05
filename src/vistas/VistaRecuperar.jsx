@@ -5,12 +5,21 @@ import { Lock, Save, Eye, EyeOff } from 'lucide-react';
 
 export default function VistaRecuperar() {
   const [nuevaContrasena, setNuevaContrasena] = useState('');
+  // ★ 1. NUEVO ESTADO para confirmar la contraseña
+  const [confirmarContrasena, setConfirmarContrasena] = useState('');
+  
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
 
   const manejarCambioContrasena = async (e) => {
     e.preventDefault();
+    
+    // ★ 2. NUEVA VALIDACIÓN: Verificar que coincidan
+    if (nuevaContrasena !== confirmarContrasena) {
+      return setMensaje({ tipo: 'error', texto: 'Las contraseñas no coinciden. Revisa que estén escritas exactamente igual.' });
+    }
+
     if (nuevaContrasena.length < 6) {
       return setMensaje({ tipo: 'error', texto: 'La contraseña debe tener al menos 6 caracteres.' });
     }
@@ -43,7 +52,6 @@ export default function VistaRecuperar() {
       <div className="w-full max-w-sm bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 shadow-2xl relative z-10 text-xs">
         
         <div className="flex flex-col items-center mb-6">
-          {/* ★ LOGO AÑADIDO EN LA RECUPERACIÓN ★ */}
           <div className="w-20 h-20 bg-white rounded-2xl shadow-lg shadow-emerald-600/20 p-1.5 mb-3 flex items-center justify-center">
             <img 
               src="https://mzardqwfmxdabsjmzwkk.supabase.co/storage/v1/object/public/Logo%20PredicaMap/Logo-PredicaMap.svg" 
@@ -73,6 +81,29 @@ export default function VistaRecuperar() {
                 type={mostrarContrasena ? "text" : "password"} 
                 value={nuevaContrasena} 
                 onChange={(e) => setNuevaContrasena(e.target.value)} 
+                placeholder="••••••••" 
+                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors" 
+              />
+              <button 
+                type="button" 
+                onClick={() => setMostrarContrasena(!mostrarContrasena)}
+                className="absolute right-3 text-slate-500 hover:text-emerald-400 transition-colors p-1"
+              >
+                {mostrarContrasena ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+          </div>
+
+          {/* ★ 3. NUEVO CAMPO: Confirmar Contraseña ★ */}
+          <div>
+            <label className="block text-slate-400 font-semibold mb-1">Confirmar Contraseña</label>
+            <div className="relative flex items-center">
+              <Lock size={14} className="absolute left-3 text-slate-500" />
+              <input 
+                required 
+                type={mostrarContrasena ? "text" : "password"} 
+                value={confirmarContrasena} 
+                onChange={(e) => setConfirmarContrasena(e.target.value)} 
                 placeholder="••••••••" 
                 className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors" 
               />

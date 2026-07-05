@@ -5,27 +5,53 @@ import { X } from 'lucide-react';
 
 export default function VentanaFlotante({ abierta, alCerrar, titulo, children, icono: Icono }) {
   const alCerrarRef = useRef(alCerrar);
+  // Creamos un ID único para el historial de esta ventana específica
+  const modalId = useRef(`modal_${Date.now()}_${Math.random()}`).current;
+
   useEffect(() => { alCerrarRef.current = alCerrar; }, [alCerrar]);
 
   useEffect(() => {
     if (abierta) {
       document.body.style.overflow = 'hidden';
       
-      // Nos anotamos en la lista global de ventanas abiertas
+      // ★ 1. Nos anotamos en la lista global de ventanas
       window.modalesAbiertos = window.modalesAbiertos || [];
       window.modalesAbiertos.push(alCerrarRef);
 
-      return () => {
-        // Al cerrarse (sin importar cómo), nos borramos de la lista global
-        if (window.modalesAbiertos) {
-          window.modalesAbiertos = window.modalesAbiertos.filter(ref => ref !== alCerrarRef);
+      // ★ 2. Agregamos un estado al historial EXCLUSIVO para esta ventana
+      window.history.pushState({ modalId }, "");
+
+      const manejarBotonAtrasCelular = () => {
+        // Verificamos si esta ventana es la que está hasta arriba
+        const isTop = window.modalesAbiertos[window.modalesAbiertos.length - 1] === alCerrarRef;
+        if (isTop) {
+          alCerrarRef.current(); // Cerramos la ventana
         }
+      };
+
+      window.addEventListener('popstate', manejarBotonAtrasCelular);
+
+      return () => {
+        window.removeEventListener('popstate', manejarBotonAtrasCelular);
+        
+        // ★ 3. Al destruirse, nos borramos de la lista global
+        window.modalesAbiertos = window.modalesAbiertos.filter(ref => ref !== alCerrarRef);
+        
+        // ★ 4. Si el historial aún tiene el ID de esta ventana (significa que la cerraste con la "X"), 
+        // retrocedemos manualmente, pero le avisamos al Dashboard que lo ignore.
+        if (window.history.state && window.history.state.modalId === modalId) {
+          window.ignorarSiguientePopstate = true;
+          window.history.back();
+          // Limpiamos la bandera de ignorar por seguridad
+          setTimeout(() => { window.ignorarSiguientePopstate = false; }, 100);
+        }
+        
         document.body.style.overflow = 'unset';
       };
     } else {
       document.body.style.overflow = 'unset';
     }
-  }, [abierta]);
+  }, [abierta, modalId]);
 
   if (!abierta) return null;
 

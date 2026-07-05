@@ -14,7 +14,7 @@ export function ModalFormularioRevisita({ marcadorEditando, alGuardar, alCancela
     e.preventDefault();
     if (!titulo.trim()) {
       // ★ ADIÓS ALERT NATIVO
-      mostrarAlerta("Atención", "El título o nombre de la revisita es obligatorio.", "warning");
+      mostrarAlerta("Atención", "El título de la revisita es obligatorio.", "warning");
       return;
     }
     alGuardar({ titulo, fechaProgramada: fecha, notas });
@@ -33,8 +33,8 @@ export function ModalFormularioRevisita({ marcadorEditando, alGuardar, alCancela
           </div>
           <form onSubmit={manejarSubmit} className="space-y-4">
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 mb-1">Nombre / Título *</label>
-              <input type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ej: Familia López, Casa Azul..." autoFocus className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 text-slate-800 dark:text-slate-100" />
+              <label className="block text-[11px] font-bold text-slate-500 mb-1">Título </label>
+              <input type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título de la revisita" autoFocus className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 text-slate-800 dark:text-slate-100" />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-500 mb-1">Día programado (Opcional)</label>

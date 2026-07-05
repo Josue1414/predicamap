@@ -95,7 +95,7 @@ export default function VisorMapa({
   const [zoomReal, setZoomReal] = useState(zoomInicial || 15);
   
   const mostrarEtiquetasZoom = zoomReal >= 15;
-  const mostrarCasasZoom = zoomReal >= 16;
+  const mostrarCasasZoom = zoomReal >= 18;
   
   const [rastreando, setRastreando] = useState(false);
   const [mostrarLeyenda, setMostrarLeyenda] = useState(true);

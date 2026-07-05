@@ -129,9 +129,16 @@ export default function VistaDashboard() {
 
   const mostrarModalBienvenida = congregacionActiva?.nombre === 'Nueva Congregación';
 
-  // ★ 3. LOGICA PRINCIPAL DEL BOTON ATRÁS (Convertida a async)
-  const manejarBotonAtras = useCallback(async () => {
+  const manejarBotonAtras = useCallback(async (hayModalesAbiertos = false) => {
     
+    // ★ NUEVO COMPORTAMIENTO UX:
+    // Si hay una sección abierta (VentanaFlotante) y se presiona atrás, dejamos que  
+    // VentanaFlotante se cierre sola, pero TAMBIÉN forzamos el cierre del Menú Lateral.
+    if (hayModalesAbiertos === true) {
+      setMenuAbierto(false);
+      return false; // Nos quedamos en la app
+    }
+
     // Prioridad 1: Cerrar ventanas de información, lectura o edición (Capa superior)
     if (territorioSeleccionado || edificioSeleccionado || tachuelaLeida || revisitaLectura || revisitaEditando || revisitaExpandida) {
       setTerritorioSeleccionado(null);
@@ -143,15 +150,14 @@ export default function VistaDashboard() {
       return false; // Quédate en la app
     }
 
-    // Prioridad 2: Cerrar menú lateral (Capa media)
+    // Prioridad 2: Cerrar menú lateral (Capa media - Cuando no hay secciones abiertas)
     if (menuAbierto) {
       setMenuAbierto(false);
       return false; // Quédate en la app
     }
 
-    // Prioridad 3: Estás creando/dibujando algo. Usamos TU alerta personalizada.
+    // Prioridad 3: Estás creando/dibujando algo. Usamos la alerta personalizada.
     if (enModoTrazado || enModoEdificios || enModoTachuela || enModoRevisita || tachuelaTemporal || marcadorRevisitaTemporal) {
-      // Tu componente pausa el código hasta que el usuario decida
       const confirmar = await mostrarConfirmacion(
         "Cancelar acción",
         "¿Deseas cancelar lo que estás haciendo y volver al mapa principal?",
@@ -159,19 +165,16 @@ export default function VistaDashboard() {
         "Sí, salir"
       );
       
-      // Si el usuario da "Sí, salir", limpiamos los estados de dibujo
       if (confirmar) {
         cancelarTrazadoYSalir(); 
         limpiarModo(); 
         setTachuelaTemporal(null);
         setMarcadorRevisitaTemporal(null);
       }
-      
-      // Sin importar lo que elija, NO queremos que salga de la aplicación, solo del modo dibujo.
-      return false; 
+      return false; // No queremos salir de la app, solo del modo dibujo.
     }
 
-    // Prioridad 4: Mapa limpio. Aquí sí preguntamos si quiere abandonar PredicaMap
+    // Prioridad 4: Mapa limpio. Preguntamos si quiere abandonar PredicaMap
     const confirmarSalir = await mostrarConfirmacion(
       "Salir de PredicaMap",
       "¿Estás seguro que deseas salir de la aplicación?",
@@ -179,7 +182,6 @@ export default function VistaDashboard() {
       "Salir de la app"
     );
     
-    // Si confirma, devolvemos true (que le dirá al hook que lo deje irse)
     return confirmarSalir;
     
   }, [

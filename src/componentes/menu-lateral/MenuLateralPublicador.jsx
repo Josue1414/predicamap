@@ -60,7 +60,7 @@ export default function MenuLateralPublicador({
               <MapPin size={18} className="text-indigo-500" /> {nombreCongregacion}
             </h2>
             <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 font-extrabold px-2 py-0.5 rounded-full mt-1.5 inline-block tracking-wider uppercase">
-              (Publicador)
+              Publicador
             </span>
           </div>
           <button onClick={alCerrar} className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors">

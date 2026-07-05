@@ -10,6 +10,9 @@ import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 import { ModalInfoTachuela } from '../componentes/ModalTachuela';
 import { ModalFormularioRevisita, ModalInfoLecturaRevisita } from '../componentes/ModalesRevisita';
 
+import useBotonAtrasCelular from '../hooks/useBotonAtrasCelular';
+import { useAlertas } from '../context/ContextoAlertas';
+
 export default function VistaPublicador() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -40,7 +43,69 @@ export default function VistaPublicador() {
   const [enModoRevisita, setEnModoRevisita] = useState(false);
   const [marcadorTemporal, setMarcadorTemporal] = useState(null); 
   const [revisitaEditando, setRevisitaEditando] = useState(null); 
-  const [revisitaLectura, setRevisitaLectura] = useState(null);   
+  const [revisitaLectura, setRevisitaLectura] = useState(null);
+
+
+  const { mostrarConfirmacion } = useAlertas();
+
+  // ★ 2. LÓGICA DEL BOTÓN ATRÁS ADAPTADA AL PUBLICADOR
+  const manejarBotonAtras = useCallback(async (hayModalesAbiertos = false) => {
+    
+    // NUEVO COMPORTAMIENTO UX:
+    if (hayModalesAbiertos === true) {
+      setMenuAbierto(false);
+      return false; // Nos quedamos en la app
+    }
+
+    // Prioridad 1: Cerrar ventanas de información, lectura o edición (Capa superior)
+    if (territorioLeido || casaLeida || tachuelaLeida || revisitaLectura || revisitaEditando) {
+      setTerritorioLeido(null);
+      setCasaLeida(null);
+      setTachuelaLeida(null);
+      setRevisitaLectura(null);
+      setRevisitaEditando(null);
+      return false; // Quédate en la app
+    }
+
+    // Prioridad 2: Cerrar menú lateral (Capa media - Cuando no hay secciones abiertas)
+    if (menuAbierto) {
+      setMenuAbierto(false);
+      return false; // Quédate en la app
+    }
+
+    // Prioridad 3: Estás creando/dibujando algo (En el publicador solo está el modo Revisita)
+    if (enModoRevisita || marcadorTemporal) {
+      const confirmar = await mostrarConfirmacion(
+        "Cancelar acción",
+        "¿Deseas cancelar lo que estás haciendo y volver al mapa principal?",
+        "warning",
+        "Sí, salir"
+      );
+      
+      if (confirmar) {
+        setEnModoRevisita(false);
+        setMarcadorTemporal(null);
+      }
+      return false; // No queremos salir de la app, solo del modo dibujo.
+    }
+
+    // Prioridad 4: Mapa limpio. Preguntamos si quiere abandonar PredicaMap
+    const confirmarSalir = await mostrarConfirmacion(
+      "Salir de PredicaMap",
+      "¿Estás seguro que deseas salir de la aplicación?",
+      "danger",
+      "Salir de la app"
+    );
+    
+    return confirmarSalir;
+    
+  }, [
+    menuAbierto, territorioLeido, casaLeida, tachuelaLeida, revisitaLectura, revisitaEditando,
+    enModoRevisita, marcadorTemporal, mostrarConfirmacion
+  ]);
+
+  // ★ 3. CONECTAMOS LA FUNCIÓN AL HOOK
+  useBotonAtrasCelular(manejarBotonAtras);
 
   const manejarCambioEstiloMapa = (nuevoEstilo) => {
     setEstiloMapa(nuevoEstilo);

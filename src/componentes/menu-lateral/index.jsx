@@ -43,7 +43,7 @@ export default function MenuLateral({
   estiloMapa,
   alCambiarEstiloMapa
 }) {
-  const [acordeonActivo, setAcordeonActivo] = useState('lista'); 
+  const [acordeonActivo, setAcordeonActivo] = useState(null); 
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
   const [congregacionExpandida, setCongregacionExpandido] = useState(null);
 
