@@ -3,6 +3,15 @@ import React, { useRef } from 'react';
 import { BookmarkPlus, ChevronRight, ChevronDown, Navigation, Share2, Edit, Trash2, Download, Upload, Info } from 'lucide-react';
 import VentanaFlotante from '../VentanaFlotante';
 
+// ★ FUNCIÓN PARA OBTENER FECHA LOCAL ESTRICTA ★
+const obtenerFechaHoyLocal = () => {
+  const fecha = new Date();
+  const year = fecha.getFullYear();
+  const month = String(fecha.getMonth() + 1).padStart(2, '0');
+  const day = String(fecha.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function SeccionMisRevisitas({
   visible,
   acordeonActivo,
@@ -21,7 +30,9 @@ export default function SeccionMisRevisitas({
 
   if (!visible) return null;
 
-  const hoyStr = new Date().toISOString().split('T')[0];
+  // ★ USAMOS LA FECHA LOCAL EN LUGAR DE UTC ★
+  const hoyStr = obtenerFechaHoyLocal();
+  
   const marcadoresOrdenados = [...marcadoresPersonales].sort((a, b) => {
     if (a.fechaProgramada === hoyStr && b.fechaProgramada !== hoyStr) return -1;
     if (b.fechaProgramada === hoyStr && a.fechaProgramada !== hoyStr) return 1;
@@ -87,7 +98,6 @@ export default function SeccionMisRevisitas({
                         </p>
                         
                         <div className="grid grid-cols-2 gap-3 mb-3">
-                          {/* ★ BOTÓN VOLAR ACTUALIZADO ★ */}
                           <button 
                             onClick={() => {
                               alVolarARevisita(m);
@@ -103,7 +113,6 @@ export default function SeccionMisRevisitas({
                           </button>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          {/* ★ BOTÓN EDITAR ACTUALIZADO ★ */}
                           <button 
                             onClick={() => {
                               alEditarRevisita(m);

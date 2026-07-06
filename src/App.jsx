@@ -19,6 +19,16 @@ export default function App() {
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
+    // ★ INTERCEPCIÓN PWA: Enrutamiento inteligente para publicadores
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const rutaPwa = localStorage.getItem('pm_ruta_inicio_pwa');
+
+    // Si la app está instalada, existe una ruta guardada y estamos en la raíz o el login
+    if (isStandalone && rutaPwa && (window.location.pathname === '/' || window.location.pathname === '/login')) {
+      window.location.replace(rutaPwa);
+      return; // Detenemos la ejecución aquí para permitir la redirección inmediata
+    }
+
     // 1. Verificar sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSesion(session);

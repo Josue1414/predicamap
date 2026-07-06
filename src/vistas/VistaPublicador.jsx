@@ -45,35 +45,28 @@ export default function VistaPublicador() {
   const [revisitaEditando, setRevisitaEditando] = useState(null); 
   const [revisitaLectura, setRevisitaLectura] = useState(null);
 
-
   const { mostrarConfirmacion } = useAlertas();
 
-  // ★ 2. LÓGICA DEL BOTÓN ATRÁS ADAPTADA AL PUBLICADOR
   const manejarBotonAtras = useCallback(async (hayModalesAbiertos = false) => {
-    
-    // NUEVO COMPORTAMIENTO UX:
     if (hayModalesAbiertos === true) {
       setMenuAbierto(false);
-      return false; // Nos quedamos en la app
+      return false; 
     }
 
-    // Prioridad 1: Cerrar ventanas de información, lectura o edición (Capa superior)
     if (territorioLeido || casaLeida || tachuelaLeida || revisitaLectura || revisitaEditando) {
       setTerritorioLeido(null);
       setCasaLeida(null);
       setTachuelaLeida(null);
       setRevisitaLectura(null);
       setRevisitaEditando(null);
-      return false; // Quédate en la app
+      return false; 
     }
 
-    // Prioridad 2: Cerrar menú lateral (Capa media - Cuando no hay secciones abiertas)
     if (menuAbierto) {
       setMenuAbierto(false);
-      return false; // Quédate en la app
+      return false; 
     }
 
-    // Prioridad 3: Estás creando/dibujando algo (En el publicador solo está el modo Revisita)
     if (enModoRevisita || marcadorTemporal) {
       const confirmar = await mostrarConfirmacion(
         "Cancelar acción",
@@ -86,10 +79,9 @@ export default function VistaPublicador() {
         setEnModoRevisita(false);
         setMarcadorTemporal(null);
       }
-      return false; // No queremos salir de la app, solo del modo dibujo.
+      return false; 
     }
 
-    // Prioridad 4: Mapa limpio. Preguntamos si quiere abandonar PredicaMap
     const confirmarSalir = await mostrarConfirmacion(
       "Salir de PredicaMap",
       "¿Estás seguro que deseas salir de la aplicación?",
@@ -104,7 +96,6 @@ export default function VistaPublicador() {
     enModoRevisita, marcadorTemporal, mostrarConfirmacion
   ]);
 
-  // ★ 3. CONECTAMOS LA FUNCIÓN AL HOOK
   useBotonAtrasCelular(manejarBotonAtras);
 
   const manejarCambioEstiloMapa = (nuevoEstilo) => {
@@ -120,8 +111,29 @@ export default function VistaPublicador() {
     else document.documentElement.classList.remove('dark');
   }, [modoOscuro]);
 
-  // ★ 1. NUEVA FUNCIÓN: Descarga los datos silenciosamente sin mostrar la pantalla de carga principal
   const recargarDatosMapa = useCallback(async (congId, centrarMapa = false) => {
+    const secLocales = localStorage.getItem(`pm_pub_secciones_${congId}`);
+    const tachLocales = localStorage.getItem(`pm_pub_tachuelas_${congId}`);
+    const ediLocales = localStorage.getItem(`pm_pub_edificios_${congId}`);
+
+    if (secLocales) {
+      const formateadas = JSON.parse(secLocales);
+      setSecciones(formateadas);
+      if (centrarMapa && formateadas.length > 0) {
+        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+        formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
+          if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+          if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+        }));
+        setCoordenadasActuales([(minLat + maxLat) / 2, (minLng + maxLng) / 2]);
+      }
+    }
+
+    if (tachLocales) setTachuelasGrupales(JSON.parse(tachLocales));
+    if (ediLocales) setEdificios(JSON.parse(ediLocales));
+
+    if (!navigator.onLine) return;
+
     try {
       const { data: secs } = await supabase.from('secciones')
         .select('*')
@@ -135,12 +147,14 @@ export default function VistaPublicador() {
         orden: item.orden 
       }));
       setSecciones(formateadas);
+      localStorage.setItem(`pm_pub_secciones_${congId}`, JSON.stringify(formateadas));
 
       const { data: tachs } = await supabase.from('tachuelas').select('*').eq('congregacion_id', congId);
       setTachuelasGrupales(tachs || []);
+      localStorage.setItem(`pm_pub_tachuelas_${congId}`, JSON.stringify(tachs || []));
 
       if (formateadas.length > 0) {
-        if (centrarMapa) {
+        if (centrarMapa && !secLocales) {
           let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
           formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
             if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
@@ -152,13 +166,13 @@ export default function VistaPublicador() {
         const secIds = formateadas.map(s => s.id);
         const { data: edis } = await supabase.from('edificios').select('*').in('seccion_id', secIds);
         setEdificios(edis || []);
+        localStorage.setItem(`pm_pub_edificios_${congId}`, JSON.stringify(edis || []));
       }
     } catch (err) {
       console.error("Error recargando datos del mapa:", err.message);
     }
   }, []);
 
-  // ★ 2. CARGA INICIAL: Descifra la URL y carga los datos la primera vez
   useEffect(() => {
     const inicializarPublicador = async () => {
       try {
@@ -174,11 +188,29 @@ export default function VistaPublicador() {
           enlaceCorto = payloadCifrado;
         }
 
+        const congLocal = localStorage.getItem(`pm_pub_cong_${enlaceCorto}`);
+        if (congLocal) {
+          const congParseada = JSON.parse(congLocal);
+          setCongregacion(congParseada);
+          await recargarDatosMapa(congParseada.id, true);
+        }
+
+        if (!navigator.onLine) {
+          if (!congLocal) throw new Error("No hay conexión a internet y no hay datos guardados para este enlace.");
+          setCargando(false);
+          return;
+        }
+
         const { data: cong, error: errCong } = await supabase.from('congregaciones').select('*').eq('enlace_corto', enlaceCorto).single();
         if (errCong || !cong) throw new Error("La congregación no existe o el enlace expiró.");
         
         setCongregacion(cong);
-        await recargarDatosMapa(cong.id, true); // Centramos el mapa solo la primera vez
+        localStorage.setItem(`pm_pub_cong_${enlaceCorto}`, JSON.stringify(cong));
+        
+        // ★ NUEVO: Guardamos la URL exacta del publicador para la PWA
+        localStorage.setItem('pm_ruta_inicio_pwa', window.location.pathname);
+
+        await recargarDatosMapa(cong.id, !congLocal); 
 
       } catch (err) { 
         setError(err.message); 
@@ -190,31 +222,28 @@ export default function VistaPublicador() {
     inicializarPublicador();
   }, [recargarDatosMapa]);
 
-  // ★ 3. EL CEREBRO DE AHORRO: Polling cada 45s y pausa por inactividad
   useEffect(() => {
     if (!congregacion?.id) return;
 
-    // Ciclo que se repite cada 45 segundos
     const intervaloPolling = setInterval(() => {
-      // SOLO consulta a Supabase si el usuario tiene la pestaña abierta y visible
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
         recargarDatosMapa(congregacion.id, false);
       }
     }, 45000);
 
-    // Si el usuario se fue a otra app y regresa a esta pestaña, actualizamos inmediatamente
     const manejarVisibilidad = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
         recargarDatosMapa(congregacion.id, false);
       }
     };
     
     document.addEventListener('visibilitychange', manejarVisibilidad);
+    window.addEventListener('online', () => recargarDatosMapa(congregacion.id, false));
 
-    // Limpiamos los eventos si el usuario sale de la vista
     return () => {
       clearInterval(intervaloPolling);
       document.removeEventListener('visibilitychange', manejarVisibilidad);
+      window.removeEventListener('online', () => recargarDatosMapa(congregacion.id, false));
     };
   }, [congregacion, recargarDatosMapa]);
 
