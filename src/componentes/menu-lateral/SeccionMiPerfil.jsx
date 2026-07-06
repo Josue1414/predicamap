@@ -1,7 +1,9 @@
+// src/componentes/menu-lateral/SeccionMiPerfil.jsx
 import React, { useState, useEffect } from 'react';
 import { Users, Key, LogOut, ChevronRight, Mail, Edit2, Save, X, Layers, Map, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../utilidades/clienteSupabase';
 import VentanaFlotante from '../VentanaFlotante';
+import { useAlertas } from '../../context/ContextoAlertas'; // ★ IMPORTAMOS LAS ALERTAS
 
 export default function SeccionMiPerfil({
   perfilUsuario,
@@ -19,6 +21,9 @@ export default function SeccionMiPerfil({
 }) {
   const [editandoNombre, setEditandoNombre] = useState(false);
   const [nombreTemp, setNombreTemp] = useState('');
+  
+  // ★ EXTRAEMOS LA FUNCIÓN DE CONFIRMACIÓN
+  const { mostrarConfirmacion } = useAlertas();
 
   useEffect(() => {
     if (perfilUsuario?.nombre) {
@@ -33,9 +38,43 @@ export default function SeccionMiPerfil({
     setEditandoNombre(false);
   };
 
+  // ★ FUNCIÓN ACTUALIZADA CON ADVERTENCIA Y REDIRECCIÓN PWA SEGURA ★
+  const manejarCerrarSesion = async () => {
+    // 1. Mostrar alerta advirtiendo pérdida de datos locales
+    const confirmar = await mostrarConfirmacion(
+      "Cerrar Sesión",
+      "¿Estás seguro de cerrar sesión? ADVERTENCIA: Se borrarán de este dispositivo tus revisitas y el progreso de tus horas. ¡Te recomendamos hacer un respaldo antes de continuar!",
+      "danger",
+      "Sí, cerrar sesión"
+    );
+
+    if (!confirmar) return;
+
+    try {
+      // 2. Cerramos sesión en el backend
+      await supabase.auth.signOut();
+      
+      // 3. Limpieza profunda
+      const llavesABorrar = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('pm_') || key.startsWith('predicamap_'))) {
+          llavesABorrar.push(key);
+        }
+      }
+      llavesABorrar.forEach(key => localStorage.removeItem(key));
+
+      // 4. Cierre de UI y redirección natural a la raíz para evitar conflictos con Workbox
+      alCerrar();
+      window.location.href = '/'; 
+      
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
+
   const estaAbierta = acordeonActivo === 'mi_perfil';
 
-  // ★ ARREGLO DE OPCIONES PARA EL MAPA ★
   const opcionesMapa = [
     { id: 'satelite_hibrido', label: 'Satélite (Con Calles)', icono: '🌍' },
     { id: 'satelite_puro', label: 'Satélite (Sin Calles)', icono: '🛰️' },
@@ -113,7 +152,6 @@ export default function SeccionMiPerfil({
               <Layers size={16} /> Capas y Estilo del Mapa
             </h4>
 
-            {/* ★ NUEVO SELECTOR VISUAL DE MAPA ★ */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">
                 <Map size={14} className="text-slate-400" /> Elige el Estilo de Vista
@@ -170,7 +208,7 @@ export default function SeccionMiPerfil({
           {/* SECCIÓN: CERRAR SESIÓN */}
           <div className="pt-6 mt-4 border-t border-slate-200 dark:border-slate-800">
             <button 
-              onClick={async () => { await supabase.auth.signOut(); alCerrar(); }} 
+              onClick={manejarCerrarSesion} 
               className="w-full py-3.5 flex items-center justify-center gap-2 text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50 hover:border-rose-200 rounded-xl font-bold transition-colors shadow-sm"
             >
               <LogOut size={18} /> Cerrar Sesión Segura
