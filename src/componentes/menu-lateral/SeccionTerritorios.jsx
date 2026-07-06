@@ -1,7 +1,7 @@
 // src/componentes/menu-lateral/SeccionTerritorios.jsx
 import React, { useState } from 'react';
 import { List, ChevronUp, ChevronDown, ChevronRight, Star, UserCheck, Navigation, CheckCircle2, RefreshCcw, Trash2, Edit3 } from 'lucide-react';
-import VentanaFlotante from '../VentanaFlotante'; // IMPORTAMOS LA VENTANA FLOTANTE
+import VentanaFlotante from '../VentanaFlotante'; 
 
 const PALETA_COLORES = [
   { nombre: 'Carmesí', hex: '#e11d48' },   { nombre: 'Rojo', hex: '#715605' },
@@ -227,7 +227,15 @@ export default function SeccionTerritorios({
                               </button>
                             )}
 
-                            <button onClick={() => { alVolarATerritorio(sec.coordenadas); alCerrar(); }} className="flex justify-center items-center gap-2 py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors sm:col-span-full">
+                            {/* ★ BOTÓN ACTUALIZADO PARA CERRAR TODO ★ */}
+                            <button 
+                              onClick={() => { 
+                                alVolarATerritorio(sec.coordenadas); 
+                                alternarAcordeon(null); 
+                                alCerrar(); 
+                              }} 
+                              className="flex justify-center items-center gap-2 py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors sm:col-span-full"
+                            >
                               <Navigation size={16} /> Volar al Territorio
                             </button>
                             

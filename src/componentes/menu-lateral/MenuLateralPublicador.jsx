@@ -1,9 +1,9 @@
 // src/componentes/menu-lateral/MenuLateralPublicador.jsx
-import React, { useState } from 'react';
-import { X, Search, Map, MapPin, Layers, Navigation, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Search, Map, MapPin, Layers, Navigation, ChevronDown, ChevronRight, Sun, Moon, Download, CheckCircle } from 'lucide-react';
 import SeccionMiProgreso from './SeccionMiProgreso';
 import SeccionMisRevisitas from './SeccionMisRevisitas';
-import VentanaFlotante from '../VentanaFlotante'; // ★ IMPORTAMOS LA VENTANA FLOTANTE
+import VentanaFlotante from '../VentanaFlotante';
 import BuscadorCiudad from '../BuscadorCiudad';
 
 export default function MenuLateralPublicador({
@@ -32,11 +32,57 @@ export default function MenuLateralPublicador({
   alExportarBackup,
   alImportarBackup,
   perfilUsuario,
+  modoOscuro,
+  alCambiarModo
 }) {
-  // ★ INICIALIZAMOS EN NULL PARA QUE EL MAPA SE VEA COMPLETO AL ENTRAR ★
   const [acordeonActivo, setAcordeonActivo] = useState(null);
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
   const [revisitaExpandida, setRevisitaExpandida] = useState(null);
+
+  // ★ ESTADOS PARA LA INSTALACIÓN PWA ★
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  // ★ LÓGICA DE INSTALACIÓN PWA ★
+  useEffect(() => {
+    const checkInstalled = () => {
+      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        setIsInstalled(true);
+      }
+    };
+    checkInstalled();
+
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstalled(false);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+      window.matchMedia('(display-mode: standalone)').removeEventListener('change', checkInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setIsInstalled(true);
+    }
+  };
 
   const alternarAcordeon = (seccion) => setAcordeonActivo(acordeonActivo === seccion ? null : seccion);
 
@@ -53,19 +99,59 @@ export default function MenuLateralPublicador({
 
       <div className={`fixed top-0 left-0 h-full w-80 sm:w-96 bg-slate-50 dark:bg-slate-900 shadow-2xl z-[3001] transform transition-transform duration-300 flex flex-col ${abierto ? 'translate-x-0' : '-translate-x-full'}`}>
         
-        {/* CABECERA (Fija arriba) */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-950 flex-shrink-0">
-          <div>
-            <h2 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <MapPin size={18} className="text-indigo-500" /> {nombreCongregacion}
-            </h2>
-            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 font-extrabold px-2 py-0.5 rounded-full mt-1.5 inline-block tracking-wider uppercase">
-              Publicador
-            </span>
+        {/* CABECERA (Actualizada para unificar diseño) */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex-shrink-0">
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col w-full pr-2">
+              
+              <h2 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <MapPin size={18} className="text-emerald-500" /> Mi Servicio
+              </h2>
+              
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span className="text-[9px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 font-extrabold px-2 py-0.5 rounded-full tracking-wider uppercase shadow-sm">
+                  Rango: Publicador
+                </span>
+                
+                <button 
+                  onClick={alCambiarModo} 
+                  className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm"
+                  title={modoOscuro ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+                >
+                  {modoOscuro ? <Sun size={12} /> : <Moon size={12} />}
+                </button>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <div className="flex-1 overflow-hidden">
+                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 truncate block">
+                    {nombreCongregacion || 'Cargando...'}
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleInstallClick}
+                  disabled={isInstalled || !deferredPrompt}
+                  className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm ${
+                    isInstalled
+                      ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 dark:text-emerald-400 cursor-not-allowed opacity-70'
+                      : !deferredPrompt
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md active:scale-95'
+                  }`}
+                  title={isInstalled ? "La aplicación ya está instalada" : "Instalar como aplicación nativa"}
+                >
+                  {isInstalled ? <CheckCircle size={14} /> : <Download size={14} />}
+                  {isInstalled ? 'Instalada' : 'Instalar App'}
+                </button>
+              </div>
+
+            </div>
+            
+            <button onClick={alCerrar} className="p-1.5 shrink-0 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors">
+              <X size={20} />
+            </button>
           </div>
-          <button onClick={alCerrar} className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors">
-            <X size={20} />
-          </button>
         </div>
 
         {/* CONTENIDO DESLIZABLE */}
@@ -89,14 +175,14 @@ export default function MenuLateralPublicador({
               setRevisitaExpandida={setRevisitaExpandida}
             />
 
-            <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-4 px-1">Mi Servicio</div>
+            <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-4 px-1">Mi Progreso</div>
               <SeccionMiProgreso 
                   perfilUsuario={perfilUsuario} 
                   acordeonActivo={acordeonActivo} 
                   alternarAcordeon={alternarAcordeon} 
               />
 
-            {/* ★ SECCIÓN TERRITORIOS (AHORA CON VENTANA FLOTANTE) ★ */}
+            {/* ★ SECCIÓN TERRITORIOS ★ */}
             <div className="mb-2">
               <button onClick={() => alternarAcordeon('territorios')} className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 shadow-sm transition-colors">
                 <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -164,7 +250,7 @@ export default function MenuLateralPublicador({
               </VentanaFlotante>
             </div>
 
-            {/* ★ SECCIÓN CAPAS DEL MAPA (AHORA CON VENTANA FLOTANTE) ★ */}
+            {/* ★ SECCIÓN CAPAS DEL MAPA ★ */}
             <div className="mb-2">
               <button onClick={() => alternarAcordeon('capas')} className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-orange-50 dark:hover:bg-orange-900/10 shadow-sm transition-colors">
                 <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -229,7 +315,6 @@ export default function MenuLateralPublicador({
                 <div className="p-5 flex flex-col h-full bg-slate-50 dark:bg-slate-950 flex-1">
                   <p className="text-xs text-slate-400 dark:text-slate-500 mb-4 ml-1">Escribe la ciudad, municipio o colonia que deseas buscar.</p>
 
-                  {/* ★ AQUÍ REUTILIZAMOS TU COMPONENTE ★ */}
                   <BuscadorCiudad 
                     textoBusqueda={textoBusqueda}
                     alCambiarTextoBusqueda={alCambiarTextoBusqueda}
@@ -237,8 +322,8 @@ export default function MenuLateralPublicador({
                     resultadosCiudades={resultadosCiudades}
                     alSeleccionarCiudad={(c) => { 
                       alSeleccionarCiudad(c); 
-                      alCerrar(); // Cierra el menú lateral
-                      alternarAcordeon('buscador'); // Cierra la ventana flotante
+                      alCerrar(); 
+                      alternarAcordeon('buscador'); 
                     }}
                   />
                 </div>

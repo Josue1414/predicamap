@@ -14,8 +14,52 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
 
   const { perfilUsuario } = useEstadoGlobal();
 
+  // ★ 1. AUTO-GUARDADO: Sincroniza automáticamente los datos con localStorage
+  useEffect(() => {
+    if (targetCongId && secciones.length > 0) {
+      localStorage.setItem(`predicamap_secciones_${targetCongId}`, JSON.stringify(secciones));
+    }
+  }, [secciones, targetCongId]);
+
+  useEffect(() => {
+    if (targetCongId && edificios.length > 0) {
+      localStorage.setItem(`predicamap_edificios_${targetCongId}`, JSON.stringify(edificios));
+    }
+  }, [edificios, targetCongId]);
+
   const cargarTerritoriosYCasas = async (esCargaInicial = false) => {
     if (!targetCongId) return;
+
+    // ★ 2. CARGA LOCAL (OFFLINE FIRST): Rescatamos lo que está en memoria
+    const secLocales = localStorage.getItem(`predicamap_secciones_${targetCongId}`);
+    const ediLocales = localStorage.getItem(`predicamap_edificios_${targetCongId}`);
+
+    if (secLocales) {
+      const formateadas = JSON.parse(secLocales);
+      setSecciones(formateadas);
+      
+      // Centramos el mapa basándonos en los datos locales si es la primera carga
+      if (formateadas.length > 0 && esCargaInicial) {
+        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+        formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
+          if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+          if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+        }));
+        onCentrarMapa([(minLat + maxLat) / 2, (minLng + maxLng) / 2]);
+      }
+    }
+
+    if (ediLocales) {
+      setEdificios(JSON.parse(ediLocales));
+    }
+
+    // ★ 3. VALIDACIÓN DE RED: Si no hay internet, terminamos la función aquí.
+    if (!navigator.onLine) {
+      console.log("Modo sin conexión: Territorios cargados desde memoria local.");
+      return; 
+    }
+
+    // ★ 4. CARGA DE SUPABASE: Si hay internet, actualizamos con datos frescos
     setCargandoTerritorios(true);
     try {
       const { data: secs } = await supabase.from('secciones')
@@ -31,7 +75,8 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       }));
       setSecciones(formateadas);
 
-      if (formateadas.length > 0 && esCargaInicial) {
+      // Centrar el mapa solo si no había datos locales (para no dar un "salto" doble de cámara)
+      if (formateadas.length > 0 && esCargaInicial && !secLocales) {
         let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
         formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
           if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
@@ -44,9 +89,14 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       if (secIds.length > 0) {
         const { data: edis } = await supabase.from('edificios').select('*').in('seccion_id', secIds);
         setEdificios(edis || []);
-      } else { setEdificios([]); }
-    } catch (error) { console.error(error); }
-    finally { setCargandoTerritorios(false); }
+      } else { 
+        setEdificios([]); 
+      }
+    } catch (error) { 
+      console.error(error); 
+    } finally { 
+      setCargandoTerritorios(false); 
+    }
   };
 
   useEffect(() => { 
@@ -61,7 +111,8 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     const esLider = perfilUsuario && ['Capitán', 'Administrador', 'Administrador Mayor'].includes(perfilUsuario.rol);
 
     const conectarRealtime = () => {
-      if (canalMapa || !esLider) return;
+      // Si no hay internet, no intentamos conectar el Realtime
+      if (canalMapa || !esLider || !navigator.onLine) return;
 
       canalMapa = supabase.channel('cambios-mapa')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'secciones', filter: `congregacion_id=eq.${targetCongId}` }, (payload) => {
@@ -131,25 +182,32 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       }
     };
 
-    conectarRealtime();
-    reiniciarTemporizador();
+    // ★ Solo nos conectamos si hay internet
+    if (navigator.onLine) {
+      conectarRealtime();
+      reiniciarTemporizador();
+    }
 
     const eventosActividad = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     eventosActividad.forEach(evento => document.addEventListener(evento, reiniciarTemporizador));
 
     const intervaloPolling = setInterval(() => {
-      if (!esLider && document.visibilityState === 'visible') {
+      if (!esLider && document.visibilityState === 'visible' && navigator.onLine) {
         cargarTerritoriosYCasas(false);
       }
     }, 45000);
 
     document.addEventListener('visibilitychange', manejarCambioVisibilidad);
+    
+    // ★ Escuchar cuando el internet vuelve para recargar
+    window.addEventListener('online', () => cargarTerritoriosYCasas(false));
 
     return () => { 
       desconectarRealtime(); 
       clearTimeout(temporizadorInactividad);
       clearInterval(intervaloPolling);
       document.removeEventListener('visibilitychange', manejarCambioVisibilidad);
+      window.removeEventListener('online', () => cargarTerritoriosYCasas(false));
       eventosActividad.forEach(evento => document.removeEventListener(evento, reiniciarTemporizador));
     };
   }, [targetCongId, perfilUsuario, modoAhorro]); 
@@ -175,7 +233,9 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     const arregloActualizado = nuevoArreglo.map((item, index) => ({ ...item, orden: index }));
     setSecciones(arregloActualizado);
 
-    await Promise.all(arregloActualizado.map(t => supabase.from('secciones').update({ orden: t.orden }).eq('id', t.id)));
+    if (navigator.onLine) {
+      await Promise.all(arregloActualizado.map(t => supabase.from('secciones').update({ orden: t.orden }).eq('id', t.id)));
+    }
   };
 
   const eliminarSeccionEnBD = async (id) => {
@@ -185,7 +245,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       "danger", 
       "Sí, eliminar"
     );
-    if (!confirmado) return;
+    if (!confirmado || !navigator.onLine) return;
     
     setCargandoTerritorios(true);
     await supabase.from('secciones').delete().eq('id', id);
@@ -193,6 +253,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   };
 
   const asignarTerritorioEnBD = async (id, idUsuario) => {
+    if (!navigator.onLine) return;
     setCargandoTerritorios(true);
     await supabase.from('secciones').update({ asignado_a: idUsuario || null }).eq('id', id);
     setCargandoTerritorios(false);
@@ -205,12 +266,11 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       "warning",
       "Sí, reiniciar"
     );
-    if (!confirmado) return;
+    if (!confirmado || !navigator.onLine) return;
 
     setCargandoTerritorios(true);
     await supabase.from('secciones').update({ estado: 'pendiente' }).eq('id', id);
     
-    // ★ BLOQUEO: Ignoramos las casas que están marcadas como no_responde (Rojas)
     await supabase.from('edificios')
       .update({ estado: 'pendiente' })
       .eq('seccion_id', id)
@@ -226,12 +286,11 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       "success",
       "Completar"
     );
-    if (!confirmado) return;
+    if (!confirmado || !navigator.onLine) return;
 
     setCargandoTerritorios(true);
     await supabase.from('secciones').update({ estado: 'completado' }).eq('id', id);
     
-    // ★ BLOQUEO: Ignoramos las casas que están marcadas como no_responde (Rojas)
     await supabase.from('edificios')
       .update({ estado: 'completado' })
       .eq('seccion_id', id)
@@ -241,17 +300,17 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   };
 
   const actualizarNotasSeccionEnBD = async (id, notas) => {
-    await supabase.from('secciones').update({ notas }).eq('id', id);
+    if(navigator.onLine) await supabase.from('secciones').update({ notas }).eq('id', id);
   };
 
   const actualizarDetallesSeccionEnBD = async (id, nombre, colorHex) => {
-    await supabase.from('secciones').update({ nombre, color_hex: colorHex }).eq('id', id);
+    if(navigator.onLine) await supabase.from('secciones').update({ nombre, color_hex: colorHex }).eq('id', id);
   };
 
-  const crearSeccionBD = async (data) => await supabase.from('secciones').insert([data]);
-  const crearEdificioBD = async (data) => await supabase.from('edificios').insert([data]);
-  const actualizarEdificioBD = async (id, data) => await supabase.from('edificios').update(data).eq('id', id);
-  const eliminarEdificioBD = async (id) => await supabase.from('edificios').delete().eq('id', id);
+  const crearSeccionBD = async (data) => { if(navigator.onLine) await supabase.from('secciones').insert([data]); }
+  const crearEdificioBD = async (data) => { if(navigator.onLine) await supabase.from('edificios').insert([data]); }
+  const actualizarEdificioBD = async (id, data) => { if(navigator.onLine) await supabase.from('edificios').update(data).eq('id', id); }
+  const eliminarEdificioBD = async (id) => { if(navigator.onLine) await supabase.from('edificios').delete().eq('id', id); }
 
   return {
     secciones, edificios, cargandoTerritorios, cargarTerritoriosYCasas,

@@ -1,7 +1,6 @@
 // src/componentes/menu-lateral/SeccionMisRevisitas.jsx
 import React, { useRef } from 'react';
 import { BookmarkPlus, ChevronRight, ChevronDown, Navigation, Share2, Edit, Trash2, Download, Upload, Info } from 'lucide-react';
-// Importamos la nueva ventana flotante
 import VentanaFlotante from '../VentanaFlotante';
 
 export default function SeccionMisRevisitas({
@@ -42,18 +41,16 @@ export default function SeccionMisRevisitas({
           <BookmarkPlus size={16} className="text-purple-500"/> 
           Mis Revisitas ({marcadoresOrdenados.length})
         </span>
-        {/* Usamos ChevronRight para indicar que abre un modal externo en lugar de desplegar hacia abajo */}
         <ChevronRight size={16} className="text-slate-400" />
       </button>
       
-      {/* NUEVA VENTANA FLOTANTE */}
+      {/* VENTANA FLOTANTE */}
       <VentanaFlotante
         abierta={estaAbierta}
         alCerrar={() => alternarAcordeon('revisitas')}
         titulo={`Mis Revisitas (${marcadoresOrdenados.length})`}
         icono={BookmarkPlus}
       >
-        {/* Contenido que antes se desplegaba en el acordeón */}
         <div className="flex flex-col h-full">
           <div className="bg-amber-50 dark:bg-amber-900/20 px-4 py-3 border-b border-amber-100 dark:border-amber-900/50 flex items-start gap-2 shrink-0">
             <Info size={16} className="text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
@@ -90,17 +87,33 @@ export default function SeccionMisRevisitas({
                         </p>
                         
                         <div className="grid grid-cols-2 gap-3 mb-3">
-                          <button onClick={() => alVolarARevisita(m)} className="flex justify-center items-center gap-2 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors">
+                          {/* ★ BOTÓN VOLAR ACTUALIZADO ★ */}
+                          <button 
+                            onClick={() => {
+                              alVolarARevisita(m);
+                              alternarAcordeon(null);
+                            }} 
+                            className="flex justify-center items-center gap-2 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors"
+                          >
                             <Navigation size={14}/> Volar
                           </button>
+                          
                           <button onClick={() => alCompartirRevisita(m)} className="flex justify-center items-center gap-2 py-2.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold text-xs hover:bg-emerald-100 transition-colors">
                             <Share2 size={14}/> Enviar
                           </button>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <button onClick={() => alEditarRevisita(m)} className="flex justify-center items-center gap-2 py-2.5 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs hover:bg-slate-300 transition-colors">
+                          {/* ★ BOTÓN EDITAR ACTUALIZADO ★ */}
+                          <button 
+                            onClick={() => {
+                              alEditarRevisita(m);
+                              alternarAcordeon(null);
+                            }} 
+                            className="flex justify-center items-center gap-2 py-2.5 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs hover:bg-slate-300 transition-colors"
+                          >
                             <Edit size={14}/> Editar
                           </button>
+                          
                           <button onClick={() => alEliminarRevisita(m.id)} className="flex justify-center items-center gap-2 py-2.5 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl font-bold text-xs hover:bg-rose-100 transition-colors">
                             <Trash2 size={14}/> Borrar
                           </button>

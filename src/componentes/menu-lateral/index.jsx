@@ -1,7 +1,6 @@
 // src/componentes/menu-lateral/index.jsx
 import React, { useState, useEffect } from 'react';
-// ★ IMPORTAMOS SUN Y MOON ★
-import { X, Settings, ArrowLeft, Edit2, Save, Sun, Moon } from 'lucide-react';
+import { X, Settings, ArrowLeft, Edit2, Save, Sun, Moon, Download, CheckCircle } from 'lucide-react';
 import { supabase } from '../../utilidades/clienteSupabase';
 
 import SeccionMasterCongregaciones from './SeccionMasterCongregaciones';
@@ -34,12 +33,9 @@ export default function MenuLateral({
   actualizarNombrePerfilBD,
   alReordenarTerritorio,
   modoOscuro, alCambiarModo,
-  // ★ AÑADIDAS PROPS DE PAGINACIÓN ★
   pagina,
   totalPaginas,
-  alCambiarPagina,actualizarDetallesSeccionEnBD,
-
-  //vista de mapa
+  alCambiarPagina, actualizarDetallesSeccionEnBD,
   estiloMapa,
   alCambiarEstiloMapa
 }) {
@@ -50,9 +46,52 @@ export default function MenuLateral({
   const [editandoCong, setEditandoCong] = useState(false);
   const [nombreCongTemp, setNombreCongTemp] = useState('');
 
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
   useEffect(() => {
     setNombreCongTemp(nombreCongregacion || '');
   }, [nombreCongregacion]);
+
+  useEffect(() => {
+    const checkInstalled = () => {
+      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        setIsInstalled(true);
+      }
+    };
+    checkInstalled();
+
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstalled(false);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+      window.matchMedia('(display-mode: standalone)').removeEventListener('change', checkInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setIsInstalled(true);
+    }
+  };
 
   const alternarAcordeon = (seccion) => setAcordeonActivo(acordeonActivo === seccion ? null : seccion);
 
@@ -97,12 +136,11 @@ export default function MenuLateral({
               </h2>
               
               {perfilUsuario?.rol && (
-                <div className="flex items-center gap-2 mt-1.5">
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   <span className="text-[9px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-extrabold px-2 py-0.5 rounded-full w-max tracking-wider uppercase shadow-sm">
                     {congregacionContextoId ? "Modo Simulado" : `Rango: ${perfilUsuario.rol}`}
                   </span>
                   
-                  {/* ★ BOTÓN DE MODO OSCURO AÑADIDO AQUÍ ★ */}
                   <button 
                     onClick={alCambiarModo} 
                     className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm"
@@ -119,29 +157,49 @@ export default function MenuLateral({
                 </div>
               )}
 
-              {/* EDITOR DEL NOMBRE DE LA CONGREGACIÓN */}
-              {(!esAdminMayor || (esAdminMayor && congregacionContextoId)) && (
-                <div className="mt-3">
-                  {editandoCong && esAdminOperativo ? (
-                    <div className="flex items-center gap-2 animate-slide-up">
-                      <input type="text" value={nombreCongTemp} onChange={(e) => setNombreCongTemp(e.target.value)} autoFocus className="flex-1 bg-slate-50 dark:bg-slate-900 border border-indigo-300 dark:border-indigo-500/50 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-bold" />
-                      <button onClick={manejarGuardarCong} className="p-1.5 bg-emerald-100 text-emerald-600 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg transition-colors"><Save size={12} /></button>
-                      <button onClick={() => { setEditandoCong(false); setNombreCongTemp(nombreCongregacion); }} className="p-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 rounded-lg transition-colors"><X size={12} /></button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 group w-max">
-                      <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 truncate max-w-[200px]">
-                        {nombreCongregacion || 'Cargando...'}
-                      </span>
-                      {esAdminOperativo && (
-                        <button onClick={() => setEditandoCong(true)} className="text-slate-400 hover:text-indigo-500 transition-colors p-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Cambiar nombre oficial">
-                          <Edit2 size={12} />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="mt-3 flex items-center justify-between gap-2">
+                
+                {(!esAdminMayor || (esAdminMayor && congregacionContextoId)) && (
+                  <div className="flex-1 overflow-hidden">
+                    {editandoCong && esAdminOperativo ? (
+                      <div className="flex items-center gap-2 animate-slide-up">
+                        <input type="text" value={nombreCongTemp} onChange={(e) => setNombreCongTemp(e.target.value)} autoFocus className="flex-1 bg-slate-50 dark:bg-slate-900 border border-indigo-300 dark:border-indigo-500/50 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-bold min-w-0" />
+                        <button onClick={manejarGuardarCong} className="p-1.5 bg-emerald-100 text-emerald-600 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg transition-colors shrink-0"><Save size={12} /></button>
+                        <button onClick={() => { setEditandoCong(false); setNombreCongTemp(nombreCongregacion); }} className="p-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 rounded-lg transition-colors shrink-0"><X size={12} /></button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 group w-full">
+                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 truncate">
+                          {nombreCongregacion || 'Cargando...'}
+                        </span>
+                        {esAdminOperativo && (
+                          <button onClick={() => setEditandoCong(true)} className="text-slate-400 hover:text-indigo-500 transition-colors p-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0" title="Cambiar nombre oficial">
+                            <Edit2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleInstallClick}
+                  disabled={isInstalled || !deferredPrompt}
+                  className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm ${
+                    isInstalled
+                      ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 dark:text-emerald-400 cursor-not-allowed opacity-70'
+                      : !deferredPrompt
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md active:scale-95'
+                  }`}
+                  title={isInstalled ? "La aplicación ya está instalada" : "Instalar como aplicación nativa"}
+                >
+                  {isInstalled ? <CheckCircle size={14} /> : <Download size={14} />}
+                  {isInstalled ? 'Instalada' : 'Instalar App'}
+                </button>
+                
+              </div>
+
             </div>
             
             <button onClick={alCerrar} className="p-1.5 shrink-0 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500"><X size={20} /></button>
@@ -164,12 +222,17 @@ export default function MenuLateral({
 
           <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-4 px-1">Navegación y Servicio</div>
           
-          
-          
           <SeccionMisRevisitas 
             visible={!esAdminMayor || (esAdminMayor && congregacionContextoId)}
             acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon}
-            marcadoresPersonales={marcadoresPersonales} alVolarARevisita={alVolarARevisita} alEditarRevisita={alEditarRevisita}
+            marcadoresPersonales={marcadoresPersonales} 
+            alVolarARevisita={(m) => {
+              // ★ Cierra la ventana y el menú al volar a la revisita
+              alVolarARevisita(m);
+              setRevisitaExpandida(null); 
+              alCerrar(); 
+            }} 
+            alEditarRevisita={alEditarRevisita}
             alEliminarRevisita={alEliminarRevisita} alCompartirRevisita={alCompartirRevisita} alExportarBackup={alExportarBackup}
             alImportarBackup={alImportarBackup} revisitaExpandida={revisitaExpandida} setRevisitaExpandida={setRevisitaExpandida}
           />
@@ -183,7 +246,13 @@ export default function MenuLateral({
               esPrecursorYSuperior={esPrecursorYSuperior} esCapitanYSuperior={esCapitanYSuperior} esAdminOperativo={esAdminOperativo}
               usuariosEquipo={usuariosEquipo} actualizarNotasSeccionEnBD={actualizarNotasSeccionEnBD} actualizarDetallesSeccionEnBD={actualizarDetallesSeccionEnBD}
               asignarTerritorioEnBD={asignarTerritorioEnBD} reiniciarTerritorioEnBD={reiniciarTerritorioEnBD}
-              alEliminarSeccion={alEliminarSeccion} alCompletarTerritorio={alCompletarTerritorio} alVolarATerritorio={alVolarATerritorio}
+              alEliminarSeccion={alEliminarSeccion} alCompletarTerritorio={alCompletarTerritorio} 
+              alVolarATerritorio={(coords) => {
+                // ★ Cierra la ventana y el menú al volar al territorio
+                alVolarATerritorio(coords);
+                setTerritorioExpandido(null); 
+                alCerrar(); 
+              }}
               alReordenarTerritorio={alReordenarTerritorio} acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}
             />
           )}
@@ -227,7 +296,6 @@ export default function MenuLateral({
             visible={esCapitanYSuperior && (!esAdminMayor || (esAdminMayor && congregacionContextoId))}
             acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon}
             logs={logs} cargandoLogs={cargandoLogs} recargarLogs={recargarLogs}
-            // ★ SE PASAN LAS PROPS AQUÍ ★
             pagina={pagina}
             totalPaginas={totalPaginas}
             alCambiarPagina={alCambiarPagina}
@@ -235,12 +303,15 @@ export default function MenuLateral({
 
           <SeccionBuscarMapa 
             textoBusqueda={textoBusqueda} alCambiarTextoBusqueda={alCambiarTextoBusqueda} alBuscar={alBuscar}
-            resultadosCiudades={resultadosCiudades} alSeleccionarCiudad={alSeleccionarCiudad}
+            resultadosCiudades={resultadosCiudades} 
+            alSeleccionarCiudad={(ciudad) => {
+              // ★ Cierra el menú al volar a la ciudad buscada
+              alSeleccionarCiudad(ciudad);
+              alCerrar();
+            }}
             acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}
           />
 
-          
-          {/* ★ FOOTER AL FINAL DEL SCROLL ★ */}
           <div className="mt-8 mb-2 pt-4 border-t border-slate-200 dark:border-slate-800 text-center">
             <p className="text-[10px] text-slate-400">
               Soporte y contacto:<br/>
