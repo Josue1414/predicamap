@@ -1,6 +1,6 @@
 // src/componentes/menu-lateral/MenuLateralPublicador.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Search, Map, MapPin, Layers, Navigation, ChevronDown, ChevronRight, Sun, Moon, Download, CheckCircle } from 'lucide-react';
+import { X, Search, Map, MapPin, Layers, Navigation, ChevronDown, ChevronRight, Sun, Moon, Download, CheckCircle, LogIn } from 'lucide-react';
 import { useAlertas } from '../../context/ContextoAlertas'; // ★ IMPORTAMOS LAS ALERTAS
 
 import SeccionMiProgreso from './SeccionMiProgreso';
@@ -41,6 +41,7 @@ export default function MenuLateralPublicador({
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
   const [revisitaExpandida, setRevisitaExpandida] = useState(null);
 
+  // ★ ESTADOS PARA LA INSTALACIÓN PWA ★
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
@@ -121,6 +122,7 @@ export default function MenuLateralPublicador({
 
       <div className={`fixed top-0 left-0 h-full w-80 sm:w-96 bg-slate-50 dark:bg-slate-900 shadow-2xl z-[3001] transform transition-transform duration-300 flex flex-col ${abierto ? 'translate-x-0' : '-translate-x-full'}`}>
         
+        {/* CABECERA */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex-shrink-0">
           <div className="flex justify-between items-start">
             <div className="flex flex-col w-full pr-2">
@@ -150,7 +152,7 @@ export default function MenuLateralPublicador({
                   </span>
                 </div>
 
-                {/* ★ BOTÓN PWA SIEMPRE HABILITADO (o Verde si instalada) ★ */}
+                {/* ★ BOTÓN PWA ★ */}
                 <button
                   onClick={handleInstallClick}
                   disabled={isInstalled}
@@ -174,6 +176,7 @@ export default function MenuLateralPublicador({
           </div>
         </div>
 
+        {/* CONTENIDO DESLIZABLE */}
         <div className="flex-1 overflow-y-auto scroll-limpio p-3 flex flex-col">
           
           <div className="space-y-4 flex-1">
@@ -347,7 +350,25 @@ export default function MenuLateralPublicador({
 
           </div>
 
-          <div className="mt-8 mb-2 pt-4 border-t border-slate-200 dark:border-slate-800 text-center">
+          {/* ★ NUEVA ESCOTILLA DE ESCAPE COMO TEXTO (Link) ★ */}
+          <div className="pt-5 mt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col items-center">
+            <button 
+              onClick={() => {
+                localStorage.removeItem('pm_ruta_inicio_pwa');
+                alCerrar();
+                window.location.href = '/login';
+              }} 
+              className="flex items-center gap-1.5 text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 text-xs font-bold transition-all hover:underline active:scale-95 bg-transparent border-none p-2"
+            >
+              <LogIn size={14} strokeWidth={2.5} /> ¿Tienes cuenta? Inicia sesión
+            </button>
+            <p className="text-[9px] text-center text-slate-400 mt-1 font-medium leading-tight px-2">
+              Si entraste aquí por error, presiona "Atrás" en tu dispositivo para volver a tu mapa.
+            </p>
+          </div>
+
+          {/* FOOTER AL FINAL DEL SCROLL */}
+          <div className="mt-6 mb-2 text-center">
             <p className="text-[10px] text-slate-400">
               Soporte y contacto:<br/>
               <a href="mailto:hola.predicamap@gmail.com" className="font-bold text-indigo-500 hover:text-indigo-600 transition-colors">
