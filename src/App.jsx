@@ -7,6 +7,9 @@ import VistaDashboard from './vistas/VistaDashboard';
 import VistaPublicador from './vistas/VistaPublicador'; 
 import VistaRecuperar from './vistas/VistaRecuperar';
 
+// ★ IMPORTAMOS LA NUEVA VISTA DE ERRORES ★
+import VistaError from './vistas/VistaError';
+
 // ★ IMPORTAMOS LOS PROVEEDORES ★
 import { ProveedorModoMapa } from './context/ContextoModoMapa';
 import { ProveedorAlertas } from './context/ContextoAlertas'; 
@@ -92,17 +95,24 @@ export default function App() {
               element={<VistaRecuperar />} 
             />
 
+            {/* ★ NUEVA RUTA DE ERRORES EXPLÍCITOS ★ */}
+            <Route 
+              path="/error" 
+              element={<VistaError />} 
+            />
+
             {/* RUTA PRINCIPAL (MAPA DASHBOARD ADMINISTRATIVO) */}
             <Route 
               path="/" 
               element={sesion ? <VistaDashboard /> : <Navigate to="/login" replace />} 
             />
 
-            {/* RUTA COMODÍN (Error 404 - Redirige al inicio) */}
+            {/* ★ RUTA COMODÍN (Error 404 - Muestra pantalla de error) ★ */}
             <Route 
               path="*" 
-              element={<Navigate to="/" replace />} 
+              element={<VistaError tipoErrorDuro="404" />} 
             />
+            
           </Routes>
         </ProveedorModoMapa>
       </ProveedorAlertas>

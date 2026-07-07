@@ -15,7 +15,6 @@ import { useAlertas } from '../context/ContextoAlertas';
 
 export default function VistaPublicador() {
   const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState(null);
   const [modoOscuro, setModoOscuro] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
   
@@ -111,7 +110,6 @@ export default function VistaPublicador() {
     else document.documentElement.classList.remove('dark');
   }, [modoOscuro]);
 
-  // ★ NUEVO: MANIFIESTO DINÁMICO PARA PWA DE PUBLICADORES ★
   useEffect(() => {
     const manifestLink = document.querySelector('link[rel="manifest"]');
     if (manifestLink) {
@@ -122,7 +120,7 @@ export default function VistaPublicador() {
         theme_color: '#0f172a',
         background_color: '#f8fafc',
         display: 'standalone',
-        start_url: window.location.pathname, // ¡Fuerza al sistema a guardar esta ruta exacta de publicador!
+        start_url: window.location.pathname, 
         icons: [
           {
             src: '/Logo-PredicaMap.svg',
@@ -204,7 +202,7 @@ export default function VistaPublicador() {
       try {
         const ruta = window.location.pathname; 
         const payloadCifrado = ruta.split('/v/')[1];
-        if (!payloadCifrado) throw new Error("Enlace de congregación inválido.");
+        if (!payloadCifrado) throw new Error("El enlace del territorio no existe o está incompleto.");
 
         let enlaceCorto = '';
         try {
@@ -232,13 +230,15 @@ export default function VistaPublicador() {
         
         setCongregacion(cong);
         localStorage.setItem(`pm_pub_cong_${enlaceCorto}`, JSON.stringify(cong));
-        
         localStorage.setItem('pm_ruta_inicio_pwa', window.location.pathname);
 
         await recargarDatosMapa(cong.id, !congLocal); 
 
       } catch (err) { 
-        setError(err.message); 
+        // ★ LA SOLUCIÓN PERFECTA: 
+        // Borramos rastro y los mandamos a nuestra nueva vista de error explícita
+        localStorage.removeItem('pm_ruta_inicio_pwa');
+        window.location.replace('/error?msg=' + encodeURIComponent(err.message));
       } finally { 
         setCargando(false); 
       }
@@ -301,8 +301,8 @@ export default function VistaPublicador() {
     setZoomActual(19);
   };
 
-  if (cargando) return <div className="w-screen h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-indigo-500 font-bold">Cargando Territorios...</div>;
-  if (error) return <div className="w-screen h-screen flex items-center justify-center bg-slate-900 text-rose-500 font-bold p-6 text-center">Error: {error}</div>;
+  // ★ Ya no necesitamos un if(error) porque fueron redireccionados a la nueva Vista.
+  if (cargando) return <div className="w-screen h-[100dvh] flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-indigo-500 font-bold">Cargando Territorios...</div>;
 
   return (
     <div className="w-screen h-[100dvh] overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col relative transition-colors duration-200">
