@@ -131,7 +131,7 @@ export default function MenuLateralPublicador({
               
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className="text-[9px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 font-extrabold px-2 py-0.5 rounded-full tracking-wider uppercase shadow-sm">
-                  Rango: Publicador
+                  Publicador
                 </span>
                 
                 <button 

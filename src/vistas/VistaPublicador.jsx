@@ -111,6 +111,32 @@ export default function VistaPublicador() {
     else document.documentElement.classList.remove('dark');
   }, [modoOscuro]);
 
+  // ★ NUEVO: MANIFIESTO DINÁMICO PARA PWA DE PUBLICADORES ★
+  useEffect(() => {
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    if (manifestLink) {
+      const dynamicManifest = {
+        name: 'PredicaMap',
+        short_name: 'PredicaMap',
+        description: 'Gestor de territorios para la predicación',
+        theme_color: '#0f172a',
+        background_color: '#f8fafc',
+        display: 'standalone',
+        start_url: window.location.pathname, // ¡Fuerza al sistema a guardar esta ruta exacta de publicador!
+        icons: [
+          {
+            src: '/Logo-PredicaMap.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
+          }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(dynamicManifest)], { type: 'application/manifest+json' });
+      manifestLink.href = URL.createObjectURL(blob);
+    }
+  }, []);
+
   const recargarDatosMapa = useCallback(async (congId, centrarMapa = false) => {
     const secLocales = localStorage.getItem(`pm_pub_secciones_${congId}`);
     const tachLocales = localStorage.getItem(`pm_pub_tachuelas_${congId}`);
@@ -207,7 +233,6 @@ export default function VistaPublicador() {
         setCongregacion(cong);
         localStorage.setItem(`pm_pub_cong_${enlaceCorto}`, JSON.stringify(cong));
         
-        // ★ NUEVO: Guardamos la URL exacta del publicador para la PWA
         localStorage.setItem('pm_ruta_inicio_pwa', window.location.pathname);
 
         await recargarDatosMapa(cong.id, !congLocal); 
