@@ -1,6 +1,8 @@
 // src/componentes/menu-lateral/MenuLateralPublicador.jsx
 import React, { useState, useEffect } from 'react';
 import { X, Search, Map, MapPin, Layers, Navigation, ChevronDown, ChevronRight, Sun, Moon, Download, CheckCircle } from 'lucide-react';
+import { useAlertas } from '../../context/ContextoAlertas'; // ★ IMPORTAMOS LAS ALERTAS
+
 import SeccionMiProgreso from './SeccionMiProgreso';
 import SeccionMisRevisitas from './SeccionMisRevisitas';
 import VentanaFlotante from '../VentanaFlotante';
@@ -39,11 +41,12 @@ export default function MenuLateralPublicador({
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
   const [revisitaExpandida, setRevisitaExpandida] = useState(null);
 
-  // ★ ESTADOS PARA LA INSTALACIÓN PWA ★
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
-  // ★ LÓGICA DE INSTALACIÓN PWA ★
+  // ★ INICIALIZAMOS ALERTAS
+  const { mostrarAlerta } = useAlertas();
+
   useEffect(() => {
     const checkInstalled = () => {
       if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
@@ -74,13 +77,32 @@ export default function MenuLateralPublicador({
     };
   }, []);
 
+  // ★ LÓGICA DE INSTALACIÓN HÍBRIDA (Automática / Manual)
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
-      setIsInstalled(true);
+    if (isInstalled) return;
+
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setIsInstalled(true);
+      }
+    } else {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        mostrarAlerta(
+          "Instalar en iPhone / iPad", 
+          "Safari no permite instalar apps con un botón. Para instalarla, toca el icono 'Compartir' de tu navegador (cuadro con flecha hacia arriba) y selecciona 'Agregar a inicio'.", 
+          "info"
+        );
+      } else {
+        mostrarAlerta(
+          "Instalación Manual", 
+          "Ve al menú de tu navegador (los 3 puntitos arriba a la derecha) y selecciona 'Instalar aplicación' o 'Agregar a inicio'.", 
+          "info"
+        );
+      }
     }
   };
 
@@ -99,7 +121,6 @@ export default function MenuLateralPublicador({
 
       <div className={`fixed top-0 left-0 h-full w-80 sm:w-96 bg-slate-50 dark:bg-slate-900 shadow-2xl z-[3001] transform transition-transform duration-300 flex flex-col ${abierto ? 'translate-x-0' : '-translate-x-full'}`}>
         
-        {/* CABECERA (Actualizada para unificar diseño) */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex-shrink-0">
           <div className="flex justify-between items-start">
             <div className="flex flex-col w-full pr-2">
@@ -129,14 +150,13 @@ export default function MenuLateralPublicador({
                   </span>
                 </div>
 
+                {/* ★ BOTÓN PWA SIEMPRE HABILITADO (o Verde si instalada) ★ */}
                 <button
                   onClick={handleInstallClick}
-                  disabled={isInstalled || !deferredPrompt}
+                  disabled={isInstalled}
                   className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm ${
                     isInstalled
                       ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 dark:text-emerald-400 cursor-not-allowed opacity-70'
-                      : !deferredPrompt
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                       : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md active:scale-95'
                   }`}
                   title={isInstalled ? "La aplicación ya está instalada" : "Instalar como aplicación nativa"}
@@ -154,12 +174,10 @@ export default function MenuLateralPublicador({
           </div>
         </div>
 
-        {/* CONTENIDO DESLIZABLE */}
         <div className="flex-1 overflow-y-auto scroll-limpio p-3 flex flex-col">
           
           <div className="space-y-4 flex-1">
             
-            {/* COMPONENTE REUTILIZABLE: Mis Revisitas */}
             <SeccionMisRevisitas 
               visible={true}
               acordeonActivo={acordeonActivo}
@@ -182,7 +200,6 @@ export default function MenuLateralPublicador({
                   alternarAcordeon={alternarAcordeon} 
               />
 
-            {/* ★ SECCIÓN TERRITORIOS ★ */}
             <div className="mb-2">
               <button onClick={() => alternarAcordeon('territorios')} className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 shadow-sm transition-colors">
                 <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -250,7 +267,6 @@ export default function MenuLateralPublicador({
               </VentanaFlotante>
             </div>
 
-            {/* ★ SECCIÓN CAPAS DEL MAPA ★ */}
             <div className="mb-2">
               <button onClick={() => alternarAcordeon('capas')} className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-orange-50 dark:hover:bg-orange-900/10 shadow-sm transition-colors">
                 <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -297,7 +313,6 @@ export default function MenuLateralPublicador({
               </VentanaFlotante>
             </div>
 
-            {/* ★ SECCIÓN BUSCAR ★ */}
             <div className="mb-2">
               <button onClick={() => alternarAcordeon('buscador')} className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 shadow-sm transition-colors">
                 <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -332,7 +347,6 @@ export default function MenuLateralPublicador({
 
           </div>
 
-          {/* FOOTER AL FINAL DEL SCROLL */}
           <div className="mt-8 mb-2 pt-4 border-t border-slate-200 dark:border-slate-800 text-center">
             <p className="text-[10px] text-slate-400">
               Soporte y contacto:<br/>

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Settings, ArrowLeft, Edit2, Save, Sun, Moon, Download, CheckCircle } from 'lucide-react';
 import { supabase } from '../../utilidades/clienteSupabase';
+import { useAlertas } from '../../context/ContextoAlertas'; // ★ IMPORTAMOS LAS ALERTAS
 
 import SeccionMasterCongregaciones from './SeccionMasterCongregaciones';
 import SeccionMasterNuevaCongregacion from './SeccionMasterNuevaCongregacion';
@@ -49,6 +50,9 @@ export default function MenuLateral({
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
+  // ★ INICIALIZAMOS ALERTAS
+  const { mostrarAlerta } = useAlertas();
+
   useEffect(() => {
     setNombreCongTemp(nombreCongregacion || '');
   }, [nombreCongregacion]);
@@ -83,13 +87,34 @@ export default function MenuLateral({
     };
   }, []);
 
+  // ★ LÓGICA DE INSTALACIÓN HÍBRIDA (Automática / Manual)
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
-      setIsInstalled(true);
+    if (isInstalled) return;
+
+    if (deferredPrompt) {
+      // Instalación nativa automática
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setIsInstalled(true);
+      }
+    } else {
+      // Instalación manual (Para iPhone/iPad o navegadores bloqueados)
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        mostrarAlerta(
+          "Instalar en iPhone / iPad", 
+          "Safari no permite instalar apps con un botón. Para instalarla, toca el icono 'Compartir' de tu navegador (cuadro con flecha hacia arriba) y selecciona 'Agregar a inicio'.", 
+          "info"
+        );
+      } else {
+        mostrarAlerta(
+          "Instalación Manual", 
+          "Ve al menú de tu navegador (los 3 puntitos arriba a la derecha) y selecciona 'Instalar aplicación' o 'Agregar a inicio'.", 
+          "info"
+        );
+      }
     }
   };
 
@@ -182,14 +207,13 @@ export default function MenuLateral({
                   </div>
                 )}
 
+                {/* ★ BOTÓN PWA SIEMPRE HABILITADO (o Verde si instalada) ★ */}
                 <button
                   onClick={handleInstallClick}
-                  disabled={isInstalled || !deferredPrompt}
+                  disabled={isInstalled}
                   className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm ${
                     isInstalled
                       ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 dark:text-emerald-400 cursor-not-allowed opacity-70'
-                      : !deferredPrompt
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                       : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md active:scale-95'
                   }`}
                   title={isInstalled ? "La aplicación ya está instalada" : "Instalar como aplicación nativa"}
@@ -227,7 +251,6 @@ export default function MenuLateral({
             acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon}
             marcadoresPersonales={marcadoresPersonales} 
             alVolarARevisita={(m) => {
-              // ★ Cierra la ventana y el menú al volar a la revisita
               alVolarARevisita(m);
               setRevisitaExpandida(null); 
               alCerrar(); 
@@ -248,7 +271,6 @@ export default function MenuLateral({
               asignarTerritorioEnBD={asignarTerritorioEnBD} reiniciarTerritorioEnBD={reiniciarTerritorioEnBD}
               alEliminarSeccion={alEliminarSeccion} alCompletarTerritorio={alCompletarTerritorio} 
               alVolarATerritorio={(coords) => {
-                // ★ Cierra la ventana y el menú al volar al territorio
                 alVolarATerritorio(coords);
                 setTerritorioExpandido(null); 
                 alCerrar(); 
@@ -305,7 +327,6 @@ export default function MenuLateral({
             textoBusqueda={textoBusqueda} alCambiarTextoBusqueda={alCambiarTextoBusqueda} alBuscar={alBuscar}
             resultadosCiudades={resultadosCiudades} 
             alSeleccionarCiudad={(ciudad) => {
-              // ★ Cierra el menú al volar a la ciudad buscada
               alSeleccionarCiudad(ciudad);
               alCerrar();
             }}
