@@ -1,3 +1,4 @@
+// src/componentes/CabeceraCongregacion.jsx
 import React, { useState, useEffect } from 'react';
 import { Menu, Sprout, Flower2, Gift, PartyPopper, WifiHigh, FileText } from 'lucide-react';
 import useGestorProgreso from '../hooks/modulos/useGestorProgreso';
@@ -19,6 +20,14 @@ const textosMotivacionales = {
     { cita: "Prov. 10:22", texto: "La bendición de Jehová enriquece..." },
     { cita: "Mat. 22:37", texto: "Ama a Jehová tu Dios..." }
   ]
+};
+
+// ★ FUNCIÓN AGREGADA: Convierte decimales (ej. 2.5) a formato de reloj (ej. 2:30 hrs)
+const formatearTiempoTexto = (horasDecimales) => {
+  if (!horasDecimales || horasDecimales <= 0) return "0:00 hrs";
+  const horas = Math.floor(horasDecimales);
+  const minutos = Math.round((horasDecimales - horas) * 60);
+  return `${horas}:${minutos.toString().padStart(2, '0')} hrs`;
 };
 
 export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, perfilUsuario, modoAhorro, alReactivar }) {
@@ -99,7 +108,6 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
     <div className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shadow-sm relative z-50 flex flex-col w-full">
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center gap-3 overflow-hidden">
-          {/* ★ BOTÓN DE MENÚ ACTUALIZADO ★ */}
           <button 
             onClick={alAbrirMenu} 
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all active:scale-95 shrink-0"
@@ -144,8 +152,9 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
             {renderizarIcono()}
           </div>
           <div className="flex flex-col overflow-hidden w-full">
+            {/* ★ CAMBIO APLICADO: Formateamos horasMesActual y horasTotalesAño ★ */}
             <div className="flex items-center w-full truncate text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 leading-none">
-              Horas en el mes: {horasMesActual} {tieneMetaAnual && `- Acumuladas: ${horasTotalesAño}`} <span className="text-indigo-500 ml-1 shrink-0">— {textoActual.cita}</span>
+              Horas en el mes: {formatearTiempoTexto(horasMesActual)} {tieneMetaAnual && `- Acumuladas: ${formatearTiempoTexto(horasTotalesAño)}`} <span className="text-indigo-500 ml-1 shrink-0">— {textoActual.cita}</span>
             </div>
             <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate italic leading-tight mt-0.5">
               "{textoActual.texto}"

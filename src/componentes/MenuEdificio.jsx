@@ -8,7 +8,7 @@ export default function MenuEdificio({
   alCerrar, 
   alCambiarEstado, 
   alCambiarDireccion,
-  alCambiarTipo, // ★ NUEVA FUNCIÓN PARA CAMBIAR EL TIPO
+  alCambiarTipo, 
   notasTemp, 
   alCambiarNotasTemp, 
   alGuardar, 
@@ -29,24 +29,26 @@ export default function MenuEdificio({
         
         <div className="p-6 space-y-5">
           
-          {/* ★ NUEVO: SELECTOR DE TIPO (CALLE VS CASA) ★ */}
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shadow-inner">
-            <button 
-              onClick={() => {
-                alCambiarTipo('calle');
-                if (edificio.estado === 'no_responde') alCambiarEstado('pendiente'); // Si era rojo, lo pasamos a pendiente
-              }}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${esCalle ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
-            >
-              🛣️ Calle / Banqueta
-            </button>
-            <button 
-              onClick={() => alCambiarTipo('casa')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${!esCalle ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
-            >
-              🏠 Casa / Edificio
-            </button>
-          </div>
+          {/* ★ CAMBIO: SELECTOR DE TIPO SÓLO SE MUESTRA SI ES NUEVO (SIN ID) ★ */}
+          {!edificio.id && (
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shadow-inner">
+              <button 
+                onClick={() => {
+                  alCambiarTipo('calle');
+                  if (edificio.estado === 'no_responde') alCambiarEstado('pendiente'); 
+                }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${esCalle ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+              >
+                🛣️ Calle / Banqueta
+              </button>
+              <button 
+                onClick={() => alCambiarTipo('casa')}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${!esCalle ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+              >
+                🏠 Casa / Edificio
+              </button>
+            </div>
+          )}
 
           {/* CABECERA Y EDICIÓN DE DIRECCIÓN */}
           <div className="flex justify-between items-start">
@@ -102,7 +104,6 @@ export default function MenuEdificio({
           {/* ESTADOS DE VISITA */}
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Estado del Sector</label>
-            {/* ★ DINÁMICO: 3 columnas si es casa y admin, 2 columnas si es calle o publicador */}
             <div className={`grid gap-2 ${esCapitanYSuperior && !esCalle ? 'grid-cols-3' : 'grid-cols-2'}`}>
               
               <button onClick={() => alCambiarEstado('pendiente')} className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all ${edificio.estado === 'pendiente' ? 'bg-orange-50 border-orange-500 text-orange-600 dark:bg-orange-500/10' : 'border-slate-100 dark:border-slate-800 text-slate-400'}`}>
@@ -110,7 +111,6 @@ export default function MenuEdificio({
                 <span className="text-[10px] font-bold">Faltante</span>
               </button>
 
-              {/* ★ OCULTAMOS EL ROJO SI ES CALLE ★ */}
               {esCapitanYSuperior && !esCalle && (
                 <button onClick={() => alCambiarEstado('no_responde')} className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all ${edificio.estado === 'no_responde' ? 'bg-rose-50 border-rose-500 text-rose-600 dark:bg-rose-500/10' : 'border-slate-100 dark:border-slate-800 text-slate-400'}`}>
                   <AlertOctagon size={22} className="mb-1.5" />
@@ -128,13 +128,22 @@ export default function MenuEdificio({
           {/* OBSERVACIONES */}
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Observaciones</label>
-            <textarea 
-              value={notasTemp} 
-              onChange={(e) => alCambiarNotasTemp(e.target.value)} 
-              placeholder={esCalle ? "Ej: Perros sueltos, calle cerrada..." : "Ej: Tocar fuerte..."}
-              rows="2" 
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500 resize-none text-slate-800 dark:text-slate-100" 
-            />
+            {/* ★ CAMBIO: SÓLO CAPITANES Y SUPERIORES PUEDEN EDITAR NOTAS ★ */}
+            {esCapitanYSuperior ? (
+              <textarea 
+                value={notasTemp} 
+                onChange={(e) => alCambiarNotasTemp(e.target.value)} 
+                placeholder={esCalle ? "Ej: Perros sueltos, calle cerrada..." : "Ej: Tocar fuerte..."}
+                rows="2" 
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500 resize-none text-slate-800 dark:text-slate-100 transition-colors" 
+              />
+            ) : (
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                <p className="text-sm text-slate-600 dark:text-slate-400 italic">
+                  "{notasTemp || 'Sin observaciones'}"
+                </p>
+              </div>
+            )}
           </div>
 
           {/* BOTONERÍA FINAL */}

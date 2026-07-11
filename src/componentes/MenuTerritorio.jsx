@@ -14,26 +14,20 @@ export default function MenuTerritorio({
 }) {
   const [notasTemp, setNotasTemp] = useState('');
   
-  // ★ NUEVOS ESTADOS PARA EL HISTORIAL
   const [fechasCompletado, setFechasCompletado] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(true);
-  
-  // ★ ESTADO PARA EL ACORDEÓN DEL HISTORIAL
   const [historialAbierto, setHistorialAbierto] = useState(false);
 
   useEffect(() => {
     if (territorio) setNotasTemp(territorio.notas || '');
   }, [territorio]);
 
-  // ★ EFECTO PARA CARGAR EL HISTORIAL DEL TERRITORIO
   useEffect(() => {
     if (!territorio) return;
 
     const cargarHistorial = async () => {
       setCargandoHistorial(true);
       
-      // Buscamos en la base de datos los logs donde la acción sea "Territorio Completado"
-      // y el detalle incluya el nombre exacto de este territorio.
       const { data } = await supabase
         .from('logs_actividad')
         .select('creado_en')
@@ -45,7 +39,6 @@ export default function MenuTerritorio({
         const fechasUnicas = [];
         const setFechasStr = new Set();
 
-        // Filtramos para obtener días únicos (por si se le dio clic 2 veces el mismo día por error)
         data.forEach(log => {
           const fechaObj = new Date(log.creado_en);
           const fechaLocalStr = fechaObj.toLocaleDateString('es-MX');
@@ -77,6 +70,7 @@ export default function MenuTerritorio({
     porcentaje = territorio.estado === 'completado' ? 100 : 0;
   }
 
+  // ★ VALIDACIÓN DE PERMISOS ★
   const esCapitanYSuperior = perfilUsuario?.rol === 'Capitán' || perfilUsuario?.rol === 'Administrador' || perfilUsuario?.rol === 'Administrador Mayor';
 
   const manejarGuardar = () => {
@@ -84,7 +78,6 @@ export default function MenuTerritorio({
     alCerrar();
   };
 
-  // ★ CÁLCULOS DEL HISTORIAL
   const ultimaVez = fechasCompletado[0] || null;
   const penultimaVez = fechasCompletado[1] || null;
 
@@ -97,7 +90,7 @@ export default function MenuTerritorio({
     const dia = fecha.getDate().toString().padStart(2, '0');
     const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
     const anio = fecha.getFullYear().toString().slice(-2);
-    return `${dia}/${mes}/${anio}`; // Formato exacto: DD/MM/AA
+    return `${dia}/${mes}/${anio}`; 
   };
 
   return (
@@ -136,7 +129,6 @@ export default function MenuTerritorio({
             </button>
           </div>
 
-          {/* ★ SECCIÓN DE HISTORIAL DE COBERTURA EN ACORDEÓN ★ */}
           <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <button 
               onClick={() => setHistorialAbierto(!historialAbierto)}
@@ -176,15 +168,24 @@ export default function MenuTerritorio({
             )}
           </div>
 
+          {/* ★ NOTAS DEL TERRITORIO PROTEGIDAS POR ROL ★ */}
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Notas del Territorio</label>
-            <textarea 
-              value={notasTemp} 
-              onChange={(e) => setNotasTemp(e.target.value)} 
-              placeholder="Ej: Zona con perros, iniciar por la calle principal..." 
-              rows="3" 
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500 resize-none text-slate-800 dark:text-slate-100 transition-colors" 
-            />
+            {esCapitanYSuperior ? (
+              <textarea 
+                value={notasTemp} 
+                onChange={(e) => setNotasTemp(e.target.value)} 
+                placeholder="Ej: Zona con perros, iniciar por la calle principal..." 
+                rows="3" 
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500 resize-none text-slate-800 dark:text-slate-100 transition-colors" 
+              />
+            ) : (
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                <p className="text-sm text-slate-600 dark:text-slate-400 italic whitespace-pre-wrap">
+                  {notasTemp || 'Sin observaciones'}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-2 pt-2">
@@ -205,9 +206,12 @@ export default function MenuTerritorio({
               </button>
             )}
 
-            <button onClick={manejarGuardar} className="w-full mt-2 flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
-              <Save size={18} /> Guardar Notas
-            </button>
+            {/* ★ EL BOTÓN DE GUARDAR NOTAS SOLO SALE SI TIENE PERMISO DE EDITARLAS ★ */}
+            {esCapitanYSuperior && (
+              <button onClick={manejarGuardar} className="w-full mt-2 flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
+                <Save size={18} /> Guardar Notas
+              </button>
+            )}
           </div>
         </div>
       </div>

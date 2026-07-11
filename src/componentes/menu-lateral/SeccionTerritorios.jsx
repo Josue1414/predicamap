@@ -38,7 +38,6 @@ export default function SeccionTerritorios({
   alternarAcordeon,
   alCerrar
 }) {
-  // Estados para manejar la edición del territorio
   const [modoEdicionId, setModoEdicionId] = useState(null);
   const [editNombre, setEditNombre] = useState('');
   const [editColor, setEditColor] = useState('');
@@ -53,7 +52,6 @@ export default function SeccionTerritorios({
 
   return (
     <div className="mb-2">
-      {/* BOTÓN DEL MENÚ LATERAL */}
       <button 
         onClick={() => alternarAcordeon('lista')} 
         className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 shadow-sm transition-colors"
@@ -64,7 +62,6 @@ export default function SeccionTerritorios({
         <ChevronRight size={16} className="text-slate-400" />
       </button>
       
-      {/* NUEVA VENTANA FLOTANTE */}
       <VentanaFlotante
         abierta={estaAbierta}
         alCerrar={() => alternarAcordeon('lista')}
@@ -102,7 +99,6 @@ export default function SeccionTerritorios({
               return (
                 <div key={sec.id} className={`border rounded-xl overflow-hidden shadow-sm transition-colors ${esMio ? 'border-amber-400 dark:border-amber-600/50 bg-white dark:bg-slate-950' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950'}`}>
                   
-                  {/* CABECERA DEL TERRITORIO */}
                   <div onClick={() => setTerritorioExpandido(territorioExpandido === sec.id ? null : sec.id)} className={`p-4 flex items-center justify-between cursor-pointer ${esMio ? 'bg-amber-50/40 dark:bg-amber-900/10 hover:bg-amber-100/50 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-900'}`}>
                     <div className="flex items-center gap-3 w-full pr-3">
                       <div className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm border border-black/10 dark:border-white/10" style={{ backgroundColor: sec.colorHex }} />
@@ -121,11 +117,9 @@ export default function SeccionTerritorios({
                     <ChevronDown size={18} className={`text-slate-400 flex-shrink-0 transition-transform duration-300 ${territorioExpandido === sec.id ? 'rotate-180' : ''}`} />
                   </div>
                   
-                  {/* CONTENIDO DESPLEGABLE DEL TERRITORIO */}
                   {territorioExpandido === sec.id && (
                     <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 animate-slide-up">
                       
-                      {/* ★ REORDENAR (Exclusivo Administrador) ★ */}
                       {esAdminOperativo && (
                         <div className="flex items-center justify-start gap-4 bg-white dark:bg-slate-900 p-3 rounded-xl mb-4 border border-slate-200 dark:border-slate-700 shadow-sm">
                           <div className="flex gap-2">
@@ -142,7 +136,6 @@ export default function SeccionTerritorios({
                         </div>
                       )}
 
-                      {/* ★ MODO EDICIÓN (Exclusivo Administrador) ★ */}
                       {modoEdicionId === sec.id ? (
                         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-blue-800/50 mb-4 space-y-4 shadow-sm">
                           <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
@@ -180,7 +173,8 @@ export default function SeccionTerritorios({
                         </div>
                       ) : (
                         <>
-                          {esPrecursorYSuperior ? (
+                          {/* ★ CAMBIO: SÓLO CAPITANES O SUPERIORES PUEDEN EDITAR NOTAS ★ */}
+                          {esCapitanYSuperior ? (
                             <textarea 
                               defaultValue={sec.notas}
                               onBlur={(e) => actualizarNotasSeccionEnBD(sec.id, e.target.value)}
@@ -220,14 +214,12 @@ export default function SeccionTerritorios({
                           )}
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {/* ★ BOTÓN EDITAR NOMBRE Y COLOR (Solo Admin) ★ */}
                             {esAdminOperativo && (
                               <button onClick={() => { setModoEdicionId(sec.id); setEditNombre(sec.nombre); setEditColor(sec.colorHex); }} className="flex justify-center items-center gap-2 py-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl font-bold text-xs hover:bg-blue-100 transition-colors">
                                 <Edit3 size={16} /> Editar Info
                               </button>
                             )}
 
-                            {/* BOTÓN PARA VOLAR AL TERRITORIO */}
                             <button 
                               onClick={() => { 
                                 alVolarATerritorio(sec.coordenadas); 
@@ -250,7 +242,6 @@ export default function SeccionTerritorios({
                             )}
                           </div>
 
-                          {/* ★ BOTÓN ELIMINAR MEJORADO (Izquierda, cuadrado, pequeño) ★ */}
                           {esAdminOperativo && (
                             <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/50 flex justify-start">
                               <button 
