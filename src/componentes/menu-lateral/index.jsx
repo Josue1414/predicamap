@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Settings, ArrowLeft, Edit2, Save, Sun, Moon, Download, CheckCircle } from 'lucide-react';
 import { supabase } from '../../utilidades/clienteSupabase';
-import { useAlertas } from '../../context/ContextoAlertas'; // ★ IMPORTAMOS LAS ALERTAS
+import { useAlertas } from '../../context/ContextoAlertas'; 
 
 import SeccionMasterCongregaciones from './SeccionMasterCongregaciones';
 import SeccionMasterNuevaCongregacion from './SeccionMasterNuevaCongregacion';
@@ -15,6 +15,13 @@ import SeccionDirectorio from './SeccionDirectorio';
 import SeccionMiPerfil from './SeccionMiPerfil';
 import SeccionHistorial from './SeccionHistorial';
 import SeccionMiProgreso from './SeccionMiProgreso';
+
+// ★ SOLUCIÓN: Capturamos el evento de instalación globalmente desde el inicio
+let promptInstalacionGlobal = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  promptInstalacionGlobal = e;
+});
 
 export default function MenuLateral({
   abierto, alCerrar,
@@ -47,10 +54,9 @@ export default function MenuLateral({
   const [editandoCong, setEditandoCong] = useState(false);
   const [nombreCongTemp, setNombreCongTemp] = useState('');
 
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [deferredPrompt, setDeferredPrompt] = useState(promptInstalacionGlobal);
   const [isInstalled, setIsInstalled] = useState(false);
 
-  // ★ INICIALIZAMOS ALERTAS
   const { mostrarAlerta } = useAlertas();
 
   useEffect(() => {
@@ -58,6 +64,9 @@ export default function MenuLateral({
   }, [nombreCongregacion]);
 
   useEffect(() => {
+    // Si ya se había capturado el evento global, lo aseguramos en el estado
+    if (promptInstalacionGlobal) setDeferredPrompt(promptInstalacionGlobal);
+
     const checkInstalled = () => {
       if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
         setIsInstalled(true);
@@ -67,6 +76,7 @@ export default function MenuLateral({
 
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
+      promptInstalacionGlobal = e;
       setDeferredPrompt(e);
       setIsInstalled(false);
     };
@@ -87,12 +97,10 @@ export default function MenuLateral({
     };
   }, []);
 
-  // ★ LÓGICA DE INSTALACIÓN HÍBRIDA (Automática / Manual)
   const handleInstallClick = async () => {
     if (isInstalled) return;
 
     if (deferredPrompt) {
-      // Instalación nativa automática
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
@@ -100,7 +108,6 @@ export default function MenuLateral({
         setIsInstalled(true);
       }
     } else {
-      // Instalación manual (Para iPhone/iPad o navegadores bloqueados)
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       if (isIOS) {
         mostrarAlerta(
@@ -207,7 +214,6 @@ export default function MenuLateral({
                   </div>
                 )}
 
-                {/* ★ BOTÓN PWA SIEMPRE HABILITADO (o Verde si instalada) ★ */}
                 <button
                   onClick={handleInstallClick}
                   disabled={isInstalled}
