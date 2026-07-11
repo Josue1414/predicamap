@@ -21,7 +21,6 @@ export default function useMapa() {
   const global = useEstadoGlobal();
   const ui = useControlesUI();
   
-  // Cuando el gestor encuentre la congregación, actualiza coordenadas Y el zoom
   const db = useGestorTerritorios(
     global.targetCongId, 
     !!global.congregacionContextoId, 
@@ -35,7 +34,6 @@ export default function useMapa() {
   
   const { mostrarAlerta, mostrarConfirmacion } = useAlertas(); 
 
-  // Lógica inteligente: Intercepta el cambio de mapa y apaga capas innecesarias
   const manejarCambioEstiloMapa = (nuevoEstilo) => {
     setEstiloMapa(nuevoEstilo);
     if (nuevoEstilo === 'satelite_hibrido' || nuevoEstilo === 'gris' || nuevoEstilo === 'calles') {
@@ -112,11 +110,15 @@ export default function useMapa() {
       "Eliminar"
     );
     
-    if (!confirmado) return;
+    // Retornamos false si el usuario cancela
+    if (!confirmado) return false;
 
     await db.eliminarEdificioBD(idEdificio);
     await db.cargarTerritoriosYCasas();
     ui.setEdificioSeleccionado(null);
+    
+    // Retornamos true si se eliminó con éxito
+    return true;
   };
 
   const cambiarEstadoEdificioTemp = (nuevoEstado) => { 

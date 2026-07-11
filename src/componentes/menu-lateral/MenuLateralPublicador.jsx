@@ -362,9 +362,6 @@ export default function MenuLateralPublicador({
             >
               <LogIn size={14} strokeWidth={2.5} /> ¿Tienes cuenta? Inicia sesión
             </button>
-            <p className="text-[9px] text-center text-slate-400 mt-1 font-medium leading-tight px-2">
-              Si entraste aquí por error, presiona "Atrás" en tu dispositivo para volver a tu mapa.
-            </p>
           </div>
 
           {/* FOOTER AL FINAL DEL SCROLL */}

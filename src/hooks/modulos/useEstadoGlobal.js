@@ -169,18 +169,22 @@ export default function useEstadoGlobal() {
   const crearLinkInvitacion = (rolDestino, esNuevaCongregacion = false) => {
     if (!perfilUsuario) return '';
     const urlBase = window.location.origin;
+    const nombreCong = congregacionActiva?.nombre ? ` ${congregacionActiva.nombre}` : '';
     
     if (rolDestino === 'Publicador') {
       const enlaceCorto = congregacionActiva?.enlace_corto || 'central-demo';
       const payloadCifrado = btoa(encodeURIComponent(JSON.stringify({ v: enlaceCorto })));
       const linkPublico = `${urlBase}/v/${payloadCifrado}`;
-      return `https://api.whatsapp.com/send?text=${encodeURIComponent(`Hola hermano, aquí tienes el enlace para ver y trabajar los territorios:\n\n${linkPublico}`)}`;
+      // ★ Mensaje directo y breve para publicadores
+      return `https://api.whatsapp.com/send?text=${encodeURIComponent(`Territorios de congregación${nombreCong}:\n\n${linkPublico}`)}`;
     }
     
     const payloadCifrado = btoa(encodeURIComponent(JSON.stringify({
       r: rolDestino, nc: esNuevaCongregacion ? 1 : 0, c: esNuevaCongregacion ? null : targetCongId
     })));
-    return `https://api.whatsapp.com/send?text=${encodeURIComponent(`Hola hermano, te invito a PredicaMap como *${rolDestino}*:\n\n${urlBase}/registro?key=${payloadCifrado}`)}`;
+    
+    // ★ Mensaje directo para otros roles (Capitán, Admin, etc.)
+    return `https://api.whatsapp.com/send?text=${encodeURIComponent(`Invitación para ${rolDestino} - Congregación${nombreCong}:\n\n${urlBase}/registro?key=${payloadCifrado}`)}`;
   };
 
   return {

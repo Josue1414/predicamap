@@ -127,10 +127,7 @@ export default function SeccionTerritorios({
                       
                       {/* ★ REORDENAR (Exclusivo Administrador) ★ */}
                       {esAdminOperativo && (
-                        <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-xl mb-4 border border-slate-200 dark:border-slate-700 shadow-sm">
-                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                            <List size={16}/> Ordenar en Lista
-                          </span>
+                        <div className="flex items-center justify-start gap-4 bg-white dark:bg-slate-900 p-3 rounded-xl mb-4 border border-slate-200 dark:border-slate-700 shadow-sm">
                           <div className="flex gap-2">
                             <button disabled={index === 0} onClick={() => alReordenarTerritorio(sec.id, 'arriba')} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg shadow-sm hover:text-indigo-500 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
                               <ChevronUp size={16} />
@@ -139,6 +136,9 @@ export default function SeccionTerritorios({
                               <ChevronDown size={16} />
                             </button>
                           </div>
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                            <List size={16}/> Ordenar en Lista
+                          </span>
                         </div>
                       )}
 
@@ -227,7 +227,7 @@ export default function SeccionTerritorios({
                               </button>
                             )}
 
-                            {/* ★ BOTÓN ACTUALIZADO PARA CERRAR TODO ★ */}
+                            {/* BOTÓN PARA VOLAR AL TERRITORIO */}
                             <button 
                               onClick={() => { 
                                 alVolarATerritorio(sec.coordenadas); 
@@ -248,13 +248,21 @@ export default function SeccionTerritorios({
                                 <RefreshCcw size={16} /> Reiniciar
                               </button>
                             )}
-
-                            {esAdminOperativo && (
-                              <button onClick={() => alEliminarSeccion(sec.id)} className="flex justify-center items-center gap-2 py-3 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl font-bold text-xs hover:bg-rose-100 transition-colors sm:col-span-full">
-                                <Trash2 size={16} /> Eliminar Territorio
-                              </button>
-                            )}
                           </div>
+
+                          {/* ★ BOTÓN ELIMINAR MEJORADO (Izquierda, cuadrado, pequeño) ★ */}
+                          {esAdminOperativo && (
+                            <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/50 flex justify-start">
+                              <button 
+                                onClick={() => alEliminarSeccion(sec.id)} 
+                                className="flex items-center justify-center p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/40 rounded-xl transition-colors border border-rose-100 dark:border-rose-800/30"
+                                title="Eliminar Territorio"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          )}
+
                         </>
                       )}
                     </div>

@@ -55,11 +55,12 @@ export default function useGestorHistorial(targetCongId) {
     if (!targetCongId || !usuarioId) return;
 
     let textoFinal = detalles || '';
-    textoFinal = textoFinal.replace(/undefined/gi, 'Sin notas adicionales');
-    textoFinal = textoFinal.replace(/null/gi, 'Sin notas adicionales');
-    textoFinal = textoFinal.replace(/(estado en|estado a)[\s:]*completado/gi, 'Estado a 🟢 Verde (Completado)');
-    textoFinal = textoFinal.replace(/(estado en|estado a)[\s:]*pendiente/gi, 'Estado a 🟠 Naranja (Pendiente)');
-    textoFinal = textoFinal.replace(/(estado en|estado a)[\s:]*no_responde/gi, 'Estado a 🔴 Rojo (No visitar)');
+    
+    // Mejor formato automático para los estados
+    textoFinal = textoFinal.replace(/estado completado/gi, 'estado 🟢 Verde (Completado)');
+    textoFinal = textoFinal.replace(/estado pendiente/gi, 'estado 🟠 Naranja (Pendiente)');
+    textoFinal = textoFinal.replace(/estado no_responde/gi, 'estado 🔴 Rojo (No visitar)');
+
     if (!textoFinal.trim()) textoFinal = 'Acción registrada';
 
     await supabase.from('logs_actividad').insert([{

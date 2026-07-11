@@ -20,7 +20,6 @@ import useGestorHistorial from '../hooks/modulos/useGestorHistorial';
 import useBotonAtrasCelular from '../hooks/useBotonAtrasCelular';
 
 import { useModoMapa, MODOS_MAPA } from '../context/ContextoModoMapa';
-// ★ 1. Importamos el contexto de alertas que ya tienes creado
 import { useAlertas } from '../context/ContextoAlertas'; 
 
 export default function VistaDashboard() {
@@ -72,40 +71,132 @@ export default function VistaDashboard() {
     pagina, totalPaginas, cambiarPagina 
   } = useGestorHistorial(targetCongId);
 
-  // ★ 2. Obtenemos la función mostrarConfirmacion de tu contexto de alertas
   const { mostrarConfirmacion } = useAlertas();
 
+  // ★ CORRECCIÓN: Guardamos el nombre exacto del territorio en el log
   const manejarCompletarTerritorio = async (id) => {
+    const territorio = secciones.find(sec => sec.id === id);
     await completarTerritorioEntero(id);
-    if (perfilUsuario) registrarLog(perfilUsuario.id, 'Territorio Completado', 'territorio', `Se marcó un territorio y sus casas como completados.`);
+    
+    if (perfilUsuario && territorio) {
+      registrarLog(
+        perfilUsuario.id, 
+        'Territorio Completado', 
+        'territorio', 
+        `Se marcó el territorio "${territorio.nombre}" y todos sus elementos como completados.`
+      );
+    }
   };
 
   const manejarReiniciarTerritorio = async (id) => {
+    const territorio = secciones.find(sec => sec.id === id);
     await reiniciarTerritorioEnBD(id);
-    if (perfilUsuario) registrarLog(perfilUsuario.id, 'Territorio Reiniciado', 'territorio', `Se reinició un territorio a estado pendiente.`);
+    
+    if (perfilUsuario && territorio) {
+      registrarLog(
+        perfilUsuario.id, 
+        'Territorio Reiniciado', 
+        'territorio', 
+        `Se reinició el territorio "${territorio.nombre}" a estado pendiente.`
+      );
+    }
   };
 
-  const manejarGuardarEdificio = async (edificioNuevo) => {
-    await guardarEdificioEnBD(edificioNuevo);
-    if (perfilUsuario) registrarLog(perfilUsuario.id, 'Visita Registrada', 'casa', `Se actualizó el estado en: ${edificioNuevo.direccion}`);
+  const manejarGuardarEdificio = async () => {
+    const datosEdificio = edificioSeleccionado;
+    await guardarEdificioEnBD();
+
+    if (perfilUsuario && datosEdificio) {
+      const tipo = datosEdificio.tipo_edificio || 'casa';
+      let tipoStr = 'Casa';
+      let accion = 'Registro de Casa';
+      
+      if (tipo === 'calle') {
+        tipoStr = 'calle';
+        accion = 'Registro de Calle';
+      } else if (tipo === 'edificio') {
+        tipoStr = 'edificio';
+        accion = 'Registro de Edificio';
+      }
+
+      let detalles = `Se actualizó la ${tipoStr} "${datosEdificio.direccion || 'Sin dirección'}" a estado ${datosEdificio.estado || 'pendiente'}.`;
+      
+      if (datosEdificio.notas && datosEdificio.notas.trim() !== '') {
+        detalles += `\n📝 Notas: ${datosEdificio.notas}`;
+      }
+
+      registrarLog(perfilUsuario.id, accion, 'casa', detalles);
+    }
+  };
+
+  const manejarEliminarEdificio = async (idEdificio) => {
+    const datosEdificio = edificioSeleccionado;
+    const eliminado = await eliminarEdificioEnBD(idEdificio);
+
+    if (eliminado && perfilUsuario && datosEdificio) {
+      const tipo = datosEdificio.tipo_edificio || 'casa';
+      let tipoStr = 'Casa';
+      let accion = 'Eliminación de Casa';
+
+      if (tipo === 'calle') {
+        tipoStr = 'calle';
+        accion = 'Eliminación de Calle';
+      } else if (tipo === 'edificio') {
+        tipoStr = 'edificio';
+        accion = 'Eliminación de Edificio';
+      }
+
+      registrarLog(
+        perfilUsuario.id,
+        accion,
+        'casa',
+        `Se eliminó la ${tipoStr} "${datosEdificio.direccion || 'Sin dirección'}".`
+      );
+    }
+  };
+
+  const manejarEliminarTerritorio = async (idSeccion) => {
+    const territorio = secciones.find(sec => sec.id === idSeccion);
+    const eliminado = await eliminarSeccionEnBD(idSeccion);
+
+    if (eliminado !== false && perfilUsuario && territorio) {
+      registrarLog(
+        perfilUsuario.id,
+        'Territorio Eliminado',
+        'territorio',
+        `Se eliminó el territorio "${territorio.nombre}".`
+      );
+    }
   };
 
   const manejarGuardarTachuela = async (datos) => {
     await agregarTachuelaBD(tachuelaTemporal.lat, tachuelaTemporal.lng, datos.titulo, datos.notas);
-    if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Creado', 'tachuela', `Se fijó un nuevo aviso: ${datos.titulo}`);
+    if (perfilUsuario) {
+      let detalles = `Se fijó un nuevo aviso en el mapa con el título: "${datos.titulo}".`;
+      if (datos.notas && datos.notas.trim() !== '') {
+        detalles += `\n📝 Informe/Notas: ${datos.notas}`;
+      }
+      registrarLog(perfilUsuario.id, 'Nuevo Aviso Creado', 'tachuela', detalles);
+    }
     setTachuelaTemporal(null);
     limpiarModo(); 
   };
 
   const manejarEliminarTachuela = async (id, titulo) => {
     await eliminarTachuelaBD(id);
-    if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Eliminado', 'tachuela', `Se borró el aviso: ${titulo}`);
+    if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Eliminado', 'tachuela', `Se borró el aviso: "${titulo}".`);
     setTachuelaLeida(null);
   };
 
   const manejarEditarTachuela = async (id, datosActualizados) => {
     await editarTachuelaBD(id, datosActualizados.titulo, datosActualizados.notas);
-    if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Editado', 'tachuela', `Se editó el aviso: ${datosActualizados.titulo}`);
+    if (perfilUsuario) {
+      let detalles = `Se modificó el aviso. Nuevo título: "${datosActualizados.titulo}".`;
+      if (datosActualizados.notas && datosActualizados.notas.trim() !== '') {
+        detalles += `\n📝 Informe/Notas: ${datosActualizados.notas}`;
+      }
+      registrarLog(perfilUsuario.id, 'Aviso Editado', 'tachuela', detalles);
+    }
     setTachuelaLeida(null); 
   };
 
@@ -130,16 +221,11 @@ export default function VistaDashboard() {
   const mostrarModalBienvenida = congregacionActiva?.nombre === 'Nueva Congregación';
 
   const manejarBotonAtras = useCallback(async (hayModalesAbiertos = false) => {
-    
-    // ★ NUEVO COMPORTAMIENTO UX:
-    // Si hay una sección abierta (VentanaFlotante) y se presiona atrás, dejamos que  
-    // VentanaFlotante se cierre sola, pero TAMBIÉN forzamos el cierre del Menú Lateral.
     if (hayModalesAbiertos === true) {
       setMenuAbierto(false);
-      return false; // Nos quedamos en la app
+      return false; 
     }
 
-    // Prioridad 1: Cerrar ventanas de información, lectura o edición (Capa superior)
     if (territorioSeleccionado || edificioSeleccionado || tachuelaLeida || revisitaLectura || revisitaEditando || revisitaExpandida) {
       setTerritorioSeleccionado(null);
       setEdificioSeleccionado(null);
@@ -147,16 +233,14 @@ export default function VistaDashboard() {
       setRevisitaLectura(null);
       setRevisitaEditando(null);
       setRevisitaExpandida(null);
-      return false; // Quédate en la app
+      return false; 
     }
 
-    // Prioridad 2: Cerrar menú lateral (Capa media - Cuando no hay secciones abiertas)
     if (menuAbierto) {
       setMenuAbierto(false);
-      return false; // Quédate en la app
+      return false; 
     }
 
-    // Prioridad 3: Estás creando/dibujando algo. Usamos la alerta personalizada.
     if (enModoTrazado || enModoEdificios || enModoTachuela || enModoRevisita || tachuelaTemporal || marcadorRevisitaTemporal) {
       const confirmar = await mostrarConfirmacion(
         "Cancelar acción",
@@ -171,10 +255,9 @@ export default function VistaDashboard() {
         setTachuelaTemporal(null);
         setMarcadorRevisitaTemporal(null);
       }
-      return false; // No queremos salir de la app, solo del modo dibujo.
+      return false; 
     }
 
-    // Prioridad 4: Mapa limpio. Preguntamos si quiere abandonar PredicaMap
     const confirmarSalir = await mostrarConfirmacion(
       "Salir de PredicaMap",
       "¿Estás seguro que deseas salir de la aplicación?",
@@ -190,7 +273,6 @@ export default function VistaDashboard() {
     cancelarTrazadoYSalir, limpiarModo, mostrarConfirmacion
   ]);
 
-  // ★ 4. Conectamos la función al hook
   useBotonAtrasCelular(manejarBotonAtras);
 
   return (
@@ -216,7 +298,7 @@ export default function VistaDashboard() {
       <MenuLateral 
         abierto={menuAbierto} alCerrar={() => setMenuAbierto(false)} nombreCongregacion={nombreCongregacionUI} 
         alCambiarNombreCongregacion={setNombreCongregacionUI} seccionesGuardadas={secciones} edificiosGuardados={edificios} 
-        alEliminarSeccion={eliminarSeccionEnBD} alCompletarTerritorio={manejarCompletarTerritorio} reiniciarTerritorioEnBD={manejarReiniciarTerritorio} 
+        alEliminarSeccion={manejarEliminarTerritorio} alCompletarTerritorio={manejarCompletarTerritorio} reiniciarTerritorioEnBD={manejarReiniciarTerritorio} 
         alVolarATerritorio={volarATerritorio} textoBusqueda={textoBusqueda} alCambiarTextoBusqueda={setTextoBusqueda} alBuscar={buscarCiudadEnServidor}
         resultadosCiudades={resultadosCiudades} alSeleccionarCiudad={seleccionarCiudad} nombreTerritorio={nombreNuevoTerritorio} alCambiarNombre={setNombreNuevoTerritorio}
         colorTerritorio={colorNuevoTerritorio} alCambiarColor={setColorNuevoTerritorio} notasTerritorio={notasNuevoTerritorio} alCambiarNotas={setNotasNuevoTerritorio}
@@ -257,7 +339,7 @@ export default function VistaDashboard() {
         notasTemp={edificioSeleccionado?.notas || ''} 
         alCambiarNotasTemp={(nuevasNotas) => setEdificioSeleccionado(prev => ({ ...prev, notas: nuevasNotas }))} 
         alGuardar={manejarGuardarEdificio} 
-        alEliminar={eliminarEdificioEnBD} 
+        alEliminar={manejarEliminarEdificio} 
       />
 
       <MenuTerritorio territorio={territorioSeleccionado} edificios={edificios} perfilUsuario={perfilUsuario} alCerrar={() => setTerritorioSeleccionado(null)} alCompletar={manejarCompletarTerritorio} alReiniciar={manejarReiniciarTerritorio} alGuardarNotas={actualizarNotasSeccionEnBD} />

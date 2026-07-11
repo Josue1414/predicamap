@@ -1,7 +1,7 @@
 // src/componentes/menu-lateral/SeccionHistorial.jsx
 import React, { useEffect, useRef } from 'react';
 import { History, ChevronRight, Activity, User, Info, ChevronLeft } from 'lucide-react';
-import VentanaFlotante from '../VentanaFlotante'; // IMPORTAMOS LA VENTANA FLOTANTE
+import VentanaFlotante from '../VentanaFlotante';
 
 export default function SeccionHistorial({
   visible,
@@ -153,7 +153,7 @@ export default function SeccionHistorial({
                                 {formatearHora(log.creado_en)}
                               </span>
                             </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3 font-medium">
+                            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3 font-medium whitespace-pre-wrap">
                               {log.detalles}
                             </p>
                             <div className="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
@@ -196,7 +196,7 @@ export default function SeccionHistorial({
                 disabled={pagina === totalPaginas}
                 className="p-2.5 rounded-xl text-slate-500 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-40 disabled:hover:bg-slate-100 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
-                <ChevronRight size={20} className="rotate-180" />
+                <ChevronRight size={20} />
               </button>
             </div>
           )}

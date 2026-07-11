@@ -127,41 +127,50 @@ export default function SeccionDirectorio({
                           </div>
                           
                           <div className="flex items-center gap-4">
-                            {esAdmin && miembro.id !== perfilUsuario?.id && (
-                              <button 
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  manejarEliminar(miembro); // ★ LLAMAMOS A LA NUEVA FUNCIÓN ★
-                                }} 
-                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/50 rounded-lg transition-colors" 
-                                title="Revocar Acceso"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            )}
                             {miembroExpandido === miembro.id ? <ChevronUp size={18} className="text-slate-400"/> : <ChevronDown size={18} className="text-slate-400"/>}
                           </div>
                         </div>
 
+                        {/* ZONA DESPLEGADA */}
                         {miembroExpandido === miembro.id && (
-                          <div className="p-4 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 animate-slide-up">
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                              <Map size={14} /> Territorios Asignados
-                            </p>
+                          <div className="p-4 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 animate-slide-up space-y-4">
                             
-                            {territoriosAsignados.length > 0 ? (
-                              <div className="flex flex-wrap gap-2">
-                                {territoriosAsignados.map(t => (
-                                  <span key={t.id} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
-                                    {t.nombre}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
-                                No tiene ningún territorio asignado actualmente.
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                                <Map size={12} /> Territorios Asignados
                               </p>
+                              
+                              {territoriosAsignados.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {territoriosAsignados.map(t => (
+                                    <span key={t.id} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
+                                      {t.nombre}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                                  No tiene ningún territorio asignado actualmente.
+                                </p>
+                              )}
+                            </div>
+
+                            {/* ★ BOTÓN ELIMINAR MEJORADO (Izquierda, cuadrado, pequeño) ★ */}
+                            {esAdmin && miembro.id !== perfilUsuario?.id && (
+                              <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/50 flex justify-start">
+                                <button 
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    manejarEliminar(miembro); 
+                                  }} 
+                                  className="flex items-center justify-center p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/40 rounded-xl transition-colors border border-rose-100 dark:border-rose-800/30"
+                                  title="Revocar Acceso"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             )}
+
                           </div>
                         )}
                         
