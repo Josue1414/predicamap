@@ -37,16 +37,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     if (secLocales) {
       const formateadas = JSON.parse(secLocales);
       setSecciones(formateadas);
-      
-      // Centramos el mapa basándonos en los datos locales si es la primera carga
-      if (formateadas.length > 0 && esCargaInicial) {
-        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-        formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
-          if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
-          if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
-        }));
-        onCentrarMapa([(minLat + maxLat) / 2, (minLng + maxLng) / 2]);
-      }
+      // Efecto de centrado global eliminado para no interrumpir a VisorMapa
     }
 
     if (ediLocales) {
@@ -75,15 +66,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       }));
       setSecciones(formateadas);
 
-      // Centrar el mapa solo si no había datos locales (para no dar un "salto" doble de cámara)
-      if (formateadas.length > 0 && esCargaInicial && !secLocales) {
-        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-        formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
-          if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
-          if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
-        }));
-        onCentrarMapa([(minLat + maxLat) / 2, (minLng + maxLng) / 2]);
-      }
+      // Efecto de centrado global eliminado para no interrumpir a VisorMapa
 
       const secIds = formateadas.map(s => s.id);
       if (secIds.length > 0) {

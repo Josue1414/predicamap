@@ -118,7 +118,7 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
           </button>
           
           <div className="flex flex-col truncate">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">PredicaMap</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">PredicaMap 3.1</span>
             <h1 className="text-lg font-black text-indigo-600 dark:text-indigo-400 truncate leading-tight">{nombreCongregacion}</h1>
           </div>
         </div>

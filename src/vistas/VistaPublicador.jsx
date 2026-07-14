@@ -135,7 +135,7 @@ export default function VistaPublicador() {
     }
   }, []);
 
-  const recargarDatosMapa = useCallback(async (congId, centrarMapa = false) => {
+  const recargarDatosMapa = useCallback(async (congId) => {
     const secLocales = localStorage.getItem(`pm_pub_secciones_${congId}`);
     const tachLocales = localStorage.getItem(`pm_pub_tachuelas_${congId}`);
     const ediLocales = localStorage.getItem(`pm_pub_edificios_${congId}`);
@@ -143,14 +143,7 @@ export default function VistaPublicador() {
     if (secLocales) {
       const formateadas = JSON.parse(secLocales);
       setSecciones(formateadas);
-      if (centrarMapa && formateadas.length > 0) {
-        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-        formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
-          if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
-          if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
-        }));
-        setCoordenadasActuales([(minLat + maxLat) / 2, (minLng + maxLng) / 2]);
-      }
+      // Efecto de centrado global eliminado para no interrumpir el vuelo cinemático de VisorMapa
     }
 
     if (tachLocales) setTachuelasGrupales(JSON.parse(tachLocales));
@@ -178,14 +171,7 @@ export default function VistaPublicador() {
       localStorage.setItem(`pm_pub_tachuelas_${congId}`, JSON.stringify(tachs || []));
 
       if (formateadas.length > 0) {
-        if (centrarMapa && !secLocales) {
-          let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-          formateadas.forEach(s => s.coordenadas.forEach(([lat, lng]) => {
-            if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
-            if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
-          }));
-          setCoordenadasActuales([(minLat + maxLat) / 2, (minLng + maxLng) / 2]);
-        }
+        // Efecto de centrado global eliminado para no interrumpir el vuelo cinemático de VisorMapa
 
         const secIds = formateadas.map(s => s.id);
         const { data: edis } = await supabase.from('edificios').select('*').in('seccion_id', secIds);
@@ -216,7 +202,7 @@ export default function VistaPublicador() {
         if (congLocal) {
           const congParseada = JSON.parse(congLocal);
           setCongregacion(congParseada);
-          await recargarDatosMapa(congParseada.id, true);
+          await recargarDatosMapa(congParseada.id);
         }
 
         if (!navigator.onLine) {
@@ -232,11 +218,9 @@ export default function VistaPublicador() {
         localStorage.setItem(`pm_pub_cong_${enlaceCorto}`, JSON.stringify(cong));
         localStorage.setItem('pm_ruta_inicio_pwa', window.location.pathname);
 
-        await recargarDatosMapa(cong.id, !congLocal); 
+        await recargarDatosMapa(cong.id); 
 
       } catch (err) { 
-        // ★ LA SOLUCIÓN PERFECTA: 
-        // Borramos rastro y los mandamos a nuestra nueva vista de error explícita
         localStorage.removeItem('pm_ruta_inicio_pwa');
         window.location.replace('/error?msg=' + encodeURIComponent(err.message));
       } finally { 
@@ -252,23 +236,23 @@ export default function VistaPublicador() {
 
     const intervaloPolling = setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        recargarDatosMapa(congregacion.id, false);
+        recargarDatosMapa(congregacion.id);
       }
     }, 45000);
 
     const manejarVisibilidad = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        recargarDatosMapa(congregacion.id, false);
+        recargarDatosMapa(congregacion.id);
       }
     };
     
     document.addEventListener('visibilitychange', manejarVisibilidad);
-    window.addEventListener('online', () => recargarDatosMapa(congregacion.id, false));
+    window.addEventListener('online', () => recargarDatosMapa(congregacion.id));
 
     return () => {
       clearInterval(intervaloPolling);
       document.removeEventListener('visibilitychange', manejarVisibilidad);
-      window.removeEventListener('online', () => recargarDatosMapa(congregacion.id, false));
+      window.removeEventListener('online', () => recargarDatosMapa(congregacion.id));
     };
   }, [congregacion, recargarDatosMapa]);
 
@@ -301,7 +285,6 @@ export default function VistaPublicador() {
     setZoomActual(19);
   };
 
-  // ★ Ya no necesitamos un if(error) porque fueron redireccionados a la nueva Vista.
   if (cargando) return <div className="w-screen h-[100dvh] flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-indigo-500 font-bold">Cargando Territorios...</div>;
 
   return (
@@ -361,7 +344,7 @@ export default function VistaPublicador() {
         )}
 
         <VisorMapa 
-          centroInicial={[25.6565, -100.2930]} zoomInicial={15}
+          centroInicial={[25.6565, -100.2930]} zoomInicial={5}
           centroActual={coordenadasActuales} zoomActual={zoomActual} setZoomActual={setZoomActual}
           secciones={secciones} edificios={edificios}
           alSeleccionarEdificio={setCasaLeida}
