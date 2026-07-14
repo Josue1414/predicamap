@@ -52,7 +52,6 @@ export default function VisorMapa({
   const [rastreando, setRastreando] = useState(false);
   const [miUbicacion, setMiUbicacion] = useState(null);
   
-  // Estados para controlar que nada interrumpa el vuelo principal
   const [mapaCargado, setMapaCargado] = useState(false);
   const [permitirVuelosSecundarios, setPermitirVuelosSecundarios] = useState(false);
 
@@ -68,7 +67,6 @@ export default function VisorMapa({
 
   // VUELO INICIAL CINEMÁTICO 
   useEffect(() => {
-    // Validamos que el mapa ya esté visible, que tengamos territorios, y que no haya volado antes.
     if (!mapaCargado || hasFlownInitial.current || !mapRef.current || !secciones || secciones.length === 0) return;
 
     let territorioDestino = null;
@@ -108,7 +106,6 @@ export default function VisorMapa({
         });
         hasFlownInitial.current = true;
 
-        // Bloqueamos interrupciones del menú lateral hasta que termine la animación
         setTimeout(() => {
           setPermitirVuelosSecundarios(true);
         }, DURACION_VUELO + 500);
@@ -116,13 +113,10 @@ export default function VisorMapa({
     }
   }, [secciones, edificios, mapaCargado]); 
 
-  // VUELOS DESDE EL MENÚ LATERAL
+  // 👇👇👇 VUELOS DESDE EL MENÚ LATERAL (SOLUCIÓN DEL BUG) 👇👇👇
   useEffect(() => {
-    // Solo permitimos saltos de cámara por clics del usuario si ya acabó la intro
     if (centroActual && mapRef.current && permitirVuelosSecundarios) {
       
-      // 🛑 SOLUCIÓN AL BUG: Si el centroActual es igual al centro inicial (Todo México),
-      // significa que es el valor por defecto y el usuario NO ha hecho clic en el menú. Ignoramos este vuelo.
       if (centroActual[0] === centroInicial[0] && centroActual[1] === centroInicial[1]) {
         return;
       }
@@ -134,7 +128,10 @@ export default function VisorMapa({
         essential: true
       });
     }
-  }, [centroActual, permitirVuelosSecundarios, zoomActual, centroInicial]); 
+    // 🛑 SOLUCIÓN: Eliminamos `zoomActual` de las dependencias para evitar el bucle infinito 
+    // que congelaba el mapa durante el evento onMove.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [centroActual, permitirVuelosSecundarios]); 
 
   useEffect(() => {
     let watchId;
@@ -266,11 +263,11 @@ export default function VisorMapa({
         initialViewState={{
           longitude: centroInicial[1],
           latitude: centroInicial[0],
-          zoom: ZOOM_INICIO_VUELO, // Iniciando con el zoom manual (ej: 5)
+          zoom: ZOOM_INICIO_VUELO, 
           bearing: 0,
           pitch: 0
         }}
-        onLoad={() => setMapaCargado(true)} // Avisa que el mapa ya se dibujó y está listo para animarse
+        onLoad={() => setMapaCargado(true)} 
         onMove={evt => {
           setZoomLocal(evt.viewState.zoom);
           if(setZoomActual) setZoomActual(evt.viewState.zoom);
