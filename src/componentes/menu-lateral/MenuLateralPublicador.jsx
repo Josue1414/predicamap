@@ -232,12 +232,24 @@ export default function MenuLateralPublicador({
                       return (
                         <div key={sec.id} className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm bg-slate-50 dark:bg-slate-900/50 transition-colors">
                           <div onClick={() => setTerritorioExpandido(territorioExpandido === sec.id ? null : sec.id)} className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                            <div className="flex items-center gap-3 w-full pr-3">
+                            <div className="flex items-start gap-3 w-full pr-3 mt-1">
                               <div className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm border border-black/10 dark:border-white/10" style={{ backgroundColor: sec.colorHex }} />
                               <div className="flex flex-col flex-1">
-                                <span className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-none mb-2">
-                                  <span className="text-slate-400 mr-1">#{index + 1}</span> {sec.nombre}
-                                </span>
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <span className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-none">
+                                    <span className="text-slate-400 mr-1">#{index + 1}</span> {sec.nombre}
+                                  </span>
+                                </div>
+                                
+                                {/* ★ ETIQUETA VISIBLE DEL GRUPO PARA PUBLICADORES ★ */}
+                                {sec.grupo_asignado && (
+                                  <div className="mb-1.5">
+                                    <span className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 px-2 py-0.5 rounded uppercase font-bold tracking-wider">
+                                      Grupo Asignado: {sec.grupo_asignado}
+                                    </span>
+                                  </div>
+                                )}
+
                                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
                                   <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${porcentaje}%` }}></div>
                                 </div>

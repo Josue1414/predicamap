@@ -143,7 +143,6 @@ export default function VistaPublicador() {
     if (secLocales) {
       const formateadas = JSON.parse(secLocales);
       setSecciones(formateadas);
-      // Efecto de centrado global eliminado para no interrumpir el vuelo cinemático de VisorMapa
     }
 
     if (tachLocales) setTachuelasGrupales(JSON.parse(tachLocales));
@@ -158,11 +157,13 @@ export default function VistaPublicador() {
         .order('orden', { ascending: true })
         .order('creado_en', { ascending: true });
 
+      // ★ AQUÍ ESTABA EL PROBLEMA: No se estaba mapeando grupo_asignado
       const formateadas = (secs || []).map(item => ({
         id: item.id, nombre: item.nombre, colorHex: item.color_hex, 
         coordenadas: item.coordenadas, notas: item.notas, estado: item.estado,
-        orden: item.orden 
+        orden: item.orden, grupo_asignado: item.grupo_asignado // <-- AGREGADO
       }));
+      
       setSecciones(formateadas);
       localStorage.setItem(`pm_pub_secciones_${congId}`, JSON.stringify(formateadas));
 
@@ -171,8 +172,6 @@ export default function VistaPublicador() {
       localStorage.setItem(`pm_pub_tachuelas_${congId}`, JSON.stringify(tachs || []));
 
       if (formateadas.length > 0) {
-        // Efecto de centrado global eliminado para no interrumpir el vuelo cinemático de VisorMapa
-
         const secIds = formateadas.map(s => s.id);
         const { data: edis } = await supabase.from('edificios').select('*').in('seccion_id', secIds);
         setEdificios(edis || []);
@@ -365,7 +364,15 @@ export default function VistaPublicador() {
         />
       </main>
 
-      {territorioLeido && <ModalInfoLectura icono={<MapIcon size={24} className="text-indigo-500" />} titulo={territorioLeido.nombre} notas={territorioLeido.notas} alCerrar={() => setTerritorioLeido(null)} />}
+      {/* ★ AGREGAMOS EL GRUPO A LA VENTANA DE LECTURA ★ */}
+      {territorioLeido && <ModalInfoLectura 
+        icono={<MapIcon size={24} className="text-indigo-500" />} 
+        titulo={territorioLeido.nombre} 
+        notas={territorioLeido.notas} 
+        grupo={territorioLeido.grupo_asignado} 
+        alCerrar={() => setTerritorioLeido(null)} 
+      />}
+      
       {casaLeida && <ModalInfoLectura icono={<Home size={24} className="text-emerald-500" />} titulo={casaLeida.direccion} estado={casaLeida.estado} notas={casaLeida.notas} alCerrar={() => setCasaLeida(null)} />}
 
       {revisitaLectura && (
@@ -407,7 +414,8 @@ export default function VistaPublicador() {
   );
 }
 
-function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, alCerrar }) {
+// ★ ACTUALIZAMOS MODALINFOLECTURA PARA MOSTRAR EL GRUPO ★
+function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, grupo, alCerrar }) {
   let color = estadoColor || 'text-slate-500';
   let textoEstado = estado || '';
   
@@ -423,10 +431,21 @@ function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, alCerrar 
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl z-[4001] animate-slide-up overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800">
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="font-black text-xl text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              {icono} {titulo}
-            </h3>
-            <button onClick={alCerrar} className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors">
+            <div className="pr-4">
+              <h3 className="font-black text-xl text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                {icono} {titulo}
+              </h3>
+              
+              {/* ETIQUETA DE GRUPO */}
+              {grupo && (
+                <div className="mt-2">
+                  <span className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 px-2.5 py-1 rounded uppercase font-bold tracking-wider">
+                    Grupo Asignado: {grupo}
+                  </span>
+                </div>
+              )}
+            </div>
+            <button onClick={alCerrar} className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors shrink-0">
               <X size={18} />
             </button>
           </div>

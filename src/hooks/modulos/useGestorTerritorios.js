@@ -14,7 +14,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
 
   const { perfilUsuario } = useEstadoGlobal();
 
-  // ★ 1. AUTO-GUARDADO: Sincroniza automáticamente los datos con localStorage
   useEffect(() => {
     if (targetCongId && secciones.length > 0) {
       localStorage.setItem(`predicamap_secciones_${targetCongId}`, JSON.stringify(secciones));
@@ -30,27 +29,23 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   const cargarTerritoriosYCasas = async (esCargaInicial = false) => {
     if (!targetCongId) return;
 
-    // ★ 2. CARGA LOCAL (OFFLINE FIRST): Rescatamos lo que está en memoria
     const secLocales = localStorage.getItem(`predicamap_secciones_${targetCongId}`);
     const ediLocales = localStorage.getItem(`predicamap_edificios_${targetCongId}`);
 
     if (secLocales) {
       const formateadas = JSON.parse(secLocales);
       setSecciones(formateadas);
-      // Efecto de centrado global eliminado para no interrumpir a VisorMapa
     }
 
     if (ediLocales) {
       setEdificios(JSON.parse(ediLocales));
     }
 
-    // ★ 3. VALIDACIÓN DE RED: Si no hay internet, terminamos la función aquí.
     if (!navigator.onLine) {
       console.log("Modo sin conexión: Territorios cargados desde memoria local.");
       return; 
     }
 
-    // ★ 4. CARGA DE SUPABASE: Si hay internet, actualizamos con datos frescos
     setCargandoTerritorios(true);
     try {
       const { data: secs } = await supabase.from('secciones')
@@ -62,11 +57,9 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       const formateadas = (secs || []).map(item => ({
         id: item.id, nombre: item.nombre, colorHex: item.color_hex, 
         coordenadas: item.coordenadas, notas: item.notas, asignado_a: item.asignado_a,
-        estado: item.estado, orden: item.orden 
+        estado: item.estado, orden: item.orden, grupo_asignado: item.grupo_asignado 
       }));
       setSecciones(formateadas);
-
-      // Efecto de centrado global eliminado para no interrumpir a VisorMapa
 
       const secIds = formateadas.map(s => s.id);
       if (secIds.length > 0) {
@@ -94,7 +87,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     const esLider = perfilUsuario && ['Capitán', 'Administrador', 'Administrador Mayor'].includes(perfilUsuario.rol);
 
     const conectarRealtime = () => {
-      // Si no hay internet, no intentamos conectar el Realtime
       if (canalMapa || !esLider || !navigator.onLine) return;
 
       canalMapa = supabase.channel('cambios-mapa')
@@ -103,7 +95,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
             const nuevaSec = {
               id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
               coordenadas: payload.new.coordenadas, notas: payload.new.notas, asignado_a: payload.new.asignado_a,
-              estado: payload.new.estado, orden: payload.new.orden 
+              estado: payload.new.estado, orden: payload.new.orden, grupo_asignado: payload.new.grupo_asignado
             };
             setSecciones(prev => {
               if (prev.some(s => s.id === nuevaSec.id)) return prev;
@@ -113,7 +105,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
             const secAct = {
               id: payload.new.id, nombre: payload.new.nombre, colorHex: payload.new.color_hex, 
               coordenadas: payload.new.coordenadas, notas: payload.new.notas, asignado_a: payload.new.asignado_a,
-              estado: payload.new.estado, orden: payload.new.orden 
+              estado: payload.new.estado, orden: payload.new.orden, grupo_asignado: payload.new.grupo_asignado
             };
             setSecciones(prev => prev.map(s => s.id === secAct.id ? secAct : s).sort((a, b) => a.orden - b.orden));
           } else if (payload.eventType === 'DELETE') {
@@ -165,7 +157,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
       }
     };
 
-    // ★ Solo nos conectamos si hay internet
     if (navigator.onLine) {
       conectarRealtime();
       reiniciarTemporizador();
@@ -181,8 +172,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     }, 45000);
 
     document.addEventListener('visibilitychange', manejarCambioVisibilidad);
-    
-    // ★ Escuchar cuando el internet vuelve para recargar
     window.addEventListener('online', () => cargarTerritoriosYCasas(false));
 
     return () => { 
@@ -286,8 +275,11 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     if(navigator.onLine) await supabase.from('secciones').update({ notas }).eq('id', id);
   };
 
-  const actualizarDetallesSeccionEnBD = async (id, nombre, colorHex) => {
-    if(navigator.onLine) await supabase.from('secciones').update({ nombre, color_hex: colorHex }).eq('id', id);
+  const actualizarDetallesSeccionEnBD = async (id, nombre, colorHex, grupoAsignado) => {
+    if(navigator.onLine) {
+      let valorGrupo = grupoAsignado ? String(grupoAsignado).trim() : null;
+      await supabase.from('secciones').update({ nombre, color_hex: colorHex, grupo_asignado: valorGrupo }).eq('id', id);
+    }
   };
 
   const crearSeccionBD = async (data) => { if(navigator.onLine) await supabase.from('secciones').insert([data]); }

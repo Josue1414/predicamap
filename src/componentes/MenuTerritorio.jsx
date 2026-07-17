@@ -70,7 +70,6 @@ export default function MenuTerritorio({
     porcentaje = territorio.estado === 'completado' ? 100 : 0;
   }
 
-  // ★ VALIDACIÓN DE PERMISOS ★
   const esCapitanYSuperior = perfilUsuario?.rol === 'Capitán' || perfilUsuario?.rol === 'Administrador' || perfilUsuario?.rol === 'Administrador Mayor';
 
   const manejarGuardar = () => {
@@ -112,6 +111,13 @@ export default function MenuTerritorio({
                 <span className="text-[10px] font-bold text-slate-500">{porcentaje}%</span>
               </div>
               <p className="text-[10px] text-slate-400 mt-1">{totalCasas > 0 ? `${casasCompletadas} de ${totalCasas} casas completadas` : 'Territorio sin puntos marcados'}</p>
+              
+              {/* Etiqueta del Grupo Asignado */}
+              {territorio.grupo_asignado && (
+                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-1.5 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded w-fit border border-indigo-100 dark:border-indigo-800">
+                  Grupo Asignado: {territorio.grupo_asignado}
+                </p>
+              )}
               
               {porcentaje === 100 && (
                 <div className="mt-2.5 inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-md border border-emerald-100 dark:border-emerald-800/50">
@@ -168,7 +174,6 @@ export default function MenuTerritorio({
             )}
           </div>
 
-          {/* ★ NOTAS DEL TERRITORIO PROTEGIDAS POR ROL ★ */}
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Notas del Territorio</label>
             {esCapitanYSuperior ? (
@@ -206,7 +211,6 @@ export default function MenuTerritorio({
               </button>
             )}
 
-            {/* ★ EL BOTÓN DE GUARDAR NOTAS SOLO SALE SI TIENE PERMISO DE EDITARLAS ★ */}
             {esCapitanYSuperior && (
               <button onClick={manejarGuardar} className="w-full mt-2 flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
                 <Save size={18} /> Guardar Notas
