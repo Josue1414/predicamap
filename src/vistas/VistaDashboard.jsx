@@ -22,6 +22,16 @@ import useBotonAtrasCelular from '../hooks/useBotonAtrasCelular';
 import { useModoMapa, MODOS_MAPA } from '../context/ContextoModoMapa';
 import { useAlertas } from '../context/ContextoAlertas'; 
 
+const verificarConexionReal = async () => {
+  if (!navigator.onLine) return false;
+  try {
+    await fetch('https://dns.google/resolve?name=google.com', { mode: 'no-cors', cache: 'no-store' });
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
 export default function VistaDashboard() {
   const [modoOscuro, setModoOscuro] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -71,133 +81,215 @@ export default function VistaDashboard() {
     pagina, totalPaginas, cambiarPagina 
   } = useGestorHistorial(targetCongId);
 
-  const { mostrarConfirmacion } = useAlertas();
+  const { mostrarConfirmacion, mostrarAlerta } = useAlertas();
 
-  // ★ CORRECCIÓN: Guardamos el nombre exacto del territorio en el log
+  // ★ MANEJO DE TERRITORIOS
   const manejarCompletarTerritorio = async (id) => {
-    const territorio = secciones.find(sec => sec.id === id);
-    await completarTerritorioEntero(id);
-    
-    if (perfilUsuario && territorio) {
-      registrarLog(
-        perfilUsuario.id, 
-        'Territorio Completado', 
-        'territorio', 
-        `Se marcó el territorio "${territorio.nombre}" y todos sus elementos como completados.`
-      );
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudo completar el territorio. Verifica que tengas saldo o datos para navegar.", "warning");
+      return; 
+    }
+
+    try {
+      const territorio = secciones.find(sec => sec.id === id);
+      await completarTerritorioEntero(id);
+      
+      if (perfilUsuario && territorio) {
+        registrarLog(
+          perfilUsuario.id, 
+          'Territorio Completado', 
+          'territorio', 
+          `Se marcó el territorio "${territorio.nombre}" y todos sus elementos como completados.`
+        );
+      }
+    } catch (error) {
+      mostrarAlerta("Error", "Ocurrió un problema al comunicarse con el servidor.", "danger");
     }
   };
 
   const manejarReiniciarTerritorio = async (id) => {
-    const territorio = secciones.find(sec => sec.id === id);
-    await reiniciarTerritorioEnBD(id);
-    
-    if (perfilUsuario && territorio) {
-      registrarLog(
-        perfilUsuario.id, 
-        'Territorio Reiniciado', 
-        'territorio', 
-        `Se reinició el territorio "${territorio.nombre}" a estado pendiente.`
-      );
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudo reiniciar el territorio. Verifica que tengas saldo o datos para navegar.", "warning");
+      return; 
     }
-  };
 
-  const manejarGuardarEdificio = async () => {
-    const datosEdificio = edificioSeleccionado;
-    await guardarEdificioEnBD();
-
-    if (perfilUsuario && datosEdificio) {
-      const tipo = datosEdificio.tipo_edificio || 'casa';
-      let tipoStr = 'Casa';
-      let accion = 'Registro de Casa';
+    try {
+      const territorio = secciones.find(sec => sec.id === id);
+      await reiniciarTerritorioEnBD(id);
       
-      if (tipo === 'calle') {
-        tipoStr = 'calle';
-        accion = 'Registro de Calle';
-      } else if (tipo === 'edificio') {
-        tipoStr = 'edificio';
-        accion = 'Registro de Edificio';
+      if (perfilUsuario && territorio) {
+        registrarLog(
+          perfilUsuario.id, 
+          'Territorio Reiniciado', 
+          'territorio', 
+          `Se reinició el territorio "${territorio.nombre}" a estado pendiente.`
+        );
       }
-
-      let detalles = `Se actualizó la ${tipoStr} "${datosEdificio.direccion || 'Sin dirección'}" a estado ${datosEdificio.estado || 'pendiente'}.`;
-      
-      if (datosEdificio.notas && datosEdificio.notas.trim() !== '') {
-        detalles += `\n📝 Notas: ${datosEdificio.notas}`;
-      }
-
-      registrarLog(perfilUsuario.id, accion, 'casa', detalles);
-    }
-  };
-
-  const manejarEliminarEdificio = async (idEdificio) => {
-    const datosEdificio = edificioSeleccionado;
-    const eliminado = await eliminarEdificioEnBD(idEdificio);
-
-    if (eliminado && perfilUsuario && datosEdificio) {
-      const tipo = datosEdificio.tipo_edificio || 'casa';
-      let tipoStr = 'Casa';
-      let accion = 'Eliminación de Casa';
-
-      if (tipo === 'calle') {
-        tipoStr = 'calle';
-        accion = 'Eliminación de Calle';
-      } else if (tipo === 'edificio') {
-        tipoStr = 'edificio';
-        accion = 'Eliminación de Edificio';
-      }
-
-      registrarLog(
-        perfilUsuario.id,
-        accion,
-        'casa',
-        `Se eliminó la ${tipoStr} "${datosEdificio.direccion || 'Sin dirección'}".`
-      );
+    } catch (error) {
+      mostrarAlerta("Error", "Ocurrió un problema al comunicarse con el servidor.", "danger");
     }
   };
 
   const manejarEliminarTerritorio = async (idSeccion) => {
-    const territorio = secciones.find(sec => sec.id === idSeccion);
-    const eliminado = await eliminarSeccionEnBD(idSeccion);
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudo eliminar el territorio porque no tienes internet por el momento.", "warning");
+      return; 
+    }
 
-    if (eliminado !== false && perfilUsuario && territorio) {
-      registrarLog(
-        perfilUsuario.id,
-        'Territorio Eliminado',
-        'territorio',
-        `Se eliminó el territorio "${territorio.nombre}".`
-      );
+    try {
+      const territorio = secciones.find(sec => sec.id === idSeccion);
+      const eliminado = await eliminarSeccionEnBD(idSeccion);
+
+      if (eliminado !== false && perfilUsuario && territorio) {
+        registrarLog(
+          perfilUsuario.id,
+          'Territorio Eliminado',
+          'territorio',
+          `Se eliminó el territorio "${territorio.nombre}".`
+        );
+      }
+    } catch (error) {
+      mostrarAlerta("Error de conexión", "No se pudo eliminar el territorio. Verifica que tengas saldo o datos para navegar.", "danger");
     }
   };
 
-  const manejarGuardarTachuela = async (datos) => {
-    await agregarTachuelaBD(tachuelaTemporal.lat, tachuelaTemporal.lng, datos.titulo, datos.notas);
-    if (perfilUsuario) {
-      let detalles = `Se fijó un nuevo aviso en el mapa con el título: "${datos.titulo}".`;
-      if (datos.notas && datos.notas.trim() !== '') {
-        detalles += `\n📝 Informe/Notas: ${datos.notas}`;
-      }
-      registrarLog(perfilUsuario.id, 'Nuevo Aviso Creado', 'tachuela', detalles);
+  // ★ MANEJO DE EDIFICIOS/CASAS
+  const manejarGuardarEdificio = async () => {
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudieron hacer los cambios porque no tienes internet por el momento.", "warning");
+      return; 
     }
-    setTachuelaTemporal(null);
-    limpiarModo(); 
+
+    try {
+      const datosEdificio = edificioSeleccionado;
+      await guardarEdificioEnBD(); 
+
+      if (perfilUsuario && datosEdificio) {
+        const tipo = datosEdificio.tipo_edificio || 'casa';
+        let tipoStr = 'Casa';
+        let accion = 'Registro de Casa';
+        
+        if (tipo === 'calle') {
+          tipoStr = 'calle';
+          accion = 'Registro de Calle';
+        } else if (tipo === 'edificio') {
+          tipoStr = 'edificio';
+          accion = 'Registro de Edificio';
+        }
+
+        let detalles = `Se actualizó la ${tipoStr} "${datosEdificio.direccion || 'Sin dirección'}" a estado ${datosEdificio.estado || 'pendiente'}.`;
+        
+        if (datosEdificio.notas && datosEdificio.notas.trim() !== '') {
+          detalles += `\n📝 Notas: ${datosEdificio.notas}`;
+        }
+
+        registrarLog(perfilUsuario.id, accion, 'casa', detalles);
+      }
+    } catch (error) {
+      mostrarAlerta("Error de conexión", "No se pudo guardar el cambio. Verifica que tengas saldo o datos para navegar.", "danger");
+    }
+  };
+
+  const manejarEliminarEdificio = async (idEdificio) => {
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudo eliminar el registro porque no tienes internet por el momento.", "warning");
+      return; 
+    }
+
+    try {
+      const datosEdificio = edificioSeleccionado;
+      const eliminado = await eliminarEdificioEnBD(idEdificio);
+
+      if (eliminado && perfilUsuario && datosEdificio) {
+        const tipo = datosEdificio.tipo_edificio || 'casa';
+        let tipoStr = 'Casa';
+        let accion = 'Eliminación de Casa';
+
+        if (tipo === 'calle') {
+          tipoStr = 'calle';
+          accion = 'Eliminación de Calle';
+        } else if (tipo === 'edificio') {
+          tipoStr = 'edificio';
+          accion = 'Eliminación de Edificio';
+        }
+
+        registrarLog(
+          perfilUsuario.id,
+          accion,
+          'casa',
+          `Se eliminó la ${tipoStr} "${datosEdificio.direccion || 'Sin dirección'}".`
+        );
+      }
+    } catch (error) {
+      mostrarAlerta("Error de conexión", "No se pudo eliminar. Verifica que tengas saldo o datos para navegar.", "danger");
+    }
+  };
+
+  // ★ MANEJO DE TACHUELAS (AVISOS) BLINDADOS
+  const manejarGuardarTachuela = async (datos) => {
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudo guardar el aviso. Verifica que tengas saldo o datos para navegar.", "warning");
+      return; 
+    }
+    
+    try {
+      await agregarTachuelaBD(tachuelaTemporal.lat, tachuelaTemporal.lng, datos.titulo, datos.notas);
+      if (perfilUsuario) {
+        let detalles = `Se fijó un nuevo aviso en el mapa con el título: "${datos.titulo}".`;
+        if (datos.notas && datos.notas.trim() !== '') {
+          detalles += `\n📝 Informe/Notas: ${datos.notas}`;
+        }
+        registrarLog(perfilUsuario.id, 'Nuevo Aviso Creado', 'tachuela', detalles);
+      }
+      setTachuelaTemporal(null);
+      limpiarModo(); 
+    } catch (error) {
+      mostrarAlerta("Error de conexión", "No se pudo crear el aviso.", "danger");
+    }
   };
 
   const manejarEliminarTachuela = async (id, titulo) => {
-    await eliminarTachuelaBD(id);
-    if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Eliminado', 'tachuela', `Se borró el aviso: "${titulo}".`);
-    setTachuelaLeida(null);
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudo eliminar el aviso. Verifica que tengas saldo o datos para navegar.", "warning");
+      return; 
+    }
+
+    try {
+      await eliminarTachuelaBD(id);
+      if (perfilUsuario) registrarLog(perfilUsuario.id, 'Aviso Eliminado', 'tachuela', `Se borró el aviso: "${titulo}".`);
+      setTachuelaLeida(null);
+    } catch (error) {
+      mostrarAlerta("Error de conexión", "No se pudo eliminar el aviso.", "danger");
+    }
   };
 
   const manejarEditarTachuela = async (id, datosActualizados) => {
-    await editarTachuelaBD(id, datosActualizados.titulo, datosActualizados.notas);
-    if (perfilUsuario) {
-      let detalles = `Se modificó el aviso. Nuevo título: "${datosActualizados.titulo}".`;
-      if (datosActualizados.notas && datosActualizados.notas.trim() !== '') {
-        detalles += `\n📝 Informe/Notas: ${datosActualizados.notas}`;
-      }
-      registrarLog(perfilUsuario.id, 'Aviso Editado', 'tachuela', detalles);
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudo editar el aviso. Verifica que tengas saldo o datos para navegar.", "warning");
+      return; 
     }
-    setTachuelaLeida(null); 
+
+    try {
+      await editarTachuelaBD(id, datosActualizados.titulo, datosActualizados.notas);
+      if (perfilUsuario) {
+        let detalles = `Se modificó el aviso. Nuevo título: "${datosActualizados.titulo}".`;
+        if (datosActualizados.notas && datosActualizados.notas.trim() !== '') {
+          detalles += `\n📝 Informe/Notas: ${datosActualizados.notas}`;
+        }
+        registrarLog(perfilUsuario.id, 'Aviso Editado', 'tachuela', detalles);
+      }
+      setTachuelaLeida(null); 
+    } catch (error) {
+      mostrarAlerta("Error de conexión", "No se pudo editar el aviso.", "danger");
+    }
   };
 
   useEffect(() => {
@@ -342,7 +434,15 @@ export default function VistaDashboard() {
         alEliminar={manejarEliminarEdificio} 
       />
 
-      <MenuTerritorio territorio={territorioSeleccionado} edificios={edificios} perfilUsuario={perfilUsuario} alCerrar={() => setTerritorioSeleccionado(null)} alCompletar={manejarCompletarTerritorio} alReiniciar={manejarReiniciarTerritorio} alGuardarNotas={actualizarNotasSeccionEnBD} />
+      <MenuTerritorio 
+        territorio={territorioSeleccionado} 
+        edificios={edificios} 
+        perfilUsuario={perfilUsuario} 
+        alCerrar={() => setTerritorioSeleccionado(null)} 
+        alCompletar={manejarCompletarTerritorio} 
+        alReiniciar={manejarReiniciarTerritorio} 
+        alGuardarNotas={actualizarNotasSeccionEnBD} 
+      />
 
       {enModoTrazado && !mostrarModalBienvenida && <ControlesTrazado puntosContados={puntosTrazadoActual.length} alDeshacer={deshacerUltimoPunto} alLimpiar={limpiarTrazadoCompleto} alCancelar={cancelarTrazadoYSalir} alGuardar={guardarNuevaSeccionEnBD} />}
 

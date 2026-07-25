@@ -17,6 +17,20 @@ const verificarPuntoEnPoligono = (lat, lng, poligono) => {
   return dentro;
 };
 
+const verificarConexionReal = async () => {
+  if (!navigator.onLine) return false;
+  try {
+    // Hacemos una petición rápida y ligera. Si no hay saldo, esto fallará irremediablemente.
+    await fetch('https://dns.google/resolve?name=google.com', { 
+      mode: 'no-cors', 
+      cache: 'no-store' 
+    });
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
 export default function useMapa() {
   const global = useEstadoGlobal();
   const ui = useControlesUI();
@@ -77,6 +91,14 @@ export default function useMapa() {
 
   const guardarNuevaSeccionEnBD = async () => {
     if (ui.puntosTrazadoActual.length < 3 || !ui.nombreNuevoTerritorio.trim()) return;
+    
+    // 🛡️ ESCUDO: Verificamos conexión real
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudo guardar el territorio. Verifica que tengas saldo o datos para navegar.", "warning");
+      return; // Detenemos todo para proteger el mapa local
+    }
+
     await db.crearSeccionBD({
       nombre: ui.nombreNuevoTerritorio, color_hex: ui.colorNuevoTerritorio,
       coordenadas: ui.puntosTrazadoActual, notas: ui.notasNuevoTerritorio, congregacion_id: global.targetCongId
@@ -88,6 +110,13 @@ export default function useMapa() {
 
   const guardarEdificioEnBD = async () => {
     if (!ui.edificioSeleccionado) return;
+    
+    // 🛡️ ESCUDO: Verificamos conexión real
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudieron hacer los cambios. Verifica que tengas saldo o datos para navegar.", "warning");
+      return; // Detenemos todo para proteger el mapa local
+    }
     
     const datosAEnviar = { 
       seccion_id: ui.edificioSeleccionado.seccion_id, 
@@ -112,15 +141,18 @@ export default function useMapa() {
       "danger",
       "Eliminar"
     );
-    
-    // Retornamos false si el usuario cancela
     if (!confirmado) return false;
+
+    // 🛡️ ESCUDO: Verificamos conexión real
+    const tieneInternet = await verificarConexionReal();
+    if (!tieneInternet) {
+      mostrarAlerta("Sin conexión", "No se pudo eliminar. Verifica que tengas saldo o datos para navegar.", "warning");
+      return false; // Detenemos todo
+    }
 
     await db.eliminarEdificioBD(idEdificio);
     await db.cargarTerritoriosYCasas();
     ui.setEdificioSeleccionado(null);
-    
-    // Retornamos true si se eliminó con éxito
     return true;
   };
 

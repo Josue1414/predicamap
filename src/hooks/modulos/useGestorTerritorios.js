@@ -29,6 +29,7 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   const cargarTerritoriosYCasas = async (esCargaInicial = false) => {
     if (!targetCongId) return;
 
+    // 1. Cargamos el respaldo local primero
     const secLocales = localStorage.getItem(`predicamap_secciones_${targetCongId}`);
     const ediLocales = localStorage.getItem(`predicamap_edificios_${targetCongId}`);
 
@@ -48,11 +49,16 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
 
     setCargandoTerritorios(true);
     try {
-      const { data: secs } = await supabase.from('secciones')
+      // Extraemos la variable "error" (la llamaremos errorSecs)
+      const { data: secs, error: errorSecs } = await supabase.from('secciones')
         .select('*')
         .eq('congregacion_id', targetCongId)
         .order('orden', { ascending: true })
         .order('creado_en', { ascending: true });
+
+      // 🛡️ EL BLINDAJE: Si Supabase reporta un error de red, lanzamos la excepción.
+      // Esto nos manda directo al "catch" y EVITA que se borre el mapa local.
+      if (errorSecs) throw errorSecs;
 
       const formateadas = (secs || []).map(item => ({
         id: item.id, nombre: item.nombre, colorHex: item.color_hex, 
@@ -63,13 +69,20 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
 
       const secIds = formateadas.map(s => s.id);
       if (secIds.length > 0) {
-        const { data: edis } = await supabase.from('edificios').select('*').in('seccion_id', secIds);
+        // Hacemos lo mismo con los edificios
+        const { data: edis, error: errorEdis } = await supabase.from('edificios').select('*').in('seccion_id', secIds);
+        
+        // 🛡️ BLINDAJE PARA CASAS
+        if (errorEdis) throw errorEdis;
+        
         setEdificios(edis || []);
       } else { 
         setEdificios([]); 
       }
     } catch (error) { 
-      console.error(error); 
+      // Al caer aquí, el código simplemente ignora la descarga fallida
+      // y la pantalla SE QUEDA con los datos locales que ya habíamos cargado arriba.
+      console.error("Error al descargar de Supabase. Conservando datos locales.", error); 
     } finally { 
       setCargandoTerritorios(false); 
     }

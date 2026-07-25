@@ -61,7 +61,7 @@ export default function VisorMapa({
   const mapaActivoClics = enModoTrazado || enModoEdificios || !!marcadorTemporal || (alSeleccionarRevisita !== undefined) || enModoTachuela;
 
   useEffect(() => {
-    const timer = setTimeout(() => setMostrarLeyenda(false), 7000);
+    const timer = setTimeout(() => setMostrarLeyenda(false), 4000);
     return () => clearTimeout(timer);
   }, []);
 
