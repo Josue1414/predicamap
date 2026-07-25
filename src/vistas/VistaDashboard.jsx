@@ -169,6 +169,10 @@ export default function VistaDashboard() {
       await guardarEdificioEnBD(); 
 
       if (perfilUsuario && datosEdificio) {
+        // Buscamos el nombre del territorio al que pertenece la casa/calle
+        const territorio = secciones.find(sec => sec.id === datosEdificio.seccion_id);
+        const nombreTerritorio = territorio ? territorio.nombre : 'Desconocido';
+
         const tipo = datosEdificio.tipo_edificio || 'casa';
         let tipoStr = 'Casa';
         let accion = 'Registro de Casa';
@@ -181,7 +185,8 @@ export default function VistaDashboard() {
           accion = 'Registro de Edificio';
         }
 
-        let detalles = `Se actualizó la ${tipoStr} "${datosEdificio.direccion || 'Sin dirección'}" a estado ${datosEdificio.estado || 'pendiente'}.`;
+        // Agregamos el territorio y envolvemos en ** los textos que queremos resaltar
+        let detalles = `En el territorio **${nombreTerritorio}**, se actualizó la ${tipoStr} **${datosEdificio.direccion || 'Sin dirección'}** a estado ${datosEdificio.estado || 'pendiente'}.`;
         
         if (datosEdificio.notas && datosEdificio.notas.trim() !== '') {
           detalles += `\n📝 Notas: ${datosEdificio.notas}`;
@@ -206,6 +211,10 @@ export default function VistaDashboard() {
       const eliminado = await eliminarEdificioEnBD(idEdificio);
 
       if (eliminado && perfilUsuario && datosEdificio) {
+        // Buscamos el nombre del territorio
+        const territorio = secciones.find(sec => sec.id === datosEdificio.seccion_id);
+        const nombreTerritorio = territorio ? territorio.nombre : 'Desconocido';
+
         const tipo = datosEdificio.tipo_edificio || 'casa';
         let tipoStr = 'Casa';
         let accion = 'Eliminación de Casa';
@@ -222,7 +231,7 @@ export default function VistaDashboard() {
           perfilUsuario.id,
           accion,
           'casa',
-          `Se eliminó la ${tipoStr} "${datosEdificio.direccion || 'Sin dirección'}".`
+          `En el territorio **${nombreTerritorio}**, se eliminó la ${tipoStr} **${datosEdificio.direccion || 'Sin dirección'}**.`
         );
       }
     } catch (error) {

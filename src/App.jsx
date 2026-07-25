@@ -17,6 +17,9 @@ import { ProveedorAlertas } from './context/ContextoAlertas';
 // ★ 1. IMPORTAMOS EL MODAL DE PRIVACIDAD ★
 import ModalPrivacidad from './componentes/ModalPrivacidad';
 
+// ★ IMPORTAMOS EL ACTUALIZADOR DE PWA ★
+import ActualizacionPWA from './componentes/ActualizacionPWA';
+
 export default function App() {
   const [sesion, setSesion] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -68,6 +71,9 @@ export default function App() {
           
           {/* ★ 2. AGREGAMOS EL MODAL AQUÍ ★ */}
           <ModalPrivacidad />
+
+          {/* ★ COMPONENTE DE ACTUALIZACIÓN PWA GLOBAL ★ */}
+          <ActualizacionPWA />
 
           <Routes>
             

@@ -87,6 +87,21 @@ export default function SeccionHistorial({
     return grupos;
   };
 
+  const renderizarTextoConNegritas = (texto) => {
+    if (!texto) return null;
+    // Esto separa el texto donde encuentra "**" y aplica estilos de negrita a las partes impares
+    const partes = texto.split(/\*\*(.*?)\*\*/g);
+    return partes.map((parte, index) => 
+      index % 2 === 1 ? (
+        <strong key={index} className="font-black text-slate-800 dark:text-slate-100">
+          {parte}
+        </strong>
+      ) : (
+        parte
+      )
+    );
+  };
+
   const logsAgrupados = agruparLogs(logs);
 
   return (
@@ -153,9 +168,9 @@ export default function SeccionHistorial({
                                 {formatearHora(log.creado_en)}
                               </span>
                             </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3 font-medium whitespace-pre-wrap">
-                              {log.detalles}
-                            </p>
+                              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3 font-medium whitespace-pre-wrap">
+                                {renderizarTextoConNegritas(log.detalles)}
+                              </p>
                             <div className="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
                               <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-full">
                                 <User size={12} className="text-slate-500" />
