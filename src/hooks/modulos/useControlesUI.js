@@ -19,8 +19,8 @@ export default function useControlesUI() {
   const [notasNuevoTerritorio, setNotasNuevoTerritorio] = useState('');
   const [puntosTrazadoActual, setPuntosTrazadoActual] = useState([]);
 
-  const [mostrarCalles, setMostrarCalles] = useState(true);
-  const [mostrarLugares, setMostrarLugares] = useState(true);
+  const [mostrarCalles, setMostrarCalles] = useState(false);
+  const [mostrarLugares, setMostrarLugares] = useState(false);
 
   const buscarCiudadEnServidor = async () => {
     if (!textoBusqueda.trim()) return;

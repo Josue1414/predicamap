@@ -36,7 +36,10 @@ export default function useMapa() {
 
   const manejarCambioEstiloMapa = (nuevoEstilo) => {
     setEstiloMapa(nuevoEstilo);
-    if (nuevoEstilo === 'satelite_hibrido' || nuevoEstilo === 'gris' || nuevoEstilo === 'calles') {
+    if (nuevoEstilo === 'satelite_puro') {
+      ui.setMostrarCalles(true);
+      ui.setMostrarLugares(true);
+    } else {
       ui.setMostrarCalles(false);
       ui.setMostrarLugares(false);
     }

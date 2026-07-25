@@ -15,7 +15,7 @@ export function ProveedorModoMapa({ children }) {
   const [modoActivo, setModoActivo] = useState(MODOS_MAPA.NINGUNO);
   
   // ★ NUEVO ESTADO: Estilo del mapa, por defecto en satélite
-  const [estiloMapa, setEstiloMapa] = useState('satelite_puro');
+  const [estiloMapa, setEstiloMapa] = useState('satelite_hibrido');
 
   const cambiarModo = (nuevoModo) => {
     setModoActivo(nuevoModo);

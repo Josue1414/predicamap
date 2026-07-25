@@ -28,9 +28,9 @@ export default function VistaPublicador() {
   const [coordenadasActuales, setCoordenadasActuales] = useState([25.6565, -100.2930]);
   const [zoomActual, setZoomActual] = useState(15);
   
-  const [mostrarCalles, setMostrarCalles] = useState(true);
-  const [mostrarLugares, setMostrarLugares] = useState(true);
-  const [estiloMapa, setEstiloMapa] = useState('satelite_puro');
+  const [mostrarCalles, setMostrarCalles] = useState(false);
+  const [mostrarLugares, setMostrarLugares] = useState(false);
+  const [estiloMapa, setEstiloMapa] = useState('satelite_hibrido');
 
   const [textoBusqueda, setTextoBusqueda] = useState('');
   const [resultadosCiudades, setResultadosCiudades] = useState([]);
@@ -99,7 +99,11 @@ export default function VistaPublicador() {
 
   const manejarCambioEstiloMapa = (nuevoEstilo) => {
     setEstiloMapa(nuevoEstilo);
-    if (nuevoEstilo === 'satelite_hibrido' || nuevoEstilo === 'gris' || nuevoEstilo === 'calles') {
+    // Solo activamos las capas extra de calles/lugares si eligen satélite puro
+    if (nuevoEstilo === 'satelite_puro') {
+      setMostrarCalles(true);
+      setMostrarLugares(true);
+    } else {
       setMostrarCalles(false);
       setMostrarLugares(false);
     }
