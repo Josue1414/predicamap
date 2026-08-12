@@ -22,7 +22,18 @@ export default function useGestorProgreso() {
   useEffect(() => {
     const cargarProgreso = async () => {
       try {
-        const guardado = await localforage.getItem('predicamap_progreso');
+        let guardado = await localforage.getItem('predicamap_progreso');
+        
+        // ★ MIGRACIÓN AUTOMÁTICA (De localStorage a IndexedDB) ★
+        if (!guardado) {
+          const guardadoViejo = localStorage.getItem('predicamap_progreso');
+          if (guardadoViejo) {
+            guardado = JSON.parse(guardadoViejo);
+            // Lo guardamos silenciosamente en la nueva base de datos
+            await localforage.setItem('predicamap_progreso', guardado); 
+          }
+        }
+
         if (guardado) setDatosProgreso(guardado);
       } catch (error) {
         console.error("Error al leer progreso:", error);
@@ -205,7 +216,7 @@ export default function useGestorProgreso() {
 
   return {
     ...datosProgreso,
-    cargandoProgreso: cargando, // Retornamos el estado de carga por si la UI lo necesita
+    cargandoProgreso: cargando,
     horasMesActual: calcularHorasMesActual(),
     estudiosMesActual: calcularEstudiosMesActual(),
     horasTotalesAño: obtenerHorasTotalesAñoServicio(),

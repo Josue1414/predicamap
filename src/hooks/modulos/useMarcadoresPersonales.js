@@ -21,7 +21,18 @@ export default function useMarcadoresPersonales() {
   useEffect(() => {
     const cargarMarcadores = async () => {
       try {
-        const datosGuardados = await localforage.getItem('predicamap_marcadores_personales');
+        let datosGuardados = await localforage.getItem('predicamap_marcadores_personales');
+        
+        // ★ MIGRACIÓN AUTOMÁTICA (De localStorage a IndexedDB) ★
+        if (!datosGuardados) {
+          const guardadoViejo = localStorage.getItem('predicamap_marcadores_personales');
+          if (guardadoViejo) {
+            datosGuardados = JSON.parse(guardadoViejo);
+            // Lo guardamos silenciosamente en la nueva base de datos
+            await localforage.setItem('predicamap_marcadores_personales', datosGuardados);
+          }
+        }
+
         if (datosGuardados) {
           setMarcadores(datosGuardados);
         }
