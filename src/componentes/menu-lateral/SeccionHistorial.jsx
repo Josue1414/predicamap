@@ -37,9 +37,15 @@ export default function SeccionHistorial({
     }
   };
 
-  const formatearHora = (fechaIso) => {
+  // ★ ACTUALIZADO: Ahora muestra Día, Mes (abreviado) y Hora
+  const formatearFechaHora = (fechaIso) => {
     const fecha = new Date(fechaIso);
-    return fecha.toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    return fecha.toLocaleString('es-MX', { 
+      day: '2-digit', 
+      month: 'short', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
   };
 
   const obtenerIconoAccion = (tipo) => {
@@ -164,8 +170,8 @@ export default function SeccionHistorial({
                           <div className="flex-1 bg-white dark:bg-slate-900/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
                             <div className="flex justify-between items-start mb-2">
                               <span className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">{log.accion}</span>
-                              <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap ml-2 shrink-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
-                                {formatearHora(log.creado_en)}
+                              <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap ml-2 shrink-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md capitalize">
+                                {formatearFechaHora(log.creado_en)}
                               </span>
                             </div>
                               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3 font-medium whitespace-pre-wrap">

@@ -79,6 +79,8 @@ export default function MenuTerritorio({
 
   const ultimaVez = fechasCompletado[0] || null;
   const penultimaVez = fechasCompletado[1] || null;
+  // ★ NUEVO: Extraemos hasta 6 fechas adicionales después de la penúltima ★
+  const fechasAnteriores = fechasCompletado.slice(2, 8);
 
   const hace60Dias = new Date();
   hace60Dias.setDate(hace60Dias.getDate() - 60);
@@ -162,6 +164,20 @@ export default function MenuTerritorio({
                         <p className="text-sm font-black text-slate-700 dark:text-slate-200">{formatearFecha(penultimaVez)}</p>
                       </div>
                     </div>
+
+                    {/* ★ NUEVO: Pastillas para fechas anteriores (hasta 6) ★ */}
+                    {fechasAnteriores.length > 0 && (
+                      <div className="pt-1">
+                        <p className="text-[9px] text-slate-400 uppercase font-bold mb-1.5 px-1">Registros Anteriores</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {fechasAnteriores.map((fecha, idx) => (
+                            <span key={idx} className="text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-md shadow-sm">
+                              {formatearFecha(fecha)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="bg-indigo-50 dark:bg-indigo-900/20 p-2.5 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
                       <p className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">

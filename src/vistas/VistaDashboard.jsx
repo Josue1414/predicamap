@@ -33,7 +33,11 @@ const verificarConexionReal = async () => {
 };
 
 export default function VistaDashboard() {
-  const [modoOscuro, setModoOscuro] = useState(false);
+  const [modoOscuro, setModoOscuro] = useState(() => {
+    return localStorage.getItem('pm_modo_oscuro') === 'true';
+  });
+
+
   const [menuAbierto, setMenuAbierto] = useState(false);
   
   const [nombreCongregacionUI, setNombreCongregacionUI] = useState('Cargando...');
@@ -302,8 +306,13 @@ export default function VistaDashboard() {
   };
 
   useEffect(() => {
-    if (modoOscuro) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    if (modoOscuro) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('pm_modo_oscuro', 'true');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('pm_modo_oscuro', 'false');
+    }
   }, [modoOscuro]);
 
   useEffect(() => {

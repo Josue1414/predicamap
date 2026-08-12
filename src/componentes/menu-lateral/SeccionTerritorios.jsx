@@ -1,5 +1,5 @@
 // src/componentes/menu-lateral/SeccionTerritorios.jsx
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { List, ChevronUp, ChevronDown, ChevronRight, Star, UserCheck, Users, Navigation, CheckCircle2, RefreshCcw, Trash2, Edit3, Settings, Save } from 'lucide-react';
 import VentanaFlotante from '../VentanaFlotante'; 
 
@@ -43,20 +43,39 @@ export default function SeccionTerritorios({
   const [editNombre, setEditNombre] = useState('');
   const [editColor, setEditColor] = useState('');
   
-  // Estado local para los inputs de grupo
   const [gruposTemp, setGruposTemp] = useState({});
+  
+  // ★ NUEVO ESTADO: Controla qué botón de grupo muestra el efecto de éxito ★
+  const [grupoGuardadoId, setGrupoGuardadoId] = useState(null);
+
+  const refsTerritorios = useRef({});
+
+  useEffect(() => {
+    if (territorioExpandido && refsTerritorios.current[territorioExpandido]) {
+      setTimeout(() => {
+        refsTerritorios.current[territorioExpandido].scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }, 250); 
+    }
+  }, [territorioExpandido]);
 
   const guardarEdicion = async (sec) => {
     if (!editNombre.trim()) return;
-    // Reutilizamos la función existente, pasándole el grupo actual para que no se borre
     await actualizarDetallesSeccionEnBD(sec.id, editNombre, editColor, sec.grupo_asignado);
     setModoEdicionId(null);
   };
 
   const guardarGrupo = async (sec) => {
     const nuevoGrupo = gruposTemp[sec.id] !== undefined ? gruposTemp[sec.id] : sec.grupo_asignado;
-    // Reutilizamos la función existente para guardar el grupo
     await actualizarDetallesSeccionEnBD(sec.id, sec.nombre, sec.colorHex, nuevoGrupo);
+    
+    // ★ EFECTO VISUAL: Activamos el estado de éxito y lo revertimos después de 2 segundos ★
+    setGrupoGuardadoId(sec.id);
+    setTimeout(() => {
+      setGrupoGuardadoId(null);
+    }, 2000);
   };
 
   const estaAbierta = acordeonActivo === 'lista';
@@ -108,8 +127,11 @@ export default function SeccionTerritorios({
               });
 
               return (
-                <div key={sec.id} className={`border rounded-xl overflow-hidden shadow-sm transition-colors ${esMio ? 'border-amber-400 dark:border-amber-600/50 bg-white dark:bg-slate-950' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950'}`}>
-                  
+                <div 
+                  key={sec.id} 
+                  ref={(el) => (refsTerritorios.current[sec.id] = el)} 
+                  className={`border rounded-xl overflow-hidden shadow-sm transition-colors scroll-mt-4 ${esMio ? 'border-amber-400 dark:border-amber-600/50 bg-white dark:bg-slate-950' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950'}`}
+                >
                   <div onClick={() => {
                     setTerritorioExpandido(territorioExpandido === sec.id ? null : sec.id);
                     if (territorioExpandido !== sec.id) setOpcionesId(null); 
@@ -243,12 +265,17 @@ export default function SeccionTerritorios({
                                       placeholder="Ej: 3"
                                       className="w-full p-2.5 text-sm font-medium bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500/50 outline-none shadow-sm text-center"
                                     />
+                                    {/* ★ BOTÓN ACTUALIZADO CON EFECTO DE GUARDADO ★ */}
                                     <button
                                       onClick={() => guardarGrupo(sec)}
-                                      className="p-2.5 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:hover:bg-indigo-800/60 text-indigo-600 dark:text-indigo-400 rounded-lg transition-colors border border-indigo-200 dark:border-indigo-800 shadow-sm flex items-center justify-center shrink-0"
-                                      title="Guardar Grupo"
+                                      className={`p-2.5 rounded-lg transition-colors border shadow-sm flex items-center justify-center shrink-0 ${
+                                        grupoGuardadoId === sec.id
+                                          ? 'bg-emerald-100 border-emerald-200 text-emerald-600 dark:bg-emerald-900/40 dark:border-emerald-800 dark:text-emerald-400'
+                                          : 'bg-indigo-100 hover:bg-indigo-200 border-indigo-200 text-indigo-600 dark:bg-indigo-900/40 dark:hover:bg-indigo-800/60 dark:border-indigo-800 dark:text-indigo-400'
+                                      }`}
+                                      title={grupoGuardadoId === sec.id ? "¡Guardado!" : "Guardar Grupo"}
                                     >
-                                      <Save size={16} />
+                                      {grupoGuardadoId === sec.id ? <CheckCircle2 size={16} /> : <Save size={16} />}
                                     </button>
                                   </div>
                                 </div>

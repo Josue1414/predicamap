@@ -1,21 +1,38 @@
 // src/hooks/modulos/useGestorProgreso.js
 import { useState, useEffect, useRef } from 'react';
+import localforage from 'localforage';
+
+// Configuración de la base de datos local
+localforage.config({
+  name: 'PredicaMap',
+  storeName: 'progreso_db'
+});
 
 export default function useGestorProgreso() {
-  const [datosProgreso, setDatosProgreso] = useState(() => {
-    const guardado = localStorage.getItem('predicamap_progreso');
-    if (guardado) return JSON.parse(guardado);
-    return {
-      metaMensual: '',
-      metaAnual: '',
-      horasAcumuladasPrevias: 0, 
-      registrosDiarios: {} 
-    };
+  const [datosProgreso, setDatosProgreso] = useState({
+    metaMensual: '',
+    metaAnual: '',
+    horasAcumuladasPrevias: 0, 
+    registrosDiarios: {} 
   });
-
+  const [cargando, setCargando] = useState(true);
   const soyElEmisor = useRef(false);
 
+  // 1. CARGAR DATOS AL INICIAR
   useEffect(() => {
+    const cargarProgreso = async () => {
+      try {
+        const guardado = await localforage.getItem('predicamap_progreso');
+        if (guardado) setDatosProgreso(guardado);
+      } catch (error) {
+        console.error("Error al leer progreso:", error);
+      } finally {
+        setCargando(false);
+      }
+    };
+    
+    cargarProgreso();
+
     const sincronizarProgreso = (e) => {
       setDatosProgreso(e.detail);
     };
@@ -23,15 +40,16 @@ export default function useGestorProgreso() {
     return () => window.removeEventListener('progreso_actualizado', sincronizarProgreso);
   }, []);
 
+  // 2. GUARDAR DATOS EN INDEXEDDB CUANDO CAMBIAN
   useEffect(() => {
-    if (soyElEmisor.current) {
-      localStorage.setItem('predicamap_progreso', JSON.stringify(datosProgreso));
+    // Solo guardamos si ya terminó de cargar para no sobrescribir con el estado inicial vacío
+    if (soyElEmisor.current && !cargando) {
+      localforage.setItem('predicamap_progreso', datosProgreso).catch(console.error);
       window.dispatchEvent(new CustomEvent('progreso_actualizado', { detail: datosProgreso }));
       soyElEmisor.current = false;
     }
-  }, [datosProgreso]);
+  }, [datosProgreso, cargando]);
 
-  // ★ CORRECCIÓN: Obtener la fecha estrictamente en la zona horaria local del dispositivo ★
   const obtenerFechaHoyLocal = () => {
     const fecha = new Date();
     const year = fecha.getFullYear();
@@ -100,7 +118,7 @@ export default function useGestorProgreso() {
       const registroHoy = prev.registrosDiarios[hoy] || { horas: 0, estudios: 0 };
       
       let nuevasHoras = Math.max(0, (registroHoy.horas || 0) + cantidad); 
-      if (nuevasHoras > 18) nuevasHoras = 18; // Límite máximo
+      if (nuevasHoras > 18) nuevasHoras = 18; 
       
       return {
         ...prev,
@@ -187,6 +205,7 @@ export default function useGestorProgreso() {
 
   return {
     ...datosProgreso,
+    cargandoProgreso: cargando, // Retornamos el estado de carga por si la UI lo necesita
     horasMesActual: calcularHorasMesActual(),
     estudiosMesActual: calcularEstudiosMesActual(),
     horasTotalesAño: obtenerHorasTotalesAñoServicio(),

@@ -1,34 +1,44 @@
 // src/hooks/modulos/useMarcadoresPersonales.js
 import { useState, useEffect } from 'react';
-import { useAlertas } from '../../context/ContextoAlertas'; // ★ Importamos el hook de alertas
+import { useAlertas } from '../../context/ContextoAlertas';
+import localforage from 'localforage';
 
-// Generador de ID único para cada pin
+// Configuración de la base de datos local
+localforage.config({
+  name: 'PredicaMap',
+  storeName: 'revisitas_db'
+});
+
 const generarIdUnico = () => `pin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 export default function useMarcadoresPersonales() {
   const [marcadores, setMarcadores] = useState([]);
   const [cargando, setCargando] = useState(true);
   
-  // ★ Extraemos las funciones de alerta
   const { mostrarAlerta, mostrarConfirmacion } = useAlertas();
 
   // 1. CARGAR DATOS AL INICIAR
   useEffect(() => {
-    const datosGuardados = localStorage.getItem('predicamap_marcadores_personales');
-    if (datosGuardados) {
+    const cargarMarcadores = async () => {
       try {
-        setMarcadores(JSON.parse(datosGuardados));
+        const datosGuardados = await localforage.getItem('predicamap_marcadores_personales');
+        if (datosGuardados) {
+          setMarcadores(datosGuardados);
+        }
       } catch (error) {
         console.error("Error al leer los marcadores personales", error);
+      } finally {
+        setCargando(false);
       }
-    }
-    setCargando(false);
+    };
+    cargarMarcadores();
   }, []);
 
-  // 2. GUARDAR DATOS EN EL CELULAR
+  // 2. GUARDAR DATOS EN INDEXEDDB
   useEffect(() => {
+    // Solo guardamos si ya se terminó de cargar para no vaciar la BD accidentalmente
     if (!cargando) {
-      localStorage.setItem('predicamap_marcadores_personales', JSON.stringify(marcadores));
+      localforage.setItem('predicamap_marcadores_personales', marcadores).catch(console.error);
     }
   }, [marcadores, cargando]);
 
@@ -51,7 +61,6 @@ export default function useMarcadoresPersonales() {
   };
 
   const eliminarMarcador = async (id) => {
-    // ★ Alerta personalizada
     const confirmado = await mostrarConfirmacion(
       "Eliminar Revisita",
       "¿Estás seguro de eliminar esta revisita?",
@@ -95,7 +104,6 @@ export default function useMarcadoresPersonales() {
         const datosImportados = JSON.parse(e.target.result);
         if (Array.isArray(datosImportados)) {
           
-          // ★ Confirmación moderna
           const confirmado = await mostrarConfirmacion(
             "Importar Revisitas",
             `Se encontraron ${datosImportados.length} revisitas en el archivo. ¿Deseas agregarlas a tu mapa?`,
@@ -130,6 +138,7 @@ export default function useMarcadoresPersonales() {
 
   return {
     marcadores,
+    cargandoRevisitas: cargando,
     agregarMarcador,
     editarMarcador,
     eliminarMarcador,

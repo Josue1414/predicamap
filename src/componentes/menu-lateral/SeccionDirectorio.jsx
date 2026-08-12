@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Users, UserPlus, Trash2, ChevronUp, ChevronDown, ChevronRight, Map } from 'lucide-react';
 import VentanaFlotante from '../VentanaFlotante'; 
-import { useAlertas } from '../../context/ContextoAlertas'; // ★ IMPORTAMOS TUS ALERTAS ESTILIZADAS
+import { useAlertas } from '../../context/ContextoAlertas'; 
 
 export default function SeccionDirectorio({
   visible,
@@ -17,7 +17,6 @@ export default function SeccionDirectorio({
 }) {
   const [miembroExpandido, setMiembroExpandido] = useState(null);
 
-  // ★ EXTRAEMOS LA FUNCIÓN DE CONFIRMACIÓN ★
   const { mostrarConfirmacion } = useAlertas();
 
   if (!visible) return null;
@@ -29,7 +28,6 @@ export default function SeccionDirectorio({
 
   const estaAbierta = acordeonActivo === 'directorio';
 
-  // ★ NUEVO MANEJADOR CON ALERTA PERSONALIZADA ★
   const manejarEliminar = async (miembro) => {
     const confirmado = await mostrarConfirmacion(
       "Revocar Acceso",
@@ -72,6 +70,7 @@ export default function SeccionDirectorio({
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 
+                {/* ★ SOLO LOS ADMINISTRADORES VEN ESTOS ENLACES ★ */}
                 {esAdmin && (
                   <>
                     <a href={alCrearLinkInvitacion('Administrador')} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 text-xs font-bold transition-colors shadow-sm border border-blue-100 dark:border-blue-800/50">
@@ -80,17 +79,15 @@ export default function SeccionDirectorio({
                     <a href={alCrearLinkInvitacion('Capitán')} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-bold transition-colors shadow-sm border border-purple-100 dark:border-purple-800/50">
                       <UserPlus size={16}/> Invitar Capitán
                     </a>
+                    <a href={alCrearLinkInvitacion('Precursor')} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold transition-colors shadow-sm border border-amber-100 dark:border-amber-800/50">
+                      <UserPlus size={16}/> Invitar Precursor
+                    </a>
                   </>
                 )}
 
-                {(esAdmin || esCapitan) && (
-                  <a href={alCrearLinkInvitacion('Precursor')} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold transition-colors shadow-sm border border-amber-100 dark:border-amber-800/50">
-                    <UserPlus size={16}/> Invitar Precursor
-                  </a>
-                )}
-
+                {/* ★ TODOS (INCLUIDOS CAPITANES Y PRECURSORES) VEN EL ENLACE GENERAL ★ */}
                 {(esAdmin || esCapitan || esPrecursor) && (
-                  <a href={alCrearLinkInvitacion('Publicador')} target="_blank" rel="noreferrer" className={`flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold transition-colors shadow-sm border border-emerald-100 dark:border-emerald-800/50 ${(esAdmin || esCapitan) ? 'sm:col-span-2' : ''}`}>
+                  <a href={alCrearLinkInvitacion('Publicador')} target="_blank" rel="noreferrer" className={`flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold transition-colors shadow-sm border border-emerald-100 dark:border-emerald-800/50 ${!esAdmin ? 'sm:col-span-2' : ''}`}>
                     <UserPlus size={16}/> Invitar Publicador (Enlace General)
                   </a>
                 )}
@@ -155,7 +152,6 @@ export default function SeccionDirectorio({
                               )}
                             </div>
 
-                            {/* ★ BOTÓN ELIMINAR MEJORADO (Izquierda, cuadrado, pequeño) ★ */}
                             {esAdmin && miembro.id !== perfilUsuario?.id && (
                               <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/50 flex justify-start">
                                 <button 

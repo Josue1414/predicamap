@@ -15,7 +15,11 @@ import { useAlertas } from '../context/ContextoAlertas';
 
 export default function VistaPublicador() {
   const [cargando, setCargando] = useState(true);
-  const [modoOscuro, setModoOscuro] = useState(false);
+
+  const [modoOscuro, setModoOscuro] = useState(() => {
+    return localStorage.getItem('pm_modo_oscuro') === 'true';
+  });
+
   const [menuAbierto, setMenuAbierto] = useState(false);
   
   const [congregacion, setCongregacion] = useState(null);
@@ -110,8 +114,13 @@ export default function VistaPublicador() {
   };
 
   useEffect(() => {
-    if (modoOscuro) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    if (modoOscuro) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('pm_modo_oscuro', 'true');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('pm_modo_oscuro', 'false');
+    }
   }, [modoOscuro]);
 
   useEffect(() => {
