@@ -35,11 +35,11 @@ export default function ActualizacionPWA() {
       </div>
       
       <p className="text-xs text-slate-600 dark:text-slate-400">
-        Hemos agregado mejoras a la aplicación. <strong>GUARDA/HAZ UN RESPALDO</strong> de tus <strong>HORAS y REVISITAS</strong> antes de actualizar. Actualiza para obtener la última versión.
+        Hemos agregado mejoras a la aplicación. Actualiza para obtener la última versión.
       </p>
 
       <p className="text-xs text-slate-600 dark:text-slate-400">
-         <strong>Actualizacion: #Mejoras de guardado. Si se borra historial de navegador, no se borra el progreso de horas y revisitas</strong>
+         <strong>Actualizacion: #Mejoras para administradores. Registro S-13</strong>
       </p>
       
       <button

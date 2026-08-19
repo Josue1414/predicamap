@@ -18,6 +18,7 @@ import useGestorTachuelas from '../hooks/modulos/useGestorTachuelas';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 import useGestorHistorial from '../hooks/modulos/useGestorHistorial';
 import useBotonAtrasCelular from '../hooks/useBotonAtrasCelular';
+import useGestorS13 from '../hooks/modulos/useGestorS13'; 
 
 import { useModoMapa, MODOS_MAPA } from '../context/ContextoModoMapa';
 import { useAlertas } from '../context/ContextoAlertas'; 
@@ -36,7 +37,6 @@ export default function VistaDashboard() {
   const [modoOscuro, setModoOscuro] = useState(() => {
     return localStorage.getItem('pm_modo_oscuro') === 'true';
   });
-
 
   const [menuAbierto, setMenuAbierto] = useState(false);
   
@@ -85,6 +85,8 @@ export default function VistaDashboard() {
     pagina, totalPaginas, cambiarPagina 
   } = useGestorHistorial(targetCongId);
 
+  const { registrarAsignacionS13, registrarCompletadoS13 } = useGestorS13(targetCongId);
+
   const { mostrarConfirmacion, mostrarAlerta } = useAlertas();
 
   // ★ MANEJO DE TERRITORIOS
@@ -97,7 +99,9 @@ export default function VistaDashboard() {
 
     try {
       const territorio = secciones.find(sec => sec.id === id);
+      
       await completarTerritorioEntero(id);
+      await registrarCompletadoS13(id); 
       
       if (perfilUsuario && territorio) {
         registrarLog(
@@ -160,7 +164,7 @@ export default function VistaDashboard() {
     }
   };
 
-  // ★ MANEJO DE EDIFICIOS/CASAS
+  // ★ MANEJO DE EDIFICIOS/CASAS CON AUTO-COMPLETADO
   const manejarGuardarEdificio = async () => {
     const tieneInternet = await verificarConexionReal();
     if (!tieneInternet) {
@@ -173,7 +177,6 @@ export default function VistaDashboard() {
       await guardarEdificioEnBD(); 
 
       if (perfilUsuario && datosEdificio) {
-        // Buscamos el nombre del territorio al que pertenece la casa/calle
         const territorio = secciones.find(sec => sec.id === datosEdificio.seccion_id);
         const nombreTerritorio = territorio ? territorio.nombre : 'Desconocido';
 
@@ -189,7 +192,6 @@ export default function VistaDashboard() {
           accion = 'Registro de Edificio';
         }
 
-        // Agregamos el territorio y envolvemos en ** los textos que queremos resaltar
         let detalles = `En el territorio **${nombreTerritorio}**, se actualizó la ${tipoStr} **${datosEdificio.direccion || 'Sin dirección'}** a estado ${datosEdificio.estado || 'pendiente'}.`;
         
         if (datosEdificio.notas && datosEdificio.notas.trim() !== '') {
@@ -197,6 +199,17 @@ export default function VistaDashboard() {
         }
 
         registrarLog(perfilUsuario.id, accion, 'casa', detalles);
+
+        // ★ LÓGICA DE AUTO-COMPLETADO ★
+        if (datosEdificio.estado === 'completado' && territorio && territorio.estado !== 'completado') {
+          const casasTerritorio = edificios.filter(e => e.seccion_id === territorio.id);
+          const otrasCasas = casasTerritorio.filter(e => e.id !== datosEdificio.id);
+          const todasOtrasCompletas = otrasCasas.every(e => e.estado === 'completado');
+
+          if (todasOtrasCompletas && casasTerritorio.length > 0) {
+            await manejarCompletarTerritorio(territorio.id);
+          }
+        }
       }
     } catch (error) {
       mostrarAlerta("Error de conexión", "No se pudo guardar el cambio. Verifica que tengas saldo o datos para navegar.", "danger");
@@ -215,7 +228,6 @@ export default function VistaDashboard() {
       const eliminado = await eliminarEdificioEnBD(idEdificio);
 
       if (eliminado && perfilUsuario && datosEdificio) {
-        // Buscamos el nombre del territorio
         const territorio = secciones.find(sec => sec.id === datosEdificio.seccion_id);
         const nombreTerritorio = territorio ? territorio.nombre : 'Desconocido';
 
@@ -437,6 +449,8 @@ export default function VistaDashboard() {
 
         estiloMapa={estiloMapa}
         alCambiarEstiloMapa={alCambiarEstiloMapa}
+        
+        registrarAsignacionS13={registrarAsignacionS13}
       />
 
       <MenuEdificio 

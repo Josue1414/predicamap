@@ -34,6 +34,7 @@ export default function SeccionTerritorios({
   alVolarATerritorio,
   alReordenarTerritorio,
   actualizarDetallesSeccionEnBD,
+  registrarAsignacionS13, // ★ NUEVO PROP PARA EL S-13
   acordeonActivo,
   alternarAcordeon,
   alCerrar
@@ -70,6 +71,11 @@ export default function SeccionTerritorios({
   const guardarGrupo = async (sec) => {
     const nuevoGrupo = gruposTemp[sec.id] !== undefined ? gruposTemp[sec.id] : sec.grupo_asignado;
     await actualizarDetallesSeccionEnBD(sec.id, sec.nombre, sec.colorHex, nuevoGrupo);
+    
+    // ★ NUEVO: Registro en el historial S-13 ★
+    if (nuevoGrupo && nuevoGrupo.trim() !== '' && registrarAsignacionS13) {
+      await registrarAsignacionS13(sec.id, sec.nombre, `Grupo ${nuevoGrupo}`);
+    }
     
     // ★ EFECTO VISUAL: Activamos el estado de éxito y lo revertimos después de 2 segundos ★
     setGrupoGuardadoId(sec.id);
@@ -243,7 +249,17 @@ export default function SeccionTerritorios({
                                 <label className="text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider flex items-center gap-1.5"><UserCheck size={12}/> Asignar a usuario:</label>
                                 <select 
                                   value={sec.asignado_a || ''} 
-                                  onChange={(e) => asignarTerritorioEnBD(sec.id, e.target.value)}
+                                  onChange={async (e) => {
+                                    const publicadorId = e.target.value;
+                                    await asignarTerritorioEnBD(sec.id, publicadorId);
+                                    
+                                    // ★ NUEVO: Registro en el historial S-13 ★
+                                    if (publicadorId && registrarAsignacionS13) {
+                                      const publicador = usuariosAsignables.find(u => u.id === publicadorId);
+                                      const nombrePublicador = publicador ? publicador.nombre : 'Publicador';
+                                      await registrarAsignacionS13(sec.id, sec.nombre, nombrePublicador);
+                                    }
+                                  }}
                                   className="w-full p-2.5 text-sm font-medium bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500/50 outline-none shadow-sm cursor-pointer"
                                 >
                                   <option value="">-- Sin asignar --</option>
@@ -265,7 +281,6 @@ export default function SeccionTerritorios({
                                       placeholder="Ej: 3"
                                       className="w-full p-2.5 text-sm font-medium bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500/50 outline-none shadow-sm text-center"
                                     />
-                                    {/* ★ BOTÓN ACTUALIZADO CON EFECTO DE GUARDADO ★ */}
                                     <button
                                       onClick={() => guardarGrupo(sec)}
                                       className={`p-2.5 rounded-lg transition-colors border shadow-sm flex items-center justify-center shrink-0 ${

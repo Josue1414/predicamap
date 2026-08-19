@@ -12,6 +12,7 @@ import SeccionTerritorios from './SeccionTerritorios';
 import SeccionDibujarTerritorio from './SeccionDibujarTerritorio';
 import SeccionSembrarCasas from './SeccionSembrarCasas';
 import SeccionDirectorio from './SeccionDirectorio';
+import SeccionRegistroS13 from './SeccionRegistroS13'; // <-- IMPORTACIÓN NUEVA
 import SeccionMiPerfil from './SeccionMiPerfil';
 import SeccionHistorial from './SeccionHistorial';
 import SeccionMiProgreso from './SeccionMiProgreso';
@@ -58,6 +59,9 @@ export default function MenuLateral({
   const [isInstalled, setIsInstalled] = useState(false);
 
   const { mostrarAlerta } = useAlertas();
+
+  // ★ DETERMINAR EL ID DE LA CONGREGACIÓN OBJETIVO
+  const targetCongId = congregacionContextoId || perfilUsuario?.congregacion_id;
 
   useEffect(() => {
     setNombreCongTemp(nombreCongregacion || '');
@@ -306,6 +310,16 @@ export default function MenuLateral({
                 perfilUsuario={perfilUsuario} alEliminarMiembro={alEliminarMiembro} alCrearLinkInvitacion={alCrearLinkInvitacion}
                 acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} territorios={territoriosOrdenados} 
               />
+
+              {/* ★ SECCIÓN NUEVA DEL S-13 (Visible solo para administradores) ★ */}
+              {esAdminOperativo && (
+                <SeccionRegistroS13 
+                  acordeonActivo={acordeonActivo} 
+                  alternarAcordeon={alternarAcordeon} 
+                  congregacionId={targetCongId} 
+                  territoriosGuardados={territoriosOrdenados} // <-- PASAR LOS TERRITORIOS AQUÍ
+                />
+              )}
             </>
           )}
 

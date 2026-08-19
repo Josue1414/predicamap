@@ -28,6 +28,7 @@ export default function MenuTerritorio({
     const cargarHistorial = async () => {
       setCargandoHistorial(true);
       
+      // RESTAURADO: Leemos de logs_actividad para recuperar todo tu historial viejo
       const { data } = await supabase
         .from('logs_actividad')
         .select('creado_en')
@@ -70,6 +71,7 @@ export default function MenuTerritorio({
     porcentaje = territorio.estado === 'completado' ? 100 : 0;
   }
 
+  const estaTerminadoOficialmente = territorio.estado === 'completado';
   const esCapitanYSuperior = perfilUsuario?.rol === 'Capitán' || perfilUsuario?.rol === 'Administrador' || perfilUsuario?.rol === 'Administrador Mayor';
 
   const manejarGuardar = () => {
@@ -79,7 +81,6 @@ export default function MenuTerritorio({
 
   const ultimaVez = fechasCompletado[0] || null;
   const penultimaVez = fechasCompletado[1] || null;
-  // ★ NUEVO: Extraemos hasta 6 fechas adicionales después de la penúltima ★
   const fechasAnteriores = fechasCompletado.slice(2, 8);
 
   const hace60Dias = new Date();
@@ -103,7 +104,7 @@ export default function MenuTerritorio({
         <div className="p-6 space-y-5 overflow-y-auto scroll-limpio">
           <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4">
             <div className="flex-1 pr-4">
-              <h3 className="font-black text-xl text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <h3 className="font-bold text-xl text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Map size={20} className="text-indigo-500 shrink-0" /> <span className="leading-tight">{territorio.nombre}</span>
               </h3>
               <div className="mt-2 flex items-center gap-2">
@@ -114,20 +115,19 @@ export default function MenuTerritorio({
               </div>
               <p className="text-[10px] text-slate-400 mt-1">{totalCasas > 0 ? `${casasCompletadas} de ${totalCasas} casas completadas` : 'Territorio sin puntos marcados'}</p>
               
-              {/* Etiqueta del Grupo Asignado */}
               {territorio.grupo_asignado && (
                 <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-1.5 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded w-fit border border-indigo-100 dark:border-indigo-800">
                   Grupo Asignado: {territorio.grupo_asignado}
                 </p>
               )}
               
-              {porcentaje === 100 && (
+              {estaTerminadoOficialmente && (
                 <div className="mt-2.5 inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-md border border-emerald-100 dark:border-emerald-800/50">
                   <CalendarCheck size={12} />
                   <span className="text-[9px] font-bold uppercase tracking-wider">
                     Terminado: {ultimaVez 
                       ? ultimaVez.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) 
-                      : (territorio.actualizado_en ? new Date(territorio.actualizado_en).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recientemente')}
+                      : 'Hoy'}
                   </span>
                 </div>
               )}
@@ -165,7 +165,6 @@ export default function MenuTerritorio({
                       </div>
                     </div>
 
-                    {/* ★ NUEVO: Pastillas para fechas anteriores (hasta 6) ★ */}
                     {fechasAnteriores.length > 0 && (
                       <div className="pt-1">
                         <p className="text-[9px] text-slate-400 uppercase font-bold mb-1.5 px-1">Registros Anteriores</p>
@@ -211,11 +210,15 @@ export default function MenuTerritorio({
 
           <div className="grid grid-cols-1 gap-2 pt-2">
             <button 
-              disabled={porcentaje === 100} 
+              disabled={estaTerminadoOficialmente} 
               onClick={() => { alCompletar(territorio.id); alCerrar(); }} 
               className="flex justify-center items-center gap-1.5 py-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold text-sm hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-emerald-200 dark:border-emerald-800"
             >
-              <CheckCircle2 size={16} /> {porcentaje === 100 ? 'Territorio Terminado' : (totalCasas === 0 ? 'Marcar Completado' : 'Marcar TODO Completado')}
+              <CheckCircle2 size={16} /> 
+              {estaTerminadoOficialmente 
+                ? 'Territorio Terminado' 
+                : 'Marcar TODO Completado'
+              }
             </button>
 
             {esCapitanYSuperior && porcentaje > 0 && (
