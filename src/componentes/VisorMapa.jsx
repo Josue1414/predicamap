@@ -1,3 +1,4 @@
+// src/componentes/VisorMapa.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Map, { NavigationControl, GeolocateControl, Marker, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -11,19 +12,37 @@ const ZOOM_MOSTRAR_TACHUELAS = 14;
 // 👆👆👆 ===================================== 👆👆👆
 
 // 👇👇👇 ZONA DE AJUSTES MANUALES PARA EL VUELO CINEMÁTICO 👇👇👇
-const ZOOM_INICIO_VUELO = 5;  // Zoom inicial al abrir la app (5 se ve el país, 10 el estado...)
-const ZOOM_FIN_VUELO = 17;    // Zoom final cuando aterriza en el territorio a predicar
-const DURACION_VUELO = 3500;  // Tiempo de la animación en milisegundos (3500 = 3.5 segundos)
+const ZOOM_INICIO_VUELO = 5;  
+const ZOOM_FIN_VUELO = 17;    
+const DURACION_VUELO = 3500;  
 // 👆👆👆 =================================================== 👆👆👆
 
-const crearPinSVG = (color, opacidad = 1) => `
-  <div style="filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.6)); opacity: ${opacidad};">
-    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="${color}" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-      <circle cx="12" cy="10" r="3" fill="#ffffff"></circle>
-    </svg>
-  </div>
-`;
+// ★ NUEVAS OPCIONES DE ICONOS ESTILO WHATSAPP ★
+const OPCIONES_AVISOS = [
+  { id: '📌', label: 'Tachuela Roja' },
+  { id: '📍', label: 'Pin Redondo' },
+  { id: '🚩', label: 'Bandera' },
+  { id: '⚠️', label: 'Alerta / Peligro' },
+  { id: '🔔', label: 'Campana / Aviso' },
+  { id: '⭐', label: 'Estrella / Importante' }
+];
+
+// ★ COMPONENTE: Icono Animado con Emojis y Efecto de Latido ★
+const IconoAviso = ({ emoji, opacidad = 1, escala }) => {
+  return (
+    <div style={{ opacity: opacidad, transform: `scale(${escala})` }} className="relative flex justify-center items-center cursor-pointer hover:scale-125 transition-transform origin-bottom">
+      {/* Círculo que parpadea detrás (efecto radar) */}
+      <div className="absolute w-8 h-8 rounded-full animate-ping opacity-30 bg-slate-300 dark:bg-slate-500" />
+      {/* Emoji con animación de pulso y sombra 3D */}
+      <span 
+        className="text-3xl relative z-10 animate-pulse" 
+        style={{ textShadow: '0px 3px 5px rgba(0,0,0,0.6)' }}
+      >
+        {emoji}
+      </span>
+    </div>
+  );
+};
 
 const obtenerCentroPoligono = (coordenadas) => {
   if (!coordenadas || coordenadas.length === 0) return [0, 0];
@@ -55,10 +74,17 @@ export default function VisorMapa({
   const [mapaCargado, setMapaCargado] = useState(false);
   const [permitirVuelosSecundarios, setPermitirVuelosSecundarios] = useState(false);
 
+  // Guardamos y leemos el último emoji usado
+  const [estiloAviso, setEstiloAviso] = useState(() => localStorage.getItem('pm_estilo_aviso') || '📌');
+
   const hasFlownGPS = useRef(false);
   const hasFlownInitial = useRef(false);
 
   const mapaActivoClics = enModoTrazado || enModoEdificios || !!marcadorTemporal || (alSeleccionarRevisita !== undefined) || enModoTachuela;
+
+  useEffect(() => {
+    localStorage.setItem('pm_estilo_aviso', estiloAviso);
+  }, [estiloAviso]);
 
   useEffect(() => {
     const timer = setTimeout(() => setMostrarLeyenda(false), 4000);
@@ -113,7 +139,6 @@ export default function VisorMapa({
     }
   }, [secciones, edificios, mapaCargado]); 
 
-  // 👇👇👇 VUELOS DESDE EL MENÚ LATERAL (SOLUCIÓN DEL BUG) 👇👇👇
   useEffect(() => {
     if (centroActual && mapRef.current && permitirVuelosSecundarios) {
       
@@ -128,8 +153,6 @@ export default function VisorMapa({
         essential: true
       });
     }
-    // 🛑 SOLUCIÓN: Eliminamos `zoomActual` de las dependencias para evitar el bucle infinito 
-    // que congelaba el mapa durante el evento onMove.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centroActual, permitirVuelosSecundarios]); 
 
@@ -206,7 +229,8 @@ export default function VisorMapa({
 
   const manejarClickMapa = (e) => {
     if (mapaActivoClics && alRegistrarPuntoTrazado) {
-      alRegistrarPuntoTrazado([e.lngLat.lat, e.lngLat.lng]);
+      // ★ ENVIAMOS EL ESTILO SELECCIONADO AL DASHBOARD ★
+      alRegistrarPuntoTrazado([e.lngLat.lat, e.lngLat.lng, estiloAviso]);
     }
   };
 
@@ -214,13 +238,32 @@ export default function VisorMapa({
   const mostrarCasasActivas = zoomLocal >= ZOOM_MOSTRAR_CASAS;
   const mostrarTachuelasActivas = zoomLocal >= ZOOM_MOSTRAR_TACHUELAS;
 
-  const escalaTachuela = Math.max(0.4, Math.min(1, zoomLocal / 18));
+  const escalaTachuela = Math.max(0.6, Math.min(1.2, zoomLocal / 16));
 
   return (
     <div className={`w-full h-full bg-slate-200 dark:bg-slate-950 relative ${mapaActivoClics ? 'cursor-crosshair' : ''}`}>
       
+      {/* ★ MENU FLOTANTE PARA ELEGIR EL TIPO DE AVISO ★ */}
+      {enModoTachuela && (
+        <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-[1000] flex flex-col gap-2 animate-in slide-in-from-left-4 fade-in duration-300 pointer-events-none">
+          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-2 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-2 pointer-events-auto">
+            {OPCIONES_AVISOS.map(op => (
+              <button
+                key={op.id}
+                onClick={() => setEstiloAviso(op.id)}
+                className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all text-xl ${
+                  estiloAviso === op.id ? 'bg-slate-200 dark:bg-slate-800 shadow-inner scale-110' : 'hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:scale-105'
+                }`}
+                title={op.label}
+              >
+                {op.id}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="absolute top-4 right-4 z-[1000] flex flex-col items-end gap-2 pointer-events-none">
-        
         <div className="flex flex-col gap-2 pointer-events-auto mt-10">
           <button 
             onClick={() => setRastreando(!rastreando)}
@@ -249,10 +292,7 @@ export default function VisorMapa({
             <div className="flex items-center gap-2"><div className="w-3.5 h-3.5 rounded-full bg-[#10b981] border border-white" /> V - Visitado / Listo</div>
             <div className="flex items-center gap-2 mt-1 pt-2 border-t"><div className="w-3.5 h-3.5 rounded-full bg-[#8b5cf6] border border-white" /> Mi Revisita</div>
             <div className="flex items-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#0891b2" stroke="#ffffff" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3" fill="#ffffff"></circle>
-              </svg> 
-              Aviso Grupal
+              <span className="text-sm drop-shadow-sm">📌</span> Aviso Grupal
             </div>
           </div>
         )}
@@ -352,19 +392,21 @@ export default function VisorMapa({
           </Marker>
         ))}
 
+        {/* ★ RENDERIZAMOS LAS TACHUELAS GUARDADAS CON SU ESTILO INDIVIDUAL ★ */}
         {mostrarTachuelasActivas && tachuelasGrupales.map((tachuela) => (
           <Marker key={tachuela.id} longitude={tachuela.lng} latitude={tachuela.lat} anchor="bottom">
-            <div 
-              onClick={(e) => { e.stopPropagation(); if (!enModoTrazado && !enModoTachuela && alSeleccionarTachuela) alSeleccionarTachuela(tachuela); }}
-              dangerouslySetInnerHTML={{ __html: crearPinSVG('#0891b2') }} 
-              className="cursor-pointer hover:scale-110 transition-transform origin-bottom" 
-              style={{ transform: `scale(${escalaTachuela})` }}
-            />
+            <div onClick={(e) => { e.stopPropagation(); if (!enModoTrazado && !enModoTachuela && alSeleccionarTachuela) alSeleccionarTachuela(tachuela); }}>
+              <IconoAviso emoji={tachuela.estilo || '📌'} escala={escalaTachuela} />
+            </div>
           </Marker>
         ))}
+
+        {/* TACHUELA TEMPORAL (LA QUE SE ESTÁ CREANDO) */}
         {tachuelaTemporal && (
           <Marker longitude={tachuelaTemporal.lng} latitude={tachuelaTemporal.lat} anchor="bottom">
-            <div dangerouslySetInnerHTML={{ __html: crearPinSVG('#06b6d4', 0.6) }} style={{ transform: `scale(${escalaTachuela})` }} />
+            <div className="pointer-events-none">
+              <IconoAviso emoji={tachuelaTemporal.estilo || estiloAviso} opacidad={0.7} escala={escalaTachuela} />
+            </div>
           </Marker>
         )}
 

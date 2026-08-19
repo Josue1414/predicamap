@@ -1,3 +1,4 @@
+// src/hooks/modulos/useGestorTachuelas.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../../utilidades/clienteSupabase';
 
@@ -38,13 +39,13 @@ export default function useGestorTachuelas(targetCongId) {
     return () => { supabase.removeChannel(canalTachuelas); };
   }, [targetCongId]);
 
-  const agregarTachuelaBD = async (lat, lng, titulo, notas = '') => {
+  // ★ AHORA RECIBIMOS EL ESTILO COMO PARÁMETRO
+  const agregarTachuelaBD = async (lat, lng, titulo, notas = '', estilo = '📌') => {
     setCargandoTachuelas(true);
-    await supabase.from('tachuelas').insert([{ congregacion_id: targetCongId, lat, lng, titulo, notas }]);
+    await supabase.from('tachuelas').insert([{ congregacion_id: targetCongId, lat, lng, titulo, notas, estilo }]);
     setCargandoTachuelas(false);
   };
 
-  // ★ NUEVA FUNCIÓN PARA EDITAR EL AVISO ★
   const editarTachuelaBD = async (id, titulo, notas) => {
     setCargandoTachuelas(true);
     await supabase.from('tachuelas').update({ titulo, notas }).eq('id', id);
@@ -52,7 +53,6 @@ export default function useGestorTachuelas(targetCongId) {
   };
 
   const eliminarTachuelaBD = async (id) => {
-    // 🗑️ AQUÍ ELIMINAMOS EL window.confirm NATIVO QUE CAUSABA EL DOBLE MENSAJE
     setCargandoTachuelas(true);
     await supabase.from('tachuelas').delete().eq('id', id);
     setCargandoTachuelas(false);

@@ -29,7 +29,8 @@ export default defineConfig({
       // <-- LIMPIEZA SEGURA: Borra el código viejo pero protege el localStorage
       workbox: {
         cleanupOutdatedCaches: true,
-        sourcemap: true
+        sourcemap: true,
+        maximumFileSizeToCacheInBytes: 5242880 // <-- NUEVO: Aumenta el límite a 5 MB para evitar errores de compilación
       },
       devOptions: {
         enabled: true,

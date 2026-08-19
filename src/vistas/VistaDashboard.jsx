@@ -200,7 +200,6 @@ export default function VistaDashboard() {
 
         registrarLog(perfilUsuario.id, accion, 'casa', detalles);
 
-        // ★ LÓGICA DE AUTO-COMPLETADO ★
         if (datosEdificio.estado === 'completado' && territorio && territorio.estado !== 'completado') {
           const casasTerritorio = edificios.filter(e => e.seccion_id === territorio.id);
           const otrasCasas = casasTerritorio.filter(e => e.id !== datosEdificio.id);
@@ -264,7 +263,9 @@ export default function VistaDashboard() {
     }
     
     try {
-      await agregarTachuelaBD(tachuelaTemporal.lat, tachuelaTemporal.lng, datos.titulo, datos.notas);
+      // Pasamos el estilo (emoji) guardado en el estado temporal
+      await agregarTachuelaBD(tachuelaTemporal.lat, tachuelaTemporal.lng, datos.titulo, datos.notas, tachuelaTemporal.estilo);
+      
       if (perfilUsuario) {
         let detalles = `Se fijó un nuevo aviso en el mapa con el título: "${datos.titulo}".`;
         if (datos.notas && datos.notas.trim() !== '') {
@@ -529,7 +530,8 @@ export default function VistaDashboard() {
           secciones={secciones} edificios={edificios} alSeleccionarEdificio={setEdificioSeleccionado} enModoTrazado={enModoTrazado} enModoEdificios={enModoEdificios}
           puntosTrazadoActual={puntosTrazadoActual} colorTrazadoActual={colorNuevoTerritorio}
           alRegistrarPuntoTrazado={(coords) => {
-            if (enModoTachuela) setTachuelaTemporal({ lat: coords[0], lng: coords[1] });
+            // ★ RECIBIMOS Y GUARDAMOS EL ESTILO SELECCIONADO DESDE EL MAPA
+            if (enModoTachuela) setTachuelaTemporal({ lat: coords[0], lng: coords[1], estilo: coords[2] || '📌' });
             else if (enModoRevisita) setMarcadorRevisitaTemporal({ lat: coords[0], lng: coords[1] });
             else manejarClickMapa(coords);
           }} 

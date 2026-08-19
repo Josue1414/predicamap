@@ -40,6 +40,11 @@ export default function ActualizacionPWA() {
 
       <p className="text-xs text-slate-600 dark:text-slate-400">
          <strong>Actualizacion: #Mejoras para administradores. Registro S-13</strong>
+         
+      </p>
+
+      <p className="text-xs text-slate-600 dark:text-slate-400">
+         <strong>Actualizacion: #Mejoras en Avisos grupales 📌</strong>
       </p>
       
       <button
