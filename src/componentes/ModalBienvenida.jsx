@@ -17,7 +17,7 @@ export default function ModalBienvenida({
     if (forzarEnfoqueCiudad) {
       setTimeout(() => {
         forzarEnfoqueCiudad();
-      }, 500);
+      }, 1500);
     }
   };
 

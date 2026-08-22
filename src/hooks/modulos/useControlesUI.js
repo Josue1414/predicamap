@@ -55,8 +55,10 @@ export default function useControlesUI() {
 
   const forzarEnfoqueCiudad = () => {
     if (coordsCiudadElegida) {
-      setCoordenadasActuales(coordsCiudadElegida);
-      setZoomActual(16);
+      // Clonamos el arreglo para forzar el renderizado en el mapa
+      setCoordenadasActuales([...coordsCiudadElegida]);
+      // Aumentamos el zoom a 18 para estar más cerca
+      setZoomActual(18);
     }
   };
 
