@@ -5,11 +5,11 @@ export default function useControlesUI() {
   const [textoBusqueda, setTextoBusqueda] = useState('');
   const [resultadosCiudades, setResultadosCiudades] = useState([]);
   const [ciudadSeleccionada, setCiudadSeleccionada] = useState(false);
-  const [coordsCiudadElegida, setCoordsCiudadElegida] = useState(null); // Memoria de la ciudad
+  const [coordsCiudadElegida, setCoordsCiudadElegida] = useState(null); 
   
-  // Ajuste inicial adaptativo para celulares
+  // Restaurado a 5 para evitar que el mapa se vea demasiado lejos
   const [coordenadasActuales, setCoordenadasActuales] = useState([23.6345, -102.5528]);
-  const [zoomActual, setZoomActual] = useState(window.innerWidth < 768 ? 5.5 : 5);
+  const [zoomActual, setZoomActual] = useState(5);
   
   const [enModoTrazado, setEnModoTrazado] = useState(false);
   const [enModoEdificios, setEnModoEdificios] = useState(false); 
@@ -45,9 +45,9 @@ export default function useControlesUI() {
 
   const seleccionarCiudad = (ciudad) => {
     const coords = [parseFloat(ciudad.lat), parseFloat(ciudad.lon)];
-    setCoordsCiudadElegida(coords); // Guardamos la coordenada elegida
+    setCoordsCiudadElegida(coords); 
     setCoordenadasActuales(coords);
-    setZoomActual(16); // Nivel de zoom más cercano y adecuado para empezar a trazar
+    setZoomActual(16); 
     setResultadosCiudades([]); 
     setTextoBusqueda(ciudad.display_name); 
     setCiudadSeleccionada(true); 

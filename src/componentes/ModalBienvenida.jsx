@@ -9,10 +9,15 @@ export default function ModalBienvenida({
   guardarNombreCongregacionBD, cargando, ciudadSeleccionada, forzarEnfoqueCiudad
 }) {
 
-  const manejarComenzar = () => {
-    guardarNombreCongregacionBD(nombreNuevoSetup);
+  const manejarComenzar = async () => {
+    // Guarda el nombre en BD
+    await guardarNombreCongregacionBD(nombreNuevoSetup);
+    
+    // Enfoca la cámara a la ciudad seleccionada con un ligero retraso
     if (forzarEnfoqueCiudad) {
-      forzarEnfoqueCiudad();
+      setTimeout(() => {
+        forzarEnfoqueCiudad();
+      }, 500);
     }
   };
 
@@ -30,7 +35,8 @@ export default function ModalBienvenida({
         <div className="space-y-5">
           <div>
             <label className="block text-slate-300 text-xs font-bold mb-1.5">Nombre Oficial de la Congregación</label>
-            <input type="text" value={nombreNuevoSetup} onChange={(e) => setNombreNuevoSetup(e.target.value)} placeholder="Ej: Congregación Los Pinos" className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-indigo-500 focus:outline-none transition-colors" />
+            {/* Se cambió text-sm por text-base para evitar el auto-zoom en celulares */}
+            <input type="text" value={nombreNuevoSetup} onChange={(e) => setNombreNuevoSetup(e.target.value)} placeholder="Ej: Congregación Los Pinos" className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-base focus:border-indigo-500 focus:outline-none transition-colors" />
           </div>
 
           <div>
@@ -39,7 +45,8 @@ export default function ModalBienvenida({
               Establece una ubicación de partida para que el mapa aparezca en esta zona cada vez que inicies sesión.
             </p>
             <form onSubmit={(e) => { e.preventDefault(); buscarCiudadEnServidor(); }} className="flex gap-2">
-              <input type="text" value={textoBusqueda} onChange={(e) => setTextoBusqueda(e.target.value)} placeholder="Ej: Zapopan, Jalisco..." className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-indigo-500 focus:outline-none transition-colors" />
+              {/* Se cambió text-sm por text-base para evitar el auto-zoom en celulares */}
+              <input type="text" value={textoBusqueda} onChange={(e) => setTextoBusqueda(e.target.value)} placeholder="Ej: Zapopan, Jalisco..." className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-base focus:border-indigo-500 focus:outline-none transition-colors" />
               <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 rounded-xl font-bold transition-colors shadow-lg shadow-indigo-600/20">Buscar</button>
             </form>
             {resultadosCiudades.length > 0 && (

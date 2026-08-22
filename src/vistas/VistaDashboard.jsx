@@ -54,7 +54,8 @@ export default function VistaDashboard() {
   const {
     secciones, edificios, cargando,
     textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad,ciudadSeleccionada,
-    coordenadasActuales, zoomActual, setZoomActual, setCoordenadasActuales, forzarEnfoqueCiudad,
+    coordenadasActuales, zoomActual, setZoomActual, setCoordenadasActuales,
+    forzarEnfoqueCiudad, // EXTRAÍDA AQUÍ
     enModoTrazado, enModoEdificios, 
     nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio,
     puntosTrazadoActual, manejarClickMapa, deshacerUltimoPunto, limpiarTrazadoCompleto, cancelarTrazadoYSalir,
@@ -89,7 +90,6 @@ export default function VistaDashboard() {
 
   const { mostrarConfirmacion, mostrarAlerta } = useAlertas();
 
-  // ★ MANEJO DE TERRITORIOS
   const manejarCompletarTerritorio = async (id) => {
     const tieneInternet = await verificarConexionReal();
     if (!tieneInternet) {
@@ -164,7 +164,6 @@ export default function VistaDashboard() {
     }
   };
 
-  // ★ MANEJO DE EDIFICIOS/CASAS CON AUTO-COMPLETADO
   const manejarGuardarEdificio = async () => {
     const tieneInternet = await verificarConexionReal();
     if (!tieneInternet) {
@@ -254,7 +253,6 @@ export default function VistaDashboard() {
     }
   };
 
-  // ★ MANEJO DE TACHUELAS (AVISOS) BLINDADOS
   const manejarGuardarTachuela = async (datos) => {
     const tieneInternet = await verificarConexionReal();
     if (!tieneInternet) {
@@ -263,7 +261,6 @@ export default function VistaDashboard() {
     }
     
     try {
-      // Pasamos el estilo (emoji) guardado en el estado temporal
       await agregarTachuelaBD(tachuelaTemporal.lat, tachuelaTemporal.lng, datos.titulo, datos.notas, tachuelaTemporal.estilo);
       
       if (perfilUsuario) {
@@ -407,7 +404,8 @@ export default function VistaDashboard() {
           textoBusqueda={textoBusqueda} setTextoBusqueda={setTextoBusqueda}
           buscarCiudadEnServidor={buscarCiudadEnServidor} resultadosCiudades={resultadosCiudades}
           seleccionarCiudad={seleccionarCiudad} cargando={cargando} guardarNombreCongregacionBD={guardarNombreCongregacionBD}
-          ciudadSeleccionada={ciudadSeleccionada} forzarEnfoqueCiudad={forzarEnfoqueCiudad}
+          ciudadSeleccionada={ciudadSeleccionada}
+          forzarEnfoqueCiudad={forzarEnfoqueCiudad} // PASADO AQUÍ
         />
       )}
 
@@ -531,7 +529,6 @@ export default function VistaDashboard() {
           secciones={secciones} edificios={edificios} alSeleccionarEdificio={setEdificioSeleccionado} enModoTrazado={enModoTrazado} enModoEdificios={enModoEdificios}
           puntosTrazadoActual={puntosTrazadoActual} colorTrazadoActual={colorNuevoTerritorio}
           alRegistrarPuntoTrazado={(coords) => {
-            // ★ RECIBIMOS Y GUARDAMOS EL ESTILO SELECCIONADO DESDE EL MAPA
             if (enModoTachuela) setTachuelaTemporal({ lat: coords[0], lng: coords[1], estilo: coords[2] || '📌' });
             else if (enModoRevisita) setMarcadorRevisitaTemporal({ lat: coords[0], lng: coords[1] });
             else manejarClickMapa(coords);
