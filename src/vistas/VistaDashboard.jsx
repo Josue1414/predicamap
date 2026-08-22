@@ -407,6 +407,7 @@ export default function VistaDashboard() {
           textoBusqueda={textoBusqueda} setTextoBusqueda={setTextoBusqueda}
           buscarCiudadEnServidor={buscarCiudadEnServidor} resultadosCiudades={resultadosCiudades}
           seleccionarCiudad={seleccionarCiudad} cargando={cargando} guardarNombreCongregacionBD={guardarNombreCongregacionBD}
+          ciudadSeleccionada={ciudadSeleccionada}
         />
       )}
 
