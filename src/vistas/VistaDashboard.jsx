@@ -55,7 +55,6 @@ export default function VistaDashboard() {
     secciones, edificios, cargando,
     textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad,ciudadSeleccionada,
     coordenadasActuales, zoomActual, setZoomActual, setCoordenadasActuales,
-    forzarEnfoqueCiudad, // EXTRAÍDA AQUÍ
     enModoTrazado, enModoEdificios, 
     nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio,
     puntosTrazadoActual, manejarClickMapa, deshacerUltimoPunto, limpiarTrazadoCompleto, cancelarTrazadoYSalir,
@@ -405,7 +404,6 @@ export default function VistaDashboard() {
           buscarCiudadEnServidor={buscarCiudadEnServidor} resultadosCiudades={resultadosCiudades}
           seleccionarCiudad={seleccionarCiudad} cargando={cargando} guardarNombreCongregacionBD={guardarNombreCongregacionBD}
           ciudadSeleccionada={ciudadSeleccionada}
-          forzarEnfoqueCiudad={forzarEnfoqueCiudad} // PASADO AQUÍ
         />
       )}
 

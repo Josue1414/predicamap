@@ -5,11 +5,10 @@ export default function useControlesUI() {
   const [textoBusqueda, setTextoBusqueda] = useState('');
   const [resultadosCiudades, setResultadosCiudades] = useState([]);
   const [ciudadSeleccionada, setCiudadSeleccionada] = useState(false);
-  const [coordsCiudadElegida, setCoordsCiudadElegida] = useState(null); 
   
-  // Restaurado a 5 para evitar que el mapa se vea demasiado lejos
+  // Restaurado a la configuración original adaptativa para celulares
   const [coordenadasActuales, setCoordenadasActuales] = useState([23.6345, -102.5528]);
-  const [zoomActual, setZoomActual] = useState(5);
+  const [zoomActual, setZoomActual] = useState(window.innerWidth < 768 ? 5.5 : 5);
   
   const [enModoTrazado, setEnModoTrazado] = useState(false);
   const [enModoEdificios, setEnModoEdificios] = useState(false); 
@@ -44,22 +43,11 @@ export default function useControlesUI() {
   };
 
   const seleccionarCiudad = (ciudad) => {
-    const coords = [parseFloat(ciudad.lat), parseFloat(ciudad.lon)];
-    setCoordsCiudadElegida(coords); 
-    setCoordenadasActuales(coords);
-    setZoomActual(16); 
+    setCoordenadasActuales([parseFloat(ciudad.lat), parseFloat(ciudad.lon)]);
+    setZoomActual(16); // Al seleccionar, el mapa hace zoom automáticamente
     setResultadosCiudades([]); 
     setTextoBusqueda(ciudad.display_name); 
     setCiudadSeleccionada(true); 
-  };
-
-  const forzarEnfoqueCiudad = () => {
-    if (coordsCiudadElegida) {
-      // Clonamos el arreglo para forzar el renderizado en el mapa
-      setCoordenadasActuales([...coordsCiudadElegida]);
-      // Aumentamos el zoom a 18 para estar más cerca
-      setZoomActual(18);
-    }
   };
 
   const manejarCambioBusqueda = (valor) => {
@@ -83,7 +71,7 @@ export default function useControlesUI() {
 
   return {
     textoBusqueda, setTextoBusqueda: manejarCambioBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad, volarATerritorio,
-    ciudadSeleccionada, setCiudadSeleccionada, forzarEnfoqueCiudad,
+    ciudadSeleccionada, setCiudadSeleccionada,
     coordenadasActuales, setCoordenadasActuales, zoomActual, setZoomActual,
     enModoTrazado, setEnModoTrazado, enModoEdificios, setEnModoEdificios,
     edificioSeleccionado, setEdificioSeleccionado, notesEdificioTemp, setNotasEdificioTemp,
