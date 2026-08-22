@@ -1,11 +1,11 @@
 // src/hooks/modulos/useControlesUI.js
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function useControlesUI() {
   const [textoBusqueda, setTextoBusqueda] = useState('');
   const [resultadosCiudades, setResultadosCiudades] = useState([]);
+  const [ciudadSeleccionada, setCiudadSeleccionada] = useState(false); // Nuevo estado
   
-  // ★ CORRECCIÓN: Inicializamos en el centro de México con zoom nivel país
   const [coordenadasActuales, setCoordenadasActuales] = useState([23.6345, -102.5528]);
   const [zoomActual, setZoomActual] = useState(5);
   
@@ -22,6 +22,18 @@ export default function useControlesUI() {
   const [mostrarCalles, setMostrarCalles] = useState(false);
   const [mostrarLugares, setMostrarLugares] = useState(false);
 
+  // Búsqueda automática mientras se escribe
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (textoBusqueda.trim() && !ciudadSeleccionada) {
+        buscarCiudadEnServidor();
+      } else if (!textoBusqueda.trim()) {
+        setResultadosCiudades([]);
+      }
+    }, 500); // 500ms de retraso
+    return () => clearTimeout(timeoutId);
+  }, [textoBusqueda, ciudadSeleccionada]);
+
   const buscarCiudadEnServidor = async () => {
     if (!textoBusqueda.trim()) return;
     try {
@@ -32,7 +44,15 @@ export default function useControlesUI() {
 
   const seleccionarCiudad = (ciudad) => {
     setCoordenadasActuales([parseFloat(ciudad.lat), parseFloat(ciudad.lon)]);
-    setZoomActual(15); setResultadosCiudades([]); setTextoBusqueda('');
+    setZoomActual(15); 
+    setResultadosCiudades([]); 
+    setTextoBusqueda(ciudad.display_name); // Deja el nombre seleccionado en el input
+    setCiudadSeleccionada(true); // Valida la selección
+  };
+
+  const manejarCambioBusqueda = (valor) => {
+    setTextoBusqueda(valor);
+    setCiudadSeleccionada(false); // Invalida la selección si el usuario vuelve a escribir
   };
 
   const volarATerritorio = (coordenadasPoligono) => {
@@ -50,7 +70,8 @@ export default function useControlesUI() {
   };
 
   return {
-    textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad, volarATerritorio,
+    textoBusqueda, setTextoBusqueda: manejarCambioBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad, volarATerritorio,
+    ciudadSeleccionada, setCiudadSeleccionada, // Exportamos los nuevos estados
     coordenadasActuales, setCoordenadasActuales, zoomActual, setZoomActual,
     enModoTrazado, setEnModoTrazado, enModoEdificios, setEnModoEdificios,
     edificioSeleccionado, setEdificioSeleccionado, notesEdificioTemp, setNotasEdificioTemp,

@@ -1,8 +1,8 @@
 // src/componentes/menu-lateral/SeccionMiProgreso.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Target, Clock, BookOpen, Award, Sprout, Flower2, Gift, PartyPopper, ChevronRight, Star, Calendar as CalIcon, AlertCircle, Download, Upload, ChevronLeft, Info, FileText } from 'lucide-react';
+import { ChevronRight, AlertCircle, Download, Upload, ChevronLeft, Info, FileText } from 'lucide-react';
 import useGestorProgreso from '../../hooks/modulos/useGestorProgreso';
-import VentanaFlotante from '../VentanaFlotante'; // IMPORTAMOS LA VENTANA FLOTANTE
+import VentanaFlotante from '../VentanaFlotante';
 
 const textosMotivacionales = {
   inicio: [
@@ -27,7 +27,6 @@ const formatearTiempoTexto = (horasDecimales) => {
   if (horasDecimales <= 0) return "0:00 hrs";
   const horas = Math.floor(horasDecimales);
   const minutos = Math.round((horasDecimales - horas) * 60);
-  
   return `${horas}:${minutos.toString().padStart(2, '0')} hrs`;
 };
 
@@ -35,7 +34,7 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
   const {
     metaMensual, metaAnual, registrosDiarios, horasTotalesAño, diasHastaAgosto,
     horasMesActual, estudiosMesActual, horasAcumuladasPrevias,
-    modificarHorasHoy, setFraccionMinutosHoy, setEstudiosHoy, actualizarMetas, fechaHoyStr,
+    setHorasExactasHoy, setEstudiosHoy, actualizarMetas, fechaHoyStr,
     exportarProgreso, importarProgreso
   } = useGestorProgreso();
 
@@ -45,15 +44,18 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
   const [mesVisual, setMesVisual] = useState(new Date()); 
   const refFileInput = useRef(null);
 
-  // --- LÓGICA DE FECHAS PARA EL INFORME ---
+  // ESTADOS PARA EDICIÓN Y GUARDADO
+  const horasHoy = registrosDiarios[fechaHoyStr]?.horas || 0;
+  const [horasBorrador, setHorasBorrador] = useState(0);
+  const [minutosBorrador, setMinutosBorrador] = useState(0);
+  const [mostrarExito, setMostrarExito] = useState(false);
+
   const fechaActual = new Date();
   const diaActual = fechaActual.getDate();
   const ultimoDiaDelMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0).getDate();
-  
   const esUltimoDia = diaActual === ultimoDiaDelMes;
   const esPrimerosDias = diaActual >= 1 && diaActual <= 3;
   const mostrarAvisoInforme = esUltimoDia || esPrimerosDias;
-  // ---------------------------------------
 
   const tieneMetaAnual = metaAnual && metaAnual > 0;
   const horasRestantesAnuales = tieneMetaAnual ? Math.max(0, metaAnual - horasTotalesAño) : 0;
@@ -62,13 +64,19 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
   const metaMensualSugerida = tieneMetaAnual && mesesRestantesDecimal > 0 
     ? Math.ceil(metaDiariaSugerida * 30.416) 
     : 0;
-  const totalProyectado = Math.round(horasTotalesAño + (metaMensualSugerida * mesesRestantesDecimal));
   const metaMensualUI = tieneMetaAnual ? metaMensualSugerida : (metaMensual || 1);
   const progresoReal = (horasMesActual / metaMensualUI) * 100;
   const progresoPorcentaje = Math.min(progresoReal, 100);
 
-  const horasHoy = registrosDiarios[fechaHoyStr]?.horas || 0;
-  const minutosHoyDecimal = horasHoy - Math.floor(horasHoy);
+  const estaAbierta = acordeonActivo === 'progreso';
+
+  // Sincronizar el borrador cuando se abre el panel o cambia de día
+  useEffect(() => {
+    if (estaAbierta) {
+      setHorasBorrador(Math.floor(horasHoy));
+      setMinutosBorrador(horasHoy - Math.floor(horasHoy));
+    }
+  }, [horasHoy, estaAbierta]);
 
   useEffect(() => {
     let categoria = 'inicio';
@@ -102,34 +110,35 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
     actualizarMetas({ [campo]: valor === '' ? '' : Number(valor) });
   };
 
-  const renderizarIcono = () => {
-    if (progresoReal > 100) return <PartyPopper size={26} className="text-amber-500 drop-shadow-md animate-bounce" />;
-    if (progresoReal === 100) return <Gift size={26} className="text-emerald-500 drop-shadow-sm" />;
-    if (progresoReal >= 60) return <Flower2 size={26} className="text-rose-400" />;
-    return <Sprout size={26} className="text-emerald-400" />;
+  const manejarGuardar = () => {
+    setHorasExactasHoy(horasBorrador + minutosBorrador);
+    setMostrarExito(true);
+    setTimeout(() => setMostrarExito(false), 2000);
   };
 
-  const estaAbierta = acordeonActivo === 'progreso';
+  const renderizarIcono = () => {
+    if (progresoReal > 100) return <span className="text-3xl drop-shadow-md animate-bounce">🎉</span>;
+    if (progresoReal === 100) return <span className="text-3xl drop-shadow-sm">🎁</span>;
+    if (progresoReal >= 60) return <span className="text-3xl drop-shadow-sm">🌸</span>;
+    return <span className="text-3xl drop-shadow-sm">🌱</span>;
+  };
 
   return (
     <div className="mb-2">
-      {/* BOTÓN DEL MENÚ LATERAL */}
       <button 
         onClick={() => alternarAcordeon('progreso')} 
         className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-sm transition-colors"
       >
         <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
-          <Star size={16} className="text-yellow-500"/> Mi Progreso Mensual
+          <span className="text-base">🌟</span> Mi Progreso Mensual
         </span>
         <ChevronRight size={16} className="text-slate-400" />
       </button>
 
-      {/* NUEVA VENTANA FLOTANTE */}
       <VentanaFlotante
         abierta={estaAbierta}
         alCerrar={() => alternarAcordeon('progreso')}
         titulo="Mi Progreso Mensual"
-        icono={Star}
       >
         <div className="flex flex-col h-full">
           <div className="bg-amber-50 dark:bg-amber-900/20 px-4 py-3 border-b border-amber-100 dark:border-amber-900/50 flex items-start gap-2 shrink-0">
@@ -141,7 +150,6 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
           
           <div className="p-4 space-y-5 animate-slide-up">
             
-            {/* --- TARJETA DE AVISO DE INFORME --- */}
             {mostrarAvisoInforme && (
               <div className={`p-4 rounded-2xl border flex items-center gap-3 shadow-sm ${esUltimoDia ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:border-indigo-800' : 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800'}`}>
                 <div className={`p-2 rounded-full shrink-0 ${esUltimoDia ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400'}`}>
@@ -160,10 +168,9 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
               </div>
             )}
             
-            {/* --- TARJETA DE TEXTO MOTIVACIONAL --- */}
             <div className={`p-4 rounded-2xl border ${esPrecursor ? 'bg-gradient-to-br from-amber-50 to-yellow-100 border-amber-300 dark:from-amber-900/30 dark:to-yellow-700/20 dark:border-amber-600' : 'bg-white border-slate-200 dark:bg-slate-950 dark:border-slate-800'}`}>
               <div className="flex items-center gap-4">
-                <div className="bg-slate-50 dark:bg-black/20 p-2.5 rounded-full shrink-0 shadow-sm border border-slate-100 dark:border-slate-800">
+                <div className="shrink-0">
                   {renderizarIcono()}
                 </div>
                 <div>
@@ -173,14 +180,13 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
               </div>
             </div>
 
-            {/* --- TABLERO DE AVANCE Y CONTROLES DIARIOS --- */}
             <div className="bg-white dark:bg-slate-950 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
               {esPrecursor && (
-                <div className="absolute top-0 right-0 bg-amber-400 text-amber-950 text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl shadow-md flex items-center gap-1"><Award size={14} /> Precursor</div>
+                <div className="absolute top-0 right-0 bg-amber-400 text-amber-950 text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl shadow-md flex items-center gap-1">🏅 Precursor</div>
               )}
 
               <div className="flex items-end justify-between mb-2">
-                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400"><Clock size={18} /> <span className="text-sm font-bold">Avance de Horas</span></div>
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400"><span className="text-lg">⏱️</span> <span className="text-sm font-bold">Avance de Horas</span></div>
                 <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400">
                   {formatearTiempoTexto(horasMesActual)} <span className="text-sm text-slate-400 font-medium">/ {metaMensualUI} hrs</span>
                 </div>
@@ -190,36 +196,37 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
                 <div className={`h-full transition-all duration-1000 ease-out ${esPrecursor ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`} style={{ width: `${progresoPorcentaje}%` }} />
               </div>
 
-              {/* Botones para sumar tiempo hoy */}
+              {/* CONTROLES PARA AÑADIR/EDITAR TIEMPO */}
               <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 mb-4 flex flex-col items-center">
                 <div className="flex items-center justify-between w-full mb-4">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Añadir tiempo hoy</span>
-                  <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">Máx 18h</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Añadir / Editar hoy</span>
+                  <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">Máx 24h</span>
                 </div>
                 
-                <div className="flex items-center justify-center gap-4 w-full mb-5">
-                  <button onClick={() => modificarHorasHoy(-1)} className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-xl flex items-center justify-center hover:bg-slate-300 transition-colors">-1</button>
+                <div className="flex items-center justify-center gap-4 w-full mb-4">
+                  <button onClick={() => setHorasBorrador(Math.max(0, horasBorrador - 1))} className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-xl flex items-center justify-center hover:bg-slate-300 transition-colors">-</button>
                   
                   <div className="flex-1 text-center bg-white dark:bg-slate-950 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                    <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{formatearTiempoTexto(horasHoy)}</div>
+                    <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none">
+                      {horasBorrador}:{Math.round(minutosBorrador * 60).toString().padStart(2, '0')} hrs
+                    </div>
                   </div>
                   
-                  <button onClick={() => modificarHorasHoy(1)} className="w-14 h-14 rounded-full bg-indigo-600 text-white font-black text-2xl flex items-center justify-center hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-colors active:scale-95">+1</button>
+                  <button onClick={() => setHorasBorrador(Math.min(24, horasBorrador + 1))} className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-xl flex items-center justify-center hover:bg-slate-300 transition-colors">+</button>
                 </div>
 
-                {/* Minutos exactos */}
-                <div className="w-full bg-white dark:bg-slate-950 rounded-xl p-1.5 border border-slate-200 dark:border-slate-700 flex gap-1">
+                <div className="w-full bg-white dark:bg-slate-950 rounded-xl p-1.5 border border-slate-200 dark:border-slate-700 flex gap-1 mb-4">
                   {[
                     { valor: 0, label: '00m' },
                     { valor: 0.25, label: '15m' },
                     { valor: 0.5, label: '30m' },
                     { valor: 0.75, label: '45m' }
                   ].map((opcion) => {
-                    const seleccionado = minutosHoyDecimal === opcion.valor;
+                    const seleccionado = minutosBorrador === opcion.valor;
                     return (
                       <button
                         key={opcion.label}
-                        onClick={() => setFraccionMinutosHoy(opcion.valor)}
+                        onClick={() => setMinutosBorrador(opcion.valor)}
                         className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${seleccionado ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900'}`}
                       >
                         {opcion.label}
@@ -227,24 +234,29 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
                     );
                   })}
                 </div>
+
+                <button 
+                  onClick={manejarGuardar}
+                  className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${mostrarExito ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/30' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30 active:scale-95'}`}
+                >
+                  {mostrarExito ? '¡Guardado! ✅' : '💾 Guardar Registro'}
+                </button>
               </div>
 
-              {/* Botones de estudios bíblicos */}
               <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center w-full">
                 <span className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">Estudios en el mes</span>
                 <div className="flex items-center gap-8 mb-1">
                   <button onClick={() => setEstudiosHoy(estudiosMesActual - 1)} className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-xl flex items-center justify-center hover:bg-slate-300">-</button>
-                  <div className="text-3xl font-black text-slate-700 dark:text-slate-200 flex items-center gap-3"><BookOpen size={24} className="text-emerald-500" /> {estudiosMesActual}</div>
+                  <div className="text-3xl font-black text-slate-700 dark:text-slate-200 flex items-center gap-3">📖 {estudiosMesActual}</div>
                   <button onClick={() => setEstudiosHoy(estudiosMesActual + 1)} className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 font-black text-xl flex items-center justify-center hover:bg-emerald-200">+</button>
                 </div>
               </div>
             </div>
 
-            {/* --- CALENDARIO DE ACTIVIDAD --- */}
             <div className="bg-white dark:bg-slate-950 rounded-2xl p-5 border border-slate-200 dark:border-slate-800">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                  <CalIcon size={16} className="text-indigo-500" /> Actividad Diaria
+                  <span className="text-base">📅</span> Actividad Diaria
                 </h4>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setMesVisual(new Date(mesVisual.getFullYear(), mesVisual.getMonth() - 1, 1))} className="p-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-500"><ChevronLeft size={16}/></button>
@@ -275,12 +287,10 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
               </div>
             </div>
 
-            {/* --- AJUSTAR METAS --- */}
             <div className="bg-white dark:bg-slate-950 rounded-2xl p-5 border border-slate-200 dark:border-slate-800">
-              <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 mb-4"><Target size={16} className="text-rose-500" /> Ajustar Metas</h4>
+              <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 mb-4"><span className="text-base">🎯</span> Ajustar Metas</h4>
               
               <div className="space-y-4">
-                
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
                   <label className="block text-xs font-bold text-slate-500 mb-2">
                     Meta Mensual {tieneMetaAnual && <span className="text-emerald-500 ml-2">(Sugerida: {metaMensualSugerida} hrs)</span>}
@@ -327,7 +337,6 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
               </div>
             </div>
 
-            {/* --- RESPALDO DE DATOS --- */}
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-5">
               <div className="flex items-start gap-3 mb-4">
                 <AlertCircle size={20} className="text-amber-500 mt-0.5 shrink-0" />

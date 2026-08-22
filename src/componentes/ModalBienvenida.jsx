@@ -6,7 +6,7 @@ export default function ModalBienvenida({
   nombreNuevoSetup, setNombreNuevoSetup,
   textoBusqueda, setTextoBusqueda,
   buscarCiudadEnServidor, resultadosCiudades, seleccionarCiudad,
-  guardarNombreCongregacionBD, cargando
+  guardarNombreCongregacionBD, cargando, ciudadSeleccionada
 }) {
   return (
     <div className="fixed inset-0 z-[5000] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
@@ -26,7 +26,10 @@ export default function ModalBienvenida({
           </div>
 
           <div>
-            <label className="block text-slate-300 text-xs font-bold mb-1.5">Busca tu Ciudad en el Mapa</label>
+            <label className="block text-slate-300 text-xs font-bold mb-1">Busca tu Ciudad en el Mapa</label>
+            <p className="text-slate-400 text-[11px] mb-2 leading-tight">
+              Establece una ubicación de partida para que el mapa aparezca en esta zona cada vez que inicies sesión.
+            </p>
             <form onSubmit={(e) => { e.preventDefault(); buscarCiudadEnServidor(); }} className="flex gap-2">
               <input type="text" value={textoBusqueda} onChange={(e) => setTextoBusqueda(e.target.value)} placeholder="Ej: Zapopan, Jalisco..." className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-indigo-500 focus:outline-none transition-colors" />
               <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 rounded-xl font-bold transition-colors shadow-lg shadow-indigo-600/20">Buscar</button>
@@ -41,9 +44,9 @@ export default function ModalBienvenida({
           </div>
 
           <button 
-            disabled={!nombreNuevoSetup.trim() || cargando} 
+            disabled={!nombreNuevoSetup.trim() || !ciudadSeleccionada || cargando} 
             onClick={() => guardarNombreCongregacionBD(nombreNuevoSetup)}
-            className="w-full mt-2 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center"
+            className="w-full mt-2 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center"
           >
             {cargando ? 'Guardando...' : 'Comenzar a Perimetrar'}
           </button>

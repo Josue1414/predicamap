@@ -24,12 +24,10 @@ export default function useGestorProgreso() {
       try {
         let guardado = await localforage.getItem('predicamap_progreso');
         
-        // ★ MIGRACIÓN AUTOMÁTICA (De localStorage a IndexedDB) ★
         if (!guardado) {
           const guardadoViejo = localStorage.getItem('predicamap_progreso');
           if (guardadoViejo) {
             guardado = JSON.parse(guardadoViejo);
-            // Lo guardamos silenciosamente en la nueva base de datos
             await localforage.setItem('predicamap_progreso', guardado); 
           }
         }
@@ -53,7 +51,6 @@ export default function useGestorProgreso() {
 
   // 2. GUARDAR DATOS EN INDEXEDDB CUANDO CAMBIAN
   useEffect(() => {
-    // Solo guardamos si ya terminó de cargar para no sobrescribir con el estado inicial vacío
     if (soyElEmisor.current && !cargando) {
       localforage.setItem('predicamap_progreso', datosProgreso).catch(console.error);
       window.dispatchEvent(new CustomEvent('progreso_actualizado', { detail: datosProgreso }));
@@ -122,35 +119,15 @@ export default function useGestorProgreso() {
     return maxEstudios;
   };
 
-  const modificarHorasHoy = (cantidad) => {
+  // NUEVA FUNCIÓN PARA ESTABLECER HORAS EXACTAS (EDICIÓN Y GUARDADO EXPLÍCITO)
+  const setHorasExactasHoy = (totalHoras) => {
     soyElEmisor.current = true;
     setDatosProgreso(prev => {
       const hoy = obtenerFechaHoyLocal();
       const registroHoy = prev.registrosDiarios[hoy] || { horas: 0, estudios: 0 };
       
-      let nuevasHoras = Math.max(0, (registroHoy.horas || 0) + cantidad); 
-      if (nuevasHoras > 18) nuevasHoras = 18; 
-      
-      return {
-        ...prev,
-        registrosDiarios: {
-          ...prev.registrosDiarios,
-          [hoy]: { ...registroHoy, horas: nuevasHoras }
-        }
-      };
-    });
-  };
-
-  const setFraccionMinutosHoy = (fraccionDecimal) => {
-    soyElEmisor.current = true;
-    setDatosProgreso(prev => {
-      const hoy = obtenerFechaHoyLocal();
-      const registroHoy = prev.registrosDiarios[hoy] || { horas: 0, estudios: 0 };
-      
-      const horasEnteras = Math.floor(registroHoy.horas || 0);
-      let nuevasHoras = horasEnteras + fraccionDecimal;
-      
-      if (nuevasHoras > 18) nuevasHoras = 18; 
+      let nuevasHoras = Math.max(0, totalHoras); 
+      if (nuevasHoras > 24) nuevasHoras = 24; 
       
       return {
         ...prev,
@@ -222,8 +199,7 @@ export default function useGestorProgreso() {
     horasTotalesAño: obtenerHorasTotalesAñoServicio(),
     diasHastaAgosto: calcularDiasHastaAgosto(),
     mesesRestantes: calcularMesesRestantes(),
-    modificarHorasHoy,
-    setFraccionMinutosHoy, 
+    setHorasExactasHoy, // Exportamos la nueva función
     setEstudiosHoy,
     actualizarMetas,
     fechaHoyStr: obtenerFechaHoyLocal(),
