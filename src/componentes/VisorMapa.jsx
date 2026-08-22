@@ -93,7 +93,13 @@ export default function VisorMapa({
 
   // VUELO INICIAL CINEMÁTICO 
   useEffect(() => {
-    if (!mapaCargado || hasFlownInitial.current || !mapRef.current || !secciones || secciones.length === 0) return;
+    if (!mapaCargado || hasFlownInitial.current || !mapRef.current) return;
+
+    if (!secciones || secciones.length === 0) {
+      hasFlownInitial.current = true;
+      setPermitirVuelosSecundarios(true);
+      return;
+    }
 
     let territorioDestino = null;
 
@@ -229,7 +235,6 @@ export default function VisorMapa({
 
   const manejarClickMapa = (e) => {
     if (mapaActivoClics && alRegistrarPuntoTrazado) {
-      // ★ ENVIAMOS EL ESTILO SELECCIONADO AL DASHBOARD ★
       alRegistrarPuntoTrazado([e.lngLat.lat, e.lngLat.lng, estiloAviso]);
     }
   };
