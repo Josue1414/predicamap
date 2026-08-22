@@ -6,9 +6,17 @@ export default function useControlesUI() {
   const [resultadosCiudades, setResultadosCiudades] = useState([]);
   const [ciudadSeleccionada, setCiudadSeleccionada] = useState(false);
   
-  // Restaurado a la configuración original adaptativa para celulares
-  const [coordenadasActuales, setCoordenadasActuales] = useState([23.6345, -102.5528]);
-  const [zoomActual, setZoomActual] = useState(window.innerWidth < 768 ? 5.5 : 5);
+  // Leemos de localStorage por si ya había guardado su ciudad de partida
+  const [coordenadasActuales, setCoordenadasActuales] = useState(() => {
+    const guardadas = localStorage.getItem('pm_centro_guardado');
+    return guardadas ? JSON.parse(guardadas) : [23.6345, -102.5528];
+  });
+
+  // Restaurado el ajuste inicial adaptativo para celulares
+  const [zoomActual, setZoomActual] = useState(() => {
+    const guardadas = localStorage.getItem('pm_centro_guardado');
+    return guardadas ? 16 : (window.innerWidth < 768 ? 5.5 : 5);
+  });
   
   const [enModoTrazado, setEnModoTrazado] = useState(false);
   const [enModoEdificios, setEnModoEdificios] = useState(false); 
@@ -43,11 +51,15 @@ export default function useControlesUI() {
   };
 
   const seleccionarCiudad = (ciudad) => {
-    setCoordenadasActuales([parseFloat(ciudad.lat), parseFloat(ciudad.lon)]);
-    setZoomActual(16); // Al seleccionar, el mapa hace zoom automáticamente
+    const coords = [parseFloat(ciudad.lat), parseFloat(ciudad.lon)];
+    setCoordenadasActuales(coords);
+    setZoomActual(16); 
     setResultadosCiudades([]); 
     setTextoBusqueda(ciudad.display_name); 
     setCiudadSeleccionada(true); 
+
+    // Guardamos la ubicación de partida en memoria
+    localStorage.setItem('pm_centro_guardado', JSON.stringify(coords));
   };
 
   const manejarCambioBusqueda = (valor) => {
