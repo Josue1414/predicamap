@@ -31,9 +31,7 @@ const OPCIONES_AVISOS = [
 const IconoAviso = ({ emoji, opacidad = 1, escala }) => {
   return (
     <div style={{ opacity: opacidad, transform: `scale(${escala})` }} className="relative flex justify-center items-center cursor-pointer hover:scale-125 transition-transform origin-bottom">
-      {/* Círculo que parpadea detrás (efecto radar) */}
       <div className="absolute w-8 h-8 rounded-full animate-ping opacity-30 bg-slate-300 dark:bg-slate-500" />
-      {/* Emoji con animación de pulso y sombra 3D */}
       <span 
         className="text-3xl relative z-10 animate-pulse" 
         style={{ textShadow: '0px 3px 5px rgba(0,0,0,0.6)' }}
@@ -74,11 +72,13 @@ export default function VisorMapa({
   const [mapaCargado, setMapaCargado] = useState(false);
   const [permitirVuelosSecundarios, setPermitirVuelosSecundarios] = useState(false);
 
-  // Guardamos y leemos el último emoji usado
   const [estiloAviso, setEstiloAviso] = useState(() => localStorage.getItem('pm_estilo_aviso') || '📌');
 
   const hasFlownGPS = useRef(false);
   const hasFlownInitial = useRef(false);
+  
+  // Referencia para evitar que el mapa rebote si el centro no ha cambiado
+  const ultimoCentroVoladoRef = useRef(centroActual);
 
   const mapaActivoClics = enModoTrazado || enModoEdificios || !!marcadorTemporal || (alSeleccionarRevisita !== undefined) || enModoTachuela;
 
@@ -95,8 +95,8 @@ export default function VisorMapa({
   useEffect(() => {
     if (!mapaCargado || hasFlownInitial.current || !mapRef.current) return;
 
+    // Liberar mapa para usar buscador en setups nuevos sin bloquear el vuelo futuro
     if (!secciones || secciones.length === 0) {
-      hasFlownInitial.current = true;
       setPermitirVuelosSecundarios(true);
       return;
     }
@@ -145,20 +145,27 @@ export default function VisorMapa({
     }
   }, [secciones, edificios, mapaCargado]); 
 
+  // VUELOS SECUNDARIOS (Por búsqueda o selección)
   useEffect(() => {
-    if (centroActual && mapRef.current && permitirVuelosSecundarios) {
-      
-      if (centroActual[0] === centroInicial[0] && centroActual[1] === centroInicial[1]) {
-        return;
-      }
+    if (!mapRef.current || !permitirVuelosSecundarios || !centroActual) return;
 
-      mapRef.current.flyTo({
-        center: [centroActual[1], centroActual[0]],
-        zoom: zoomActual || ZOOM_FIN_VUELO,
-        duration: 1500,
-        essential: true
-      });
+    // Ignorar si las coordenadas solicitadas son idénticas a las del último vuelo
+    if (
+      ultimoCentroVoladoRef.current &&
+      ultimoCentroVoladoRef.current[0] === centroActual[0] &&
+      ultimoCentroVoladoRef.current[1] === centroActual[1]
+    ) {
+      return;
     }
+
+    mapRef.current.flyTo({
+      center: [centroActual[1], centroActual[0]],
+      zoom: zoomActual || ZOOM_FIN_VUELO,
+      duration: 1500,
+      essential: true
+    });
+
+    ultimoCentroVoladoRef.current = centroActual;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centroActual, permitirVuelosSecundarios]); 
 
@@ -248,7 +255,6 @@ export default function VisorMapa({
   return (
     <div className={`w-full h-full bg-slate-200 dark:bg-slate-950 relative ${mapaActivoClics ? 'cursor-crosshair' : ''}`}>
       
-      {/* ★ MENU FLOTANTE PARA ELEGIR EL TIPO DE AVISO ★ */}
       {enModoTachuela && (
         <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-[1000] flex flex-col gap-2 animate-in slide-in-from-left-4 fade-in duration-300 pointer-events-none">
           <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-2 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-2 pointer-events-auto">
@@ -397,7 +403,6 @@ export default function VisorMapa({
           </Marker>
         ))}
 
-        {/* ★ RENDERIZAMOS LAS TACHUELAS GUARDADAS CON SU ESTILO INDIVIDUAL ★ */}
         {mostrarTachuelasActivas && tachuelasGrupales.map((tachuela) => (
           <Marker key={tachuela.id} longitude={tachuela.lng} latitude={tachuela.lat} anchor="bottom">
             <div onClick={(e) => { e.stopPropagation(); if (!enModoTrazado && !enModoTachuela && alSeleccionarTachuela) alSeleccionarTachuela(tachuela); }}>
@@ -406,7 +411,6 @@ export default function VisorMapa({
           </Marker>
         ))}
 
-        {/* TACHUELA TEMPORAL (LA QUE SE ESTÁ CREANDO) */}
         {tachuelaTemporal && (
           <Marker longitude={tachuelaTemporal.lng} latitude={tachuelaTemporal.lat} anchor="bottom">
             <div className="pointer-events-none">

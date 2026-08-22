@@ -51,10 +51,7 @@ export default function SeccionMiPerfil({
     if (!confirmar) return;
 
     try {
-      // 2. Cerramos sesión en el backend
-      await supabase.auth.signOut();
-      
-      // 3. Limpieza profunda
+      // 2. Limpieza profunda PRIMERO (antes de que React intente desmontar componentes)
       const llavesABorrar = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -64,9 +61,17 @@ export default function SeccionMiPerfil({
       }
       llavesABorrar.forEach(key => localStorage.removeItem(key));
 
-      // 4. Cierre de UI y redirección natural a la raíz para evitar conflictos con Workbox
+      // 3. Cerrar UI actual
       alCerrar();
-      window.location.href = '/'; 
+
+      // 4. Cerramos sesión en el backend AL FINAL
+      await supabase.auth.signOut();
+      
+      // 5. Redirección diferida: Le damos a React 100ms para procesar el cambio de estado 
+      // antes de forzar la recarga del navegador (útil para limpiar Workbox).
+      setTimeout(() => {
+        window.location.replace('/'); // Usamos replace para no dejar historial basura
+      }, 100);
       
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
