@@ -54,7 +54,7 @@ export default function VistaDashboard() {
   const {
     secciones, edificios, cargando,
     textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad,ciudadSeleccionada,
-    coordenadasActuales, zoomActual, setZoomActual, setCoordenadasActuales,
+    coordenadasActuales, zoomActual, setZoomActual, setCoordenadasActuales, forzarEnfoqueCiudad,
     enModoTrazado, enModoEdificios, 
     nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio,
     puntosTrazadoActual, manejarClickMapa, deshacerUltimoPunto, limpiarTrazadoCompleto, cancelarTrazadoYSalir,
@@ -407,7 +407,7 @@ export default function VistaDashboard() {
           textoBusqueda={textoBusqueda} setTextoBusqueda={setTextoBusqueda}
           buscarCiudadEnServidor={buscarCiudadEnServidor} resultadosCiudades={resultadosCiudades}
           seleccionarCiudad={seleccionarCiudad} cargando={cargando} guardarNombreCongregacionBD={guardarNombreCongregacionBD}
-          ciudadSeleccionada={ciudadSeleccionada}
+          ciudadSeleccionada={ciudadSeleccionada} forzarEnfoqueCiudad={forzarEnfoqueCiudad}
         />
       )}
 

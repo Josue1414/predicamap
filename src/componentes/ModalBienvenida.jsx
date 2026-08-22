@@ -6,8 +6,16 @@ export default function ModalBienvenida({
   nombreNuevoSetup, setNombreNuevoSetup,
   textoBusqueda, setTextoBusqueda,
   buscarCiudadEnServidor, resultadosCiudades, seleccionarCiudad,
-  guardarNombreCongregacionBD, cargando, ciudadSeleccionada
+  guardarNombreCongregacionBD, cargando, ciudadSeleccionada, forzarEnfoqueCiudad
 }) {
+
+  const manejarComenzar = () => {
+    guardarNombreCongregacionBD(nombreNuevoSetup);
+    if (forzarEnfoqueCiudad) {
+      forzarEnfoqueCiudad();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[5000] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
       <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-2xl w-full max-w-md animate-slide-up">
@@ -45,7 +53,7 @@ export default function ModalBienvenida({
 
           <button 
             disabled={!nombreNuevoSetup.trim() || !ciudadSeleccionada || cargando} 
-            onClick={() => guardarNombreCongregacionBD(nombreNuevoSetup)}
+            onClick={manejarComenzar}
             className="w-full mt-2 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center"
           >
             {cargando ? 'Guardando...' : 'Comenzar a Perimetrar'}

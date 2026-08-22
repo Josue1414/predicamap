@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 export default function useControlesUI() {
   const [textoBusqueda, setTextoBusqueda] = useState('');
   const [resultadosCiudades, setResultadosCiudades] = useState([]);
-  const [ciudadSeleccionada, setCiudadSeleccionada] = useState(false); // Nuevo estado
+  const [ciudadSeleccionada, setCiudadSeleccionada] = useState(false);
+  const [coordsCiudadElegida, setCoordsCiudadElegida] = useState(null); // Memoria de la ciudad
   
+  // Ajuste inicial adaptativo para celulares
   const [coordenadasActuales, setCoordenadasActuales] = useState([23.6345, -102.5528]);
-  const [zoomActual, setZoomActual] = useState(5);
+  const [zoomActual, setZoomActual] = useState(window.innerWidth < 768 ? 5.5 : 5);
   
   const [enModoTrazado, setEnModoTrazado] = useState(false);
   const [enModoEdificios, setEnModoEdificios] = useState(false); 
@@ -22,7 +24,6 @@ export default function useControlesUI() {
   const [mostrarCalles, setMostrarCalles] = useState(false);
   const [mostrarLugares, setMostrarLugares] = useState(false);
 
-  // Búsqueda automática mientras se escribe
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (textoBusqueda.trim() && !ciudadSeleccionada) {
@@ -30,7 +31,7 @@ export default function useControlesUI() {
       } else if (!textoBusqueda.trim()) {
         setResultadosCiudades([]);
       }
-    }, 500); // 500ms de retraso
+    }, 500); 
     return () => clearTimeout(timeoutId);
   }, [textoBusqueda, ciudadSeleccionada]);
 
@@ -43,16 +44,25 @@ export default function useControlesUI() {
   };
 
   const seleccionarCiudad = (ciudad) => {
-    setCoordenadasActuales([parseFloat(ciudad.lat), parseFloat(ciudad.lon)]);
-    setZoomActual(15); 
+    const coords = [parseFloat(ciudad.lat), parseFloat(ciudad.lon)];
+    setCoordsCiudadElegida(coords); // Guardamos la coordenada elegida
+    setCoordenadasActuales(coords);
+    setZoomActual(16); // Nivel de zoom más cercano y adecuado para empezar a trazar
     setResultadosCiudades([]); 
-    setTextoBusqueda(ciudad.display_name); // Deja el nombre seleccionado en el input
-    setCiudadSeleccionada(true); // Valida la selección
+    setTextoBusqueda(ciudad.display_name); 
+    setCiudadSeleccionada(true); 
+  };
+
+  const forzarEnfoqueCiudad = () => {
+    if (coordsCiudadElegida) {
+      setCoordenadasActuales(coordsCiudadElegida);
+      setZoomActual(16);
+    }
   };
 
   const manejarCambioBusqueda = (valor) => {
     setTextoBusqueda(valor);
-    setCiudadSeleccionada(false); // Invalida la selección si el usuario vuelve a escribir
+    setCiudadSeleccionada(false); 
   };
 
   const volarATerritorio = (coordenadasPoligono) => {
@@ -71,7 +81,7 @@ export default function useControlesUI() {
 
   return {
     textoBusqueda, setTextoBusqueda: manejarCambioBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad, volarATerritorio,
-    ciudadSeleccionada, setCiudadSeleccionada, // Exportamos los nuevos estados
+    ciudadSeleccionada, setCiudadSeleccionada, forzarEnfoqueCiudad,
     coordenadasActuales, setCoordenadasActuales, zoomActual, setZoomActual,
     enModoTrazado, setEnModoTrazado, enModoEdificios, setEnModoEdificios,
     edificioSeleccionado, setEdificioSeleccionado, notesEdificioTemp, setNotasEdificioTemp,
