@@ -53,7 +53,7 @@ export default function VistaDashboard() {
 
   const {
     secciones, edificios, cargando,
-    textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad,
+    textoBusqueda, setTextoBusqueda, resultadosCiudades, buscarCiudadEnServidor, seleccionarCiudad,ciudadSeleccionada,
     coordenadasActuales, zoomActual, setZoomActual, setCoordenadasActuales,
     enModoTrazado, enModoEdificios, 
     nombreNuevoTerritorio, setNombreNuevoTerritorio, colorNuevoTerritorio, setColorNuevoTerritorio, notasNuevoTerritorio, setNotasNuevoTerritorio,
