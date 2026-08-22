@@ -1,5 +1,5 @@
 //src/context/ContextoModoMapa.jsx
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const ModoMapaContext = createContext();
 
@@ -14,8 +14,15 @@ export const MODOS_MAPA = {
 export function ProveedorModoMapa({ children }) {
   const [modoActivo, setModoActivo] = useState(MODOS_MAPA.NINGUNO);
   
-  // ★ NUEVO ESTADO: Estilo del mapa, por defecto en satélite
-  const [estiloMapa, setEstiloMapa] = useState('satelite_hibrido');
+  // ★ INICIALIZACIÓN PEREZOSA: Leemos el localStorage al cargar
+  const [estiloMapa, setEstiloMapa] = useState(() => {
+    return localStorage.getItem('pm_estilo_mapa') || 'satelite_hibrido';
+  });
+
+  // ★ GUARDADO AUTOMÁTICO: Cada vez que cambie el estilo, lo guardamos
+  useEffect(() => {
+    localStorage.setItem('pm_estilo_mapa', estiloMapa);
+  }, [estiloMapa]);
 
   const cambiarModo = (nuevoModo) => {
     setModoActivo(nuevoModo);
@@ -38,7 +45,6 @@ export function ProveedorModoMapa({ children }) {
       enModoTachuela,
       enModoRevisita,
       MODOS_MAPA,
-      // ★ EXPORTAMOS EL NUEVO ESTADO Y SU FUNCIÓN
       estiloMapa,
       setEstiloMapa
     }}>
