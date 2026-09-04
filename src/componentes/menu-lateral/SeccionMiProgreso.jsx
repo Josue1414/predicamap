@@ -30,12 +30,13 @@ const formatearTiempoTexto = (horasDecimales) => {
   return `${horas}:${minutos.toString().padStart(2, '0')} hrs`;
 };
 
-export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alternarAcordeon }) {
+// ★ AÑADIMOS "alAbrirArca" A LAS PROPS
+export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alternarAcordeon, alAbrirArca }) {
   const {
     metaMensual, metaAnual, registrosDiarios, horasTotalesAño, diasHastaAgosto,
     horasMesActual, estudiosMesActual, horasAcumuladasPrevias,
     setHorasExactasHoy, setEstudiosHoy, actualizarMetas, fechaHoyStr,
-    exportarProgreso, importarProgreso
+    exportarProgreso, importarProgreso, animalesDesbloqueados // ★ EXTRAEMOS LOS ANIMALITOS
   } = useGestorProgreso();
 
   const [textoActual, setTextoActual] = useState(textosMotivacionales.inicio[0]);
@@ -58,6 +59,8 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
   const mostrarAvisoInforme = esUltimoDia || esPrimerosDias;
 
   const tieneMetaAnual = metaAnual && metaAnual > 0;
+  const tieneMetaMensual = metaMensual && metaMensual > 0;
+
   const horasRestantesAnuales = tieneMetaAnual ? Math.max(0, metaAnual - horasTotalesAño) : 0;
   const metaDiariaSugerida = tieneMetaAnual && diasHastaAgosto > 0 ? horasRestantesAnuales / diasHastaAgosto : 0;
   const mesesRestantesDecimal = diasHastaAgosto / 30.416;
@@ -334,6 +337,35 @@ export default function SeccionMiProgreso({ perfilUsuario, acordeonActivo, alter
                     <input type="number" value={horasAcumuladasPrevias === 0 ? '' : horasAcumuladasPrevias} onChange={(e) => manejarCambioInput(e, 'horasAcumuladasPrevias')} className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500 font-bold text-slate-800 dark:text-slate-100 transition-colors" />
                   </div>
                 </details>
+
+                {/* ★ BOTÓN DEL ARCA DE RESCATE (DESHABILITADO POR AHORA) ★ */}
+                {tieneMetaMensual && (
+                  <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-5 relative">
+                    {/* Overlay para bloquear clicks y mostrar el texto */}
+                    <div className="absolute inset-0 z-10 flex items-center justify-center pt-4">
+                      <span className="bg-black/80 text-[#ffc677] text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
+                        Próximamente
+                      </span>
+                    </div>
+
+                    <button 
+                      disabled // Deshabilita el botón nativamente
+                      className="w-full relative overflow-hidden bg-[#8b5a2b] text-white font-bold py-3 px-4 rounded-xl opacity-40 cursor-not-allowed flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🚢</span>
+                        <span className="text-sm tracking-wide uppercase font-black">El Arca</span>
+                      </div>
+                      <div className="bg-black/30 px-2 py-1 rounded-md text-[10px] flex items-center gap-1.5 font-mono shadow-inner border border-black/20">
+                        <span>? / 12</span>
+                      </div>
+                    </button>
+                    <p className="text-center text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-wider opacity-60">
+                      Alcanza tu meta mensual para rescatar animales
+                    </p>
+                  </div>
+                )}
+                
               </div>
             </div>
 

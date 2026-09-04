@@ -8,6 +8,7 @@ import MenuLateral from '../componentes/menu-lateral';
 import ControlesTrazado from '../componentes/ControlesTrazado';
 import MenuEdificio from '../componentes/MenuEdificio';
 import MenuTerritorio from '../componentes/MenuTerritorio';
+import VistaInformeServicio from '../componentes/VistaInformeServicio';
 
 import ModalBienvenida from '../componentes/ModalBienvenida';
 import { ModalFormularioTachuela, ModalInfoTachuela } from '../componentes/ModalTachuela';
@@ -18,7 +19,11 @@ import useGestorTachuelas from '../hooks/modulos/useGestorTachuelas';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 import useGestorHistorial from '../hooks/modulos/useGestorHistorial';
 import useBotonAtrasCelular from '../hooks/useBotonAtrasCelular';
-import useGestorS13 from '../hooks/modulos/useGestorS13'; 
+import useGestorS13 from '../hooks/modulos/useGestorS13';
+import CelebracionMeta from '../componentes/CelebracionMeta';
+
+import VistaArca from '../componentes/VistaArca';
+import useGestorProgreso from '../hooks/modulos/useGestorProgreso';
 
 import { useModoMapa, MODOS_MAPA } from '../context/ContextoModoMapa';
 import { useAlertas } from '../context/ContextoAlertas'; 
@@ -40,9 +45,14 @@ export default function VistaDashboard() {
 
   const [menuAbierto, setMenuAbierto] = useState(false);
   
+  const [mostrandoArca, setMostrandoArca] = useState(false);
+  const [mostrandoInforme, setMostrandoInforme] = useState(false);
+  
   const [nombreCongregacionUI, setNombreCongregacionUI] = useState('Cargando...');
   const [nombreNuevoSetup, setNombreNuevoSetup] = useState('');
   const [territorioSeleccionado, setTerritorioSeleccionado] = useState(null);
+
+  const { animalesDesbloqueados } = useGestorProgreso();
 
   const { 
     enModoTachuela, 
@@ -60,13 +70,14 @@ export default function VistaDashboard() {
     puntosTrazadoActual, manejarClickMapa, deshacerUltimoPunto, limpiarTrazadoCompleto, cancelarTrazadoYSalir,
     guardarNuevaSeccionEnBD, eliminarSeccionEnBD,
     edificioSeleccionado, setEdificioSeleccionado, notasEdificioTemp, setNotasEdificioTemp, cambiarEstadoEdificioTemp, guardarEdificioEnBD, eliminarEdificioEnBD, volarATerritorio,
-    completarTerritorioEntero, mostrarCalles, setMostrarCalles, mostrarLugares, setMostrarLugares,
+    completarTerritorioEntero, cambiarEstadoTerritorioBD, mostrarCalles, setMostrarCalles, mostrarLugares, setMostrarLugares,
     perfilUsuario, usuariosEquipo, eliminarMiembroEquipo, crearLinkInvitacion,
     listaCongregaciones, congregacionContextoId, alSeleccionarCongregacionContexto,
     congregacionActiva, guardarNombreCongregacionBD,
     asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD,
     eliminarCongregacionMasterBD, targetCongId, actualizarNombrePerfilBD, reordenarTerritorioEnBD,
-    modoAhorro, reactivarTiempoReal, actualizarDetallesSeccionEnBD, estiloMapa, alCambiarEstiloMapa
+    modoAhorro, reactivarTiempoReal, actualizarDetallesSeccionEnBD, estiloMapa, alCambiarEstiloMapa,
+    actualizarPermisoMiembroBD, actualizarPermisoCongregacionBD // ★ Agregados aquí
   } = useMapa();
 
   const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD, editarTachuelaBD } = useGestorTachuelas(targetCongId);
@@ -198,13 +209,20 @@ export default function VistaDashboard() {
 
         registrarLog(perfilUsuario.id, accion, 'casa', detalles);
 
-        if (datosEdificio.estado === 'completado' && territorio && territorio.estado !== 'completado') {
-          const casasTerritorio = edificios.filter(e => e.seccion_id === territorio.id);
-          const otrasCasas = casasTerritorio.filter(e => e.id !== datosEdificio.id);
-          const todasOtrasCompletas = otrasCasas.every(e => e.estado === 'completado');
+        if (territorio) {
+          const casasTerritorio = edificios.filter(e => e.seccion_id === territorio.id && e.id !== datosEdificio.id);
+          casasTerritorio.push(datosEdificio); 
 
-          if (todasOtrasCompletas && casasTerritorio.length > 0) {
-            await manejarCompletarTerritorio(territorio.id);
+          const casasValidas = casasTerritorio.filter(e => e.estado !== 'no_responde');
+          const todasCompletas = casasValidas.length > 0 && casasValidas.every(e => e.estado === 'completado');
+
+          if (todasCompletas && territorio.estado !== 'completado') {
+            await cambiarEstadoTerritorioBD(territorio.id, 'completado');
+            await registrarCompletadoS13(territorio.id);
+            registrarLog(perfilUsuario.id, 'Territorio Completado Automáticamente', 'territorio', `El territorio "${territorio.nombre}" se marcó como completado tras finalizar todos sus puntos.`);
+          } else if (!todasCompletas && territorio.estado === 'completado') {
+            await cambiarEstadoTerritorioBD(territorio.id, 'pendiente');
+            registrarLog(perfilUsuario.id, 'Territorio Abierto Automáticamente', 'territorio', `El territorio "${territorio.nombre}" pasó a pendiente por cambios en sus puntos.`);
           }
         }
       }
@@ -240,12 +258,22 @@ export default function VistaDashboard() {
           accion = 'Eliminación de Edificio';
         }
 
-        registrarLog(
-          perfilUsuario.id,
-          accion,
-          'casa',
-          `En el territorio **${nombreTerritorio}**, se eliminó la ${tipoStr} **${datosEdificio.direccion || 'Sin dirección'}**.`
-        );
+        registrarLog(perfilUsuario.id, accion, 'casa', `En el territorio **${nombreTerritorio}**, se eliminó la ${tipoStr} **${datosEdificio.direccion || 'Sin dirección'}**.`);
+
+        if (territorio) {
+          const casasTerritorio = edificios.filter(e => e.seccion_id === territorio.id && e.id !== idEdificio);
+          const casasValidas = casasTerritorio.filter(e => e.estado !== 'no_responde');
+          const todasCompletas = casasValidas.length > 0 && casasValidas.every(e => e.estado === 'completado');
+
+          if (todasCompletas && territorio.estado !== 'completado') {
+            await cambiarEstadoTerritorioBD(territorio.id, 'completado');
+            await registrarCompletadoS13(territorio.id);
+            registrarLog(perfilUsuario.id, 'Territorio Completado Automáticamente', 'territorio', `El territorio "${territorio.nombre}" se marcó como completado tras finalizar todos sus puntos.`);
+          } else if (!todasCompletas && territorio.estado === 'completado') {
+            await cambiarEstadoTerritorioBD(territorio.id, 'pendiente');
+            registrarLog(perfilUsuario.id, 'Territorio Abierto Automáticamente', 'territorio', `El territorio "${territorio.nombre}" pasó a pendiente por cambios en sus puntos.`);
+          }
+        }
       }
     } catch (error) {
       mostrarAlerta("Error de conexión", "No se pudo eliminar. Verifica que tengas saldo o datos para navegar.", "danger");
@@ -340,6 +368,11 @@ export default function VistaDashboard() {
   const mostrarModalBienvenida = congregacionActiva?.nombre === 'Nueva Congregación';
 
   const manejarBotonAtras = useCallback(async (hayModalesAbiertos = false) => {
+    if (mostrandoArca) {
+      setMostrandoArca(false);
+      return false;
+    }
+
     if (hayModalesAbiertos === true) {
       setMenuAbierto(false);
       return false; 
@@ -387,6 +420,7 @@ export default function VistaDashboard() {
     return confirmarSalir;
     
   }, [
+    mostrandoArca, 
     menuAbierto, territorioSeleccionado, edificioSeleccionado, tachuelaLeida, revisitaLectura, revisitaEditando, revisitaExpandida,
     enModoTrazado, enModoEdificios, enModoTachuela, enModoRevisita, tachuelaTemporal, marcadorRevisitaTemporal,
     cancelarTrazadoYSalir, limpiarModo, mostrarConfirmacion
@@ -397,6 +431,21 @@ export default function VistaDashboard() {
   return (
     <div className="w-screen h-[100dvh] overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
       
+      {mostrandoArca && (
+        <VistaArca 
+          animalesDesbloqueados={animalesDesbloqueados} 
+          alCerrar={() => setMostrandoArca(false)} 
+        />
+      )}
+
+      {mostrandoInforme && (
+        <VistaInformeServicio 
+          alCerrar={() => setMostrandoInforme(false)} 
+        />
+      )}
+
+      <CelebracionMeta />
+
       {mostrarModalBienvenida && (
         <ModalBienvenida 
           nombreNuevoSetup={nombreNuevoSetup} setNombreNuevoSetup={setNombreNuevoSetup}
@@ -449,6 +498,19 @@ export default function VistaDashboard() {
         alCambiarEstiloMapa={alCambiarEstiloMapa}
         
         registrarAsignacionS13={registrarAsignacionS13}
+        
+        alAbrirArca={() => {
+          setMenuAbierto(false); 
+          setTimeout(() => setMostrandoArca(true), 300); 
+        }}
+        alAbrirInforme={() => {
+          setMenuAbierto(false);
+          setTimeout(() => setMostrandoInforme(true), 300);
+        }}
+        
+        congregacionActiva={congregacionActiva}
+        alActualizarPermisoMiembro={actualizarPermisoMiembroBD}
+        alActualizarPermisoCongregacion={actualizarPermisoCongregacionBD}
       />
 
       <MenuEdificio 
@@ -537,7 +599,7 @@ export default function VistaDashboard() {
         />
         
         {(enModoTrazado || enModoEdificios || enModoTachuela || enModoRevisita) && !mostrarModalBienvenida && (
-          <div className="absolute bottom-8 left-4 z-[1000] bg-white/90 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-lg text-[10px] font-semibold text-slate-700 dark:text-slate-300 pointer-events-none border border-slate-200 dark:border-slate-800 animate-slide-up">
+          <div className="absolute top-0 left-4 z-[1000] bg-white/90 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-b-lg shadow-md text-[10px] font-semibold text-slate-700 dark:text-slate-300 pointer-events-none border-b border-l border-r border-slate-200 dark:border-slate-800 animate-in slide-in-from-top-2 fade-in">
             {enModoTrazado && <span className="text-rose-500 animate-pulse font-bold">✏️ Dibujando territorio...</span>}
             {enModoEdificios && <span className="text-emerald-500 animate-pulse font-bold">🏠 Toca los techos en el mapa</span>}
             {enModoTachuela && <span className="text-cyan-500 animate-pulse font-bold">📌 Modo Aviso Grupal</span>}

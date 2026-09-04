@@ -1,10 +1,11 @@
 // src/componentes/MenuEdificio.jsx
 import React, { useState } from 'react';
-import { X, CheckCircle2, AlertOctagon, Clock, Save, Trash2, Home, MapPin, Edit3, Check } from 'lucide-react';
+import { X, CheckCircle2, AlertOctagon, Clock, Save, Trash2, Home, MapPin, Edit3, Check, Lock } from 'lucide-react';
 
 export default function MenuEdificio({
   edificio, 
   perfilUsuario, 
+  congregacionActiva,
   alCerrar, 
   alCambiarEstado, 
   alCambiarDireccion,
@@ -18,8 +19,27 @@ export default function MenuEdificio({
 
   if (!edificio) return null;
 
-  const esCapitanYSuperior = perfilUsuario?.rol === 'Capitán' || perfilUsuario?.rol === 'Administrador' || perfilUsuario?.rol === 'Administrador Mayor';
+  const esAdmin = perfilUsuario?.rol === 'Administrador' || perfilUsuario?.rol === 'Administrador Mayor';
+  const esCapitanYSuperior = esAdmin || perfilUsuario?.rol === 'Capitán';
+  const esPrecursor = perfilUsuario?.rol === 'Precursor' || perfilUsuario?.rol === 'Precursor Especial';
   const esCalle = edificio.tipo_edificio === 'calle';
+
+  const permisoGeneral = congregacionActiva?.permiso_precursores_editar !== false; 
+  const permisoIndividual = perfilUsuario?.permiso_editar_calles === true;
+  
+  let puedeEditarEstado = esCapitanYSuperior || (esPrecursor && (permisoGeneral || permisoIndividual));
+  let mensajeBloqueo = "Permiso de edición desactivado por el administrador.";
+
+  // ★ NUEVO BLOQUEO: Si es "NO VISITAR", solo los administradores pueden editarlo
+  if (edificio.estado === 'no_responde' && !esAdmin) {
+    puedeEditarEstado = false;
+    mensajeBloqueo = "Solo un Administrador puede editar o guardar un registro marcado como NO VISITAR.";
+  }
+
+  const manejarClickEstado = (estado) => {
+    if (!puedeEditarEstado) return;
+    alCambiarEstado(estado);
+  };
 
   return (
     <>
@@ -29,13 +49,12 @@ export default function MenuEdificio({
         
         <div className="p-6 space-y-5">
           
-          {/* ★ CAMBIO: SELECTOR DE TIPO SÓLO SE MUESTRA SI ES NUEVO (SIN ID) ★ */}
           {!edificio.id && (
             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shadow-inner">
               <button 
                 onClick={() => {
                   alCambiarTipo('calle');
-                  if (edificio.estado === 'no_responde') alCambiarEstado('pendiente'); 
+                  if (edificio.estado === 'no_responde') manejarClickEstado('pendiente'); 
                 }}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${esCalle ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
               >
@@ -50,7 +69,6 @@ export default function MenuEdificio({
             </div>
           )}
 
-          {/* CABECERA Y EDICIÓN DE DIRECCIÓN */}
           <div className="flex justify-between items-start">
             <div className="flex-1 pr-4">
               {esCapitanYSuperior ? (
@@ -101,34 +119,52 @@ export default function MenuEdificio({
             </button>
           </div>
 
-          {/* ESTADOS DE VISITA */}
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Estado del Sector</label>
             <div className={`grid gap-2 ${esCapitanYSuperior && !esCalle ? 'grid-cols-3' : 'grid-cols-2'}`}>
               
-              <button onClick={() => alCambiarEstado('pendiente')} className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all ${edificio.estado === 'pendiente' ? 'bg-orange-50 border-orange-500 text-orange-600 dark:bg-orange-500/10' : 'border-slate-100 dark:border-slate-800 text-slate-400'}`}>
+              <button 
+                onClick={() => manejarClickEstado('pendiente')} 
+                className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all 
+                  ${edificio.estado === 'pendiente' ? 'bg-orange-50 border-orange-500 text-orange-600 dark:bg-orange-500/10' : 'border-slate-100 dark:border-slate-800 text-slate-400'} 
+                  ${!puedeEditarEstado ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+              >
                 <Clock size={22} className="mb-1.5" />
                 <span className="text-[10px] font-bold">Faltante</span>
               </button>
 
               {esCapitanYSuperior && !esCalle && (
-                <button onClick={() => alCambiarEstado('no_responde')} className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all ${edificio.estado === 'no_responde' ? 'bg-rose-50 border-rose-500 text-rose-600 dark:bg-rose-500/10' : 'border-slate-100 dark:border-slate-800 text-slate-400'}`}>
+                <button 
+                  onClick={() => manejarClickEstado('no_responde')} 
+                  className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all 
+                    ${edificio.estado === 'no_responde' ? 'bg-rose-50 border-rose-500 text-rose-600 dark:bg-rose-500/10' : 'border-slate-100 dark:border-slate-800 text-slate-400'} 
+                    ${!puedeEditarEstado ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+                >
                   <AlertOctagon size={22} className="mb-1.5" />
                   <span className="text-[10px] font-bold leading-tight text-center px-1">No Visitar</span>
                 </button>
               )}
 
-              <button onClick={() => alCambiarEstado('completado')} className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all ${edificio.estado === 'completado' ? 'bg-emerald-50 border-emerald-500 text-emerald-600 dark:bg-emerald-500/10' : 'border-slate-100 dark:border-slate-800 text-slate-400'}`}>
+              <button 
+                onClick={() => manejarClickEstado('completado')} 
+                className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all 
+                  ${edificio.estado === 'completado' ? 'bg-emerald-50 border-emerald-500 text-emerald-600 dark:bg-emerald-500/10' : 'border-slate-100 dark:border-slate-800 text-slate-400'} 
+                  ${!puedeEditarEstado ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+              >
                 <CheckCircle2 size={22} className="mb-1.5" />
                 <span className="text-[10px] font-bold">Completado</span>
               </button>
             </div>
+
+            {!puedeEditarEstado && (
+              <p className="text-[10px] text-rose-500 font-bold mt-2 flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/20 p-2 rounded-lg">
+                <Lock size={12} /> {mensajeBloqueo}
+              </p>
+            )}
           </div>
 
-          {/* OBSERVACIONES */}
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Observaciones</label>
-            {/* ★ CAMBIO: SÓLO CAPITANES Y SUPERIORES PUEDEN EDITAR NOTAS ★ */}
             {esCapitanYSuperior ? (
               <textarea 
                 value={notasTemp} 
@@ -146,16 +182,18 @@ export default function MenuEdificio({
             )}
           </div>
 
-          {/* BOTONERÍA FINAL */}
           <div className="flex gap-2 pt-2">
             {esCapitanYSuperior && edificio.id && (
               <button onClick={() => alEliminar(edificio.id)} className="flex items-center justify-center p-3.5 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl transition-all">
                 <Trash2 size={18} />
               </button>
             )}
-            <button onClick={alGuardar} className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20">
-              <Save size={18} /> Confirmar Cambios
-            </button>
+            
+            {puedeEditarEstado && (
+              <button onClick={alGuardar} className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20">
+                <Save size={18} /> Confirmar Cambios
+              </button>
+            )}
           </div>
 
         </div>

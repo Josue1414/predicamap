@@ -1,4 +1,3 @@
-// src/hooks/useMapa.js
 import useEstadoGlobal from './modulos/useEstadoGlobal';
 import useControlesUI from './modulos/useControlesUI';
 import useGestorTerritorios from './modulos/useGestorTerritorios';
@@ -20,7 +19,6 @@ const verificarPuntoEnPoligono = (lat, lng, poligono) => {
 const verificarConexionReal = async () => {
   if (!navigator.onLine) return false;
   try {
-    // Hacemos una petición rápida y ligera. Si no hay saldo, esto fallará irremediablemente.
     await fetch('https://dns.google/resolve?name=google.com', { 
       mode: 'no-cors', 
       cache: 'no-store' 
@@ -92,11 +90,10 @@ export default function useMapa() {
   const guardarNuevaSeccionEnBD = async () => {
     if (ui.puntosTrazadoActual.length < 3 || !ui.nombreNuevoTerritorio.trim()) return;
     
-    // 🛡️ ESCUDO: Verificamos conexión real
     const tieneInternet = await verificarConexionReal();
     if (!tieneInternet) {
       mostrarAlerta("Sin conexión", "No se pudo guardar el territorio. Verifica que tengas saldo o datos para navegar.", "warning");
-      return; // Detenemos todo para proteger el mapa local
+      return; 
     }
 
     await db.crearSeccionBD({
@@ -111,11 +108,10 @@ export default function useMapa() {
   const guardarEdificioEnBD = async () => {
     if (!ui.edificioSeleccionado) return;
     
-    // 🛡️ ESCUDO: Verificamos conexión real
     const tieneInternet = await verificarConexionReal();
     if (!tieneInternet) {
       mostrarAlerta("Sin conexión", "No se pudieron hacer los cambios. Verifica que tengas saldo o datos para navegar.", "warning");
-      return; // Detenemos todo para proteger el mapa local
+      return; 
     }
     
     const datosAEnviar = { 
@@ -130,7 +126,7 @@ export default function useMapa() {
     
     if (ui.edificioSeleccionado.id) { await db.actualizarEdificioBD(ui.edificioSeleccionado.id, datosAEnviar); } 
     else { await db.crearEdificioBD(datosAEnviar); }
-    await db.cargarTerritoriosYCasas();
+    
     ui.setEdificioSeleccionado(null); 
   };
 
@@ -143,15 +139,13 @@ export default function useMapa() {
     );
     if (!confirmado) return false;
 
-    // 🛡️ ESCUDO: Verificamos conexión real
     const tieneInternet = await verificarConexionReal();
     if (!tieneInternet) {
       mostrarAlerta("Sin conexión", "No se pudo eliminar. Verifica que tengas saldo o datos para navegar.", "warning");
-      return false; // Detenemos todo
+      return false; 
     }
 
     await db.eliminarEdificioBD(idEdificio);
-    await db.cargarTerritoriosYCasas();
     ui.setEdificioSeleccionado(null);
     return true;
   };
@@ -175,6 +169,7 @@ export default function useMapa() {
     registrarPuntoTrazado: (coord) => ui.setPuntosTrazadoActual(prev => [...prev, coord]),
     modoAhorro: db.modoAhorro,
     reactivarTiempoReal: db.reactivarTiempoReal,
+    cambiarEstadoTerritorioBD: db.cambiarEstadoTerritorioBD,
     cancelarTrazadoYSalir: () => {
       ui.cancelarTrazadoYSalir();
       limpiarModo();

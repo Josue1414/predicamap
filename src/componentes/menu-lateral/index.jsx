@@ -1,6 +1,6 @@
 // src/componentes/menu-lateral/index.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Settings, ArrowLeft, Edit2, Save, Sun, Moon, Download, CheckCircle } from 'lucide-react';
+import { X, Settings, ArrowLeft, Edit2, Save, Sun, Moon, Download, CheckCircle, FileText, ChevronRight } from 'lucide-react';
 import { supabase } from '../../utilidades/clienteSupabase';
 import { useAlertas } from '../../context/ContextoAlertas'; 
 
@@ -12,12 +12,11 @@ import SeccionTerritorios from './SeccionTerritorios';
 import SeccionDibujarTerritorio from './SeccionDibujarTerritorio';
 import SeccionSembrarCasas from './SeccionSembrarCasas';
 import SeccionDirectorio from './SeccionDirectorio';
-import SeccionRegistroS13 from './SeccionRegistroS13'; // <-- IMPORTACIÓN NUEVA
+import SeccionRegistroS13 from './SeccionRegistroS13';
 import SeccionMiPerfil from './SeccionMiPerfil';
 import SeccionHistorial from './SeccionHistorial';
 import SeccionMiProgreso from './SeccionMiProgreso';
 
-// ★ SOLUCIÓN: Capturamos el evento de instalación globalmente desde el inicio
 let promptInstalacionGlobal = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
@@ -46,7 +45,12 @@ export default function MenuLateral({
   totalPaginas,
   alCambiarPagina, actualizarDetallesSeccionEnBD,
   estiloMapa,
-  alCambiarEstiloMapa
+  alCambiarEstiloMapa,
+  alAbrirArca, 
+  alAbrirInforme,
+  congregacionActiva,
+  alActualizarPermisoMiembro,
+  alActualizarPermisoCongregacion
 }) {
   const [acordeonActivo, setAcordeonActivo] = useState(null); 
   const [territorioExpandido, setTerritorioExpandido] = useState(null);
@@ -60,7 +64,6 @@ export default function MenuLateral({
 
   const { mostrarAlerta } = useAlertas();
 
-  // ★ DETERMINAR EL ID DE LA CONGREGACIÓN OBJETIVO
   const targetCongId = congregacionContextoId || perfilUsuario?.congregacion_id;
 
   useEffect(() => {
@@ -68,7 +71,6 @@ export default function MenuLateral({
   }, [nombreCongregacion]);
 
   useEffect(() => {
-    // Si ya se había capturado el evento global, lo aseguramos en el estado
     if (promptInstalacionGlobal) setDeferredPrompt(promptInstalacionGlobal);
 
     const checkInstalled = () => {
@@ -135,6 +137,9 @@ export default function MenuLateral({
   const esAdminOperativo = perfilUsuario?.rol === 'Administrador' || (esAdminMayor && congregacionContextoId);
   const esCapitanYSuperior = esAdminOperativo || perfilUsuario?.rol === 'Capitán';
   const esPrecursorYSuperior = esCapitanYSuperior || perfilUsuario?.rol === 'Precursor';
+
+  // ★ LÓGICA DE PERMISO PARA CAPITANES: ¿Pueden sembrar casas?
+  const puedeSembrar = esAdminOperativo || (perfilUsuario?.rol === 'Capitán' && congregacionActiva?.permiso_capitanes_sembrar !== false);
 
   const territoriosOrdenados = seccionesGuardadas || [];
 
@@ -270,7 +275,12 @@ export default function MenuLateral({
             alImportarBackup={alImportarBackup} revisitaExpandida={revisitaExpandida} setRevisitaExpandida={setRevisitaExpandida}
           />
 
-          <SeccionMiProgreso perfilUsuario={perfilUsuario} acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} />
+          <SeccionMiProgreso 
+            perfilUsuario={perfilUsuario} 
+            acordeonActivo={acordeonActivo} 
+            alternarAcordeon={alternarAcordeon} 
+            alAbrirArca={alAbrirArca}
+          />
           
           {esPrecursorYSuperior && (!esAdminMayor || (esAdminMayor && congregacionContextoId)) && (
             <SeccionTerritorios 
@@ -298,27 +308,44 @@ export default function MenuLateral({
                 alCambiarNotas={alCambiarNotas} alEmpezarATrazar={alEmpezarATrazar}
                 acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}
               />
-              <SeccionSembrarCasas visible={esCapitanYSuperior} alActivarModoEdificios={alActivarModoEdificios} acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar} />
+              {/* ★ Aquí se aplica el permiso de siembra a los capitanes */}
+              <SeccionSembrarCasas visible={puedeSembrar} alActivarModoEdificios={alActivarModoEdificios} acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar} />
             </>
           )}
 
           {(!esAdminMayor || (esAdminMayor && congregacionContextoId)) && (
             <>
               <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-6 px-1">Administración Local</div>
+              
+              {/* ★ Aquí se pasan las variables a SeccionDirectorio */}
               <SeccionDirectorio 
                 visible={esPrecursorYSuperior} esAdminOperativo={esAdminOperativo} usuariosEquipo={usuariosEquipo}
                 perfilUsuario={perfilUsuario} alEliminarMiembro={alEliminarMiembro} alCrearLinkInvitacion={alCrearLinkInvitacion}
                 acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} territorios={territoriosOrdenados} 
+                congregacionActiva={congregacionActiva}
+                alActualizarPermisoMiembro={alActualizarPermisoMiembro}
+                alActualizarPermisoCongregacion={alActualizarPermisoCongregacion}
               />
 
-              {/* ★ SECCIÓN NUEVA DEL S-13 (Visible solo para administradores) ★ */}
               {esAdminOperativo && (
                 <SeccionRegistroS13 
                   acordeonActivo={acordeonActivo} 
                   alternarAcordeon={alternarAcordeon} 
                   congregacionId={targetCongId} 
-                  territoriosGuardados={territoriosOrdenados} // <-- PASAR LOS TERRITORIOS AQUÍ
+                  territoriosGuardados={territoriosOrdenados}
                 />
+              )}
+              {/* ACCESO A INFORMES INDIVIDUAL O ADMIN */}
+              {(esAdminOperativo || perfilUsuario?.permiso_informes === true) && (
+                <button
+                  onClick={alAbrirInforme}
+                  className="w-full mt-2 p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 shadow-sm transition-colors"
+                >
+                  <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                    <FileText size={16} className="text-indigo-500"/> Informes de Servicio
+                  </span>
+                  <ChevronRight size={16} className="text-slate-400" />
+                </button>
               )}
             </>
           )}

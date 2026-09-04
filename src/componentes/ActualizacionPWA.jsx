@@ -44,7 +44,7 @@ export default function ActualizacionPWA() {
       </p>
 
       <p className="text-xs text-slate-600 dark:text-slate-400">
-         <strong>Actualizacion: #Mejoras en Mi Progreso 📌</strong>
+         <strong>Actualizacion: #Mejoras en Mi Progreso 🌊🚢 ARCA DE NOE</strong>
       </p>
       
       <button

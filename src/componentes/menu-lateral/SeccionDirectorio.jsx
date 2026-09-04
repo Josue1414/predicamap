@@ -1,6 +1,6 @@
 // src/componentes/menu-lateral/SeccionDirectorio.jsx
 import React, { useState } from 'react';
-import { Users, UserPlus, Trash2, ChevronUp, ChevronDown, ChevronRight, Map } from 'lucide-react';
+import { Users, UserPlus, Trash2, ChevronUp, ChevronDown, ChevronRight, Map, Shield, Settings2 } from 'lucide-react';
 import VentanaFlotante from '../VentanaFlotante'; 
 import { useAlertas } from '../../context/ContextoAlertas'; 
 
@@ -10,10 +10,13 @@ export default function SeccionDirectorio({
   usuariosEquipo,
   perfilUsuario,
   alEliminarMiembro,
+  alActualizarPermisoMiembro,
   alCrearLinkInvitacion,
   acordeonActivo,
   alternarAcordeon,
-  territorios
+  territorios,
+  congregacionActiva,
+  alActualizarPermisoCongregacion
 }) {
   const [miembroExpandido, setMiembroExpandido] = useState(null);
 
@@ -40,9 +43,20 @@ export default function SeccionDirectorio({
     }
   };
 
+  const manejarCambioPermisoIndividual = (miembro, campo, valor) => {
+    if (alActualizarPermisoMiembro) {
+      alActualizarPermisoMiembro(miembro.id, campo, valor);
+    }
+  };
+
+  const manejarCambioPermisoGeneral = (campo, valor) => {
+    if (alActualizarPermisoCongregacion) {
+      alActualizarPermisoCongregacion(campo, valor);
+    }
+  };
+
   return (
     <div className="mb-2">
-      {/* BOTÓN DEL MENÚ LATERAL */}
       <button 
         onClick={() => alternarAcordeon('directorio')} 
         className="w-full p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-purple-50 dark:hover:bg-purple-900/10 shadow-sm transition-colors"
@@ -53,7 +67,6 @@ export default function SeccionDirectorio({
         <ChevronRight size={16} className="text-slate-400" />
       </button>
       
-      {/* NUEVA VENTANA FLOTANTE */}
       <VentanaFlotante
         abierta={estaAbierta}
         alCerrar={() => alternarAcordeon('directorio')}
@@ -69,8 +82,6 @@ export default function SeccionDirectorio({
                 <UserPlus size={16} className="text-slate-400" /> Generar Invitación de Rango
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                
-                {/* ★ SOLO LOS ADMINISTRADORES VEN ESTOS ENLACES ★ */}
                 {esAdmin && (
                   <>
                     <a href={alCrearLinkInvitacion('Administrador')} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 text-xs font-bold transition-colors shadow-sm border border-blue-100 dark:border-blue-800/50">
@@ -84,13 +95,51 @@ export default function SeccionDirectorio({
                     </a>
                   </>
                 )}
-
-                {/* ★ TODOS (INCLUIDOS CAPITANES Y PRECURSORES) VEN EL ENLACE GENERAL ★ */}
                 {(esAdmin || esCapitan || esPrecursor) && (
                   <a href={alCrearLinkInvitacion('Publicador')} target="_blank" rel="noreferrer" className={`flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold transition-colors shadow-sm border border-emerald-100 dark:border-emerald-800/50 ${!esAdmin ? 'sm:col-span-2' : ''}`}>
-                    <UserPlus size={16}/> Invitar Publicador (Enlace General)
+                    <UserPlus size={16}/> Invitar Publicador (General)
                   </a>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* PERMISOS GENERALES DE CONGREGACIÓN (SOLO ADMIN) */}
+          {esAdmin && congregacionActiva && (
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+              <p className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider flex items-center gap-2">
+                <Settings2 size={16} className="text-slate-400" /> Permisos Generales
+              </p>
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+                
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-emerald-600 transition-colors">Precursores pueden editar calles</span>
+                    <span className="text-[10px] text-slate-500">Permite cambiar casas a verde o rojo.</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    className="w-5 h-5 accent-emerald-600 rounded cursor-pointer shrink-0" 
+                    checked={congregacionActiva.permiso_precursores_editar ?? false} 
+                    onChange={(e) => manejarCambioPermisoGeneral('permiso_precursores_editar', e.target.checked)} 
+                  />
+                </label>
+
+                <div className="h-px bg-slate-200 dark:bg-slate-700 w-full"></div>
+
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 transition-colors">Capitanes pueden sembrar casas</span>
+                    <span className="text-[10px] text-slate-500">Habilita el modo de trazado para ellos.</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    className="w-5 h-5 accent-indigo-600 rounded cursor-pointer shrink-0" 
+                    checked={congregacionActiva.permiso_capitanes_sembrar ?? true} 
+                    onChange={(e) => manejarCambioPermisoGeneral('permiso_capitanes_sembrar', e.target.checked)} 
+                  />
+                </label>
+
               </div>
             </div>
           )}
@@ -152,24 +201,41 @@ export default function SeccionDirectorio({
                               )}
                             </div>
 
+                            {/* PERMISOS INDIVIDUALES (SOLO ADMIN) */}
                             {esAdmin && miembro.id !== perfilUsuario?.id && (
-                              <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/50 flex justify-start">
-                                <button 
-                                  onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    manejarEliminar(miembro); 
-                                  }} 
-                                  className="flex items-center justify-center p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/40 rounded-xl transition-colors border border-rose-100 dark:border-rose-800/30"
-                                  title="Revocar Acceso"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
+                              <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col gap-4">
+                                
+                                <div className="flex flex-col gap-3">
+                                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                    <Shield size={12} /> Permiso Individual
+                                  </p>
+
+                                  <label className="flex items-center justify-between cursor-pointer group">
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 transition-colors">Ver Informes de Servicio</span>
+                                    <input 
+                                      type="checkbox" 
+                                      className="w-4 h-4 accent-indigo-600 rounded cursor-pointer" 
+                                      checked={miembro.permiso_informes || false} 
+                                      onChange={(e) => manejarCambioPermisoIndividual(miembro, 'permiso_informes', e.target.checked)} 
+                                    />
+                                  </label>
+                                </div>
+
+                                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/50">
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); manejarEliminar(miembro); }} 
+                                    className="w-full flex items-center justify-center gap-2 p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/40 rounded-xl transition-colors border border-rose-100 dark:border-rose-800/30"
+                                    title="Revocar Acceso"
+                                  >
+                                    <Trash2 size={16} /> <span className="text-xs font-bold">Revocar Acceso</span>
+                                  </button>
+                                </div>
+
                               </div>
                             )}
 
                           </div>
                         )}
-                        
                       </div>
                     );
                   })

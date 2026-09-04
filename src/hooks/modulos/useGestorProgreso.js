@@ -1,6 +1,7 @@
 // src/hooks/modulos/useGestorProgreso.js
 import { useState, useEffect, useRef } from 'react';
 import localforage from 'localforage';
+import { LISTA_ANIMALES } from '../../utilidades/animalitos';
 
 // Configuración de la base de datos local
 localforage.config({
@@ -13,7 +14,8 @@ export default function useGestorProgreso() {
     metaMensual: '',
     metaAnual: '',
     horasAcumuladasPrevias: 0, 
-    registrosDiarios: {} 
+    registrosDiarios: {},
+    mesesPremiados: [] // ★ NUEVO: Arreglo para guardar los meses que ya dieron premio
   });
   const [cargando, setCargando] = useState(true);
   const soyElEmisor = useRef(false);
@@ -32,7 +34,11 @@ export default function useGestorProgreso() {
           }
         }
 
-        if (guardado) setDatosProgreso(guardado);
+        if (guardado) {
+          // Aseguramos que el arreglo de premios exista para evitar errores con cuentas viejas
+          if (!guardado.mesesPremiados) guardado.mesesPremiados = [];
+          setDatosProgreso(guardado);
+        }
       } catch (error) {
         console.error("Error al leer progreso:", error);
       } finally {
@@ -119,6 +125,31 @@ export default function useGestorProgreso() {
     return maxEstudios;
   };
 
+  // ★ LÓGICA AUTOMÁTICA DE DESBLOQUEO DE ANIMALITOS
+  useEffect(() => {
+    if (cargando) return;
+
+    const horasMes = calcularHorasMesActual();
+    const metaMes = parseFloat(datosProgreso.metaMensual);
+
+    // Si tiene meta mensual, ya la cumplió, y tiene menos de 12 animales coleccionados
+    if (metaMes > 0 && horasMes >= metaMes && (datosProgreso.mesesPremiados?.length || 0) < 12) {
+      const fecha = new Date();
+      // Creamos una firma única para este mes (ej: "2026-8")
+      const mesActualClave = `${fecha.getFullYear()}-${fecha.getMonth()}`;
+
+      // Si este mes exacto no está en la lista de premiados, lo agregamos
+      if (!datosProgreso.mesesPremiados.includes(mesActualClave)) {
+        soyElEmisor.current = true; // Forzamos a que se guarde en IndexedDB
+        setDatosProgreso(prev => ({
+          ...prev,
+          mesesPremiados: [...(prev.mesesPremiados || []), mesActualClave]
+        }));
+      }
+    }
+  }, [datosProgreso.registrosDiarios, datosProgreso.metaMensual, cargando]);
+
+
   // NUEVA FUNCIÓN PARA ESTABLECER HORAS EXACTAS (EDICIÓN Y GUARDADO EXPLÍCITO)
   const setHorasExactasHoy = (totalHoras) => {
     soyElEmisor.current = true;
@@ -178,6 +209,8 @@ export default function useGestorProgreso() {
         const json = JSON.parse(e.target.result);
         if (json.registrosDiarios) {
           soyElEmisor.current = true;
+          // Adaptación para backups viejos que no tenían animales
+          if (!json.mesesPremiados) json.mesesPremiados = [];
           setDatosProgreso(json);
           alert("¡Tu progreso ha sido restaurado con éxito!");
         } else {
@@ -191,6 +224,10 @@ export default function useGestorProgreso() {
     event.target.value = ''; 
   };
 
+  // ★ Determinamos qué animales mostrar según cuántos meses ha ganado
+  const cantidadDesbloqueados = datosProgreso.mesesPremiados?.length || 0;
+  const animalesDesbloqueados = LISTA_ANIMALES ? LISTA_ANIMALES.slice(0, cantidadDesbloqueados) : [];
+
   return {
     ...datosProgreso,
     cargandoProgreso: cargando,
@@ -199,11 +236,12 @@ export default function useGestorProgreso() {
     horasTotalesAño: obtenerHorasTotalesAñoServicio(),
     diasHastaAgosto: calcularDiasHastaAgosto(),
     mesesRestantes: calcularMesesRestantes(),
-    setHorasExactasHoy, // Exportamos la nueva función
+    setHorasExactasHoy, 
     setEstudiosHoy,
     actualizarMetas,
     fechaHoyStr: obtenerFechaHoyLocal(),
     exportarProgreso, 
-    importarProgreso  
+    importarProgreso,
+    animalesDesbloqueados // ★ Exportamos el arreglo de animalitos logrados
   };
 }

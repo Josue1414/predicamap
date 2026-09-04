@@ -1,6 +1,6 @@
 // src/componentes/CabeceraCongregacion.jsx
 import React, { useState, useEffect } from 'react';
-import { Menu, Sprout, Flower2, Gift, PartyPopper, WifiHigh, FileText } from 'lucide-react';
+import { Menu, Sprout, Flower2, Gift, PartyPopper, WifiHigh } from 'lucide-react';
 import useGestorProgreso from '../hooks/modulos/useGestorProgreso';
 
 const textosMotivacionales = {
@@ -22,7 +22,6 @@ const textosMotivacionales = {
   ]
 };
 
-// ★ FUNCIÓN AGREGADA: Convierte decimales (ej. 2.5) a formato de reloj (ej. 2:30 hrs)
 const formatearTiempoTexto = (horasDecimales) => {
   if (!horasDecimales || horasDecimales <= 0) return "0:00 hrs";
   const horas = Math.floor(horasDecimales);
@@ -35,15 +34,13 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
   const [textoActual, setTextoActual] = useState(null);
   const [conectado, setConectado] = useState(navigator.onLine);
 
-  // --- LÓGICA DE FECHAS PARA EL INFORME ---
   const fechaActual = new Date();
   const diaActual = fechaActual.getDate();
   const ultimoDiaDelMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0).getDate();
   
-  const esUltimoDia = diaActual === ultimoDiaDelMes;
+  const esFinDeMes = diaActual >= ultimoDiaDelMes - 2;
   const esPrimerosDias = diaActual >= 1 && diaActual <= 3;
-  const mostrarAvisoInforme = esUltimoDia || esPrimerosDias;
-  // ---------------------------------------
+  const mostrarAvisoInforme = esFinDeMes || esPrimerosDias;
 
   useEffect(() => {
     const manejarConexion = () => setConectado(true);
@@ -118,7 +115,7 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
           </button>
           
           <div className="flex flex-col truncate">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">PredicaMap 4.1</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">PredicaMap 4.3</span>
             <h1 className="text-lg font-black text-indigo-600 dark:text-indigo-400 truncate leading-tight">{nombreCongregacion}</h1>
           </div>
         </div>
@@ -152,7 +149,6 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
             {renderizarIcono()}
           </div>
           <div className="flex flex-col overflow-hidden w-full">
-            {/* ★ CAMBIO APLICADO: Formateamos horasMesActual y horasTotalesAño ★ */}
             <div className="flex items-center w-full truncate text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 leading-none">
               Horas en el mes: {formatearTiempoTexto(horasMesActual)} {tieneMetaAnual && `- Acumuladas: ${formatearTiempoTexto(horasTotalesAño)}`} <span className="text-indigo-500 ml-1 shrink-0">— {textoActual.cita}</span>
             </div>
@@ -163,15 +159,15 @@ export default function CabeceraCongregacion({ nombreCongregacion, alAbrirMenu, 
         </div>
       )}
 
-      {/* --- FRANJA DE AVISO DE INFORME EN EL HEADER --- */}
       {mostrarAvisoInforme && (
-        <div className={`px-4 py-1.5 flex items-center justify-center gap-2 shadow-inner border-t ${esUltimoDia ? 'bg-indigo-100 border-indigo-200 text-indigo-700 dark:bg-indigo-900/50 dark:border-indigo-800 dark:text-indigo-300' : 'bg-emerald-100 border-emerald-200 text-emerald-700 dark:bg-emerald-900/50 dark:border-emerald-800 dark:text-emerald-300'}`}>
-          <FileText size={12} className="shrink-0" />
-          <span className="text-[10px] font-bold tracking-wide uppercase truncate">
-            {esUltimoDia 
-              ? '¡Excelente mes! Prepara tu informe para entregarlo.' 
-              : '¡Iniciamos nuevo mes! ¿Ya entregaste tu informe anterior?'}
+        <div className="w-full border-t border-b border-amber-300/50 bg-amber-50/40 dark:border-amber-600/30 dark:bg-amber-900/20 backdrop-blur-md px-4 py-1.5 flex items-center justify-center gap-2 animate-pulse">
+          <span className="text-base shrink-0 leading-none drop-shadow-sm">✨</span>
+          <span className="text-[10px] sm:text-xs font-medium text-amber-700 dark:text-amber-400 tracking-wider uppercase truncate">
+            {esFinDeMes 
+              ? 'Cierre de mes: Prepara tu informe' 
+              : 'Nuevo mes: ¿Ya enviaste tu informe?'}
           </span>
+          <span className="text-base shrink-0 leading-none drop-shadow-sm">📝</span>
         </div>
       )}
     </div>

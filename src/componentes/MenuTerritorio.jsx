@@ -1,4 +1,3 @@
-// src/componentes/MenuTerritorio.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utilidades/clienteSupabase';
 import { X, CheckCircle2, RefreshCcw, Save, Map, CalendarCheck, History, ChevronDown } from 'lucide-react';
@@ -28,7 +27,6 @@ export default function MenuTerritorio({
     const cargarHistorial = async () => {
       setCargandoHistorial(true);
       
-      // RESTAURADO: Leemos de logs_actividad para recuperar todo tu historial viejo
       const { data } = await supabase
         .from('logs_actividad')
         .select('creado_en')
@@ -60,7 +58,8 @@ export default function MenuTerritorio({
 
   if (!territorio) return null;
 
-  const casasDeEstaSeccion = edificios.filter(e => e.seccion_id === territorio.id);
+  // Ignorar los puntos en estado 'no_responde' para el cálculo
+  const casasDeEstaSeccion = edificios.filter(e => e.seccion_id === territorio.id && e.estado !== 'no_responde');
   const totalCasas = casasDeEstaSeccion.length;
   const casasCompletadas = casasDeEstaSeccion.filter(e => e.estado === 'completado').length;
   
@@ -71,7 +70,8 @@ export default function MenuTerritorio({
     porcentaje = territorio.estado === 'completado' ? 100 : 0;
   }
 
-  const estaTerminadoOficialmente = territorio.estado === 'completado';
+  const faltanCasas = totalCasas > 0 && casasCompletadas < totalCasas;
+  const estaTerminadoOficialmente = territorio.estado === 'completado' && !faltanCasas;
   const esCapitanYSuperior = perfilUsuario?.rol === 'Capitán' || perfilUsuario?.rol === 'Administrador' || perfilUsuario?.rol === 'Administrador Mayor';
 
   const manejarGuardar = () => {
@@ -221,7 +221,7 @@ export default function MenuTerritorio({
               }
             </button>
 
-            {esCapitanYSuperior && porcentaje > 0 && (
+            {esCapitanYSuperior && (porcentaje > 0 || territorio.estado === 'completado') && (
               <button 
                 onClick={() => { alReiniciar(territorio.id); alCerrar(); }} 
                 className="flex justify-center items-center gap-1.5 py-3 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl font-bold text-sm hover:bg-orange-100 transition-colors border border-orange-200 dark:border-orange-800"

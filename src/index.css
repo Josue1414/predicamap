@@ -18,3 +18,18 @@
   background: #475569;
   border-radius: 2px;
 }
+
+.text-shadow-retro {
+  text-shadow: 4px 4px 0px #3e2723;
+}
+.pixelated {
+  image-rendering: pixelated;
+}
+/* Ocultar la barra de scroll pero permitir el deslizamiento táctil */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -1,4 +1,3 @@
-// src/hooks/modulos/useGestorTerritorios.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../../utilidades/clienteSupabase';
 import useEstadoGlobal from './useEstadoGlobal';
@@ -29,7 +28,6 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
   const cargarTerritoriosYCasas = async (esCargaInicial = false) => {
     if (!targetCongId) return;
 
-    // 1. Cargamos el respaldo local primero
     const secLocales = localStorage.getItem(`predicamap_secciones_${targetCongId}`);
     const ediLocales = localStorage.getItem(`predicamap_edificios_${targetCongId}`);
 
@@ -43,21 +41,17 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     }
 
     if (!navigator.onLine) {
-      console.log("Modo sin conexión: Territorios cargados desde memoria local.");
       return; 
     }
 
     setCargandoTerritorios(true);
     try {
-      // Extraemos la variable "error" (la llamaremos errorSecs)
       const { data: secs, error: errorSecs } = await supabase.from('secciones')
         .select('*')
         .eq('congregacion_id', targetCongId)
         .order('orden', { ascending: true })
         .order('creado_en', { ascending: true });
 
-      // 🛡️ EL BLINDAJE: Si Supabase reporta un error de red, lanzamos la excepción.
-      // Esto nos manda directo al "catch" y EVITA que se borre el mapa local.
       if (errorSecs) throw errorSecs;
 
       const formateadas = (secs || []).map(item => ({
@@ -69,19 +63,13 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
 
       const secIds = formateadas.map(s => s.id);
       if (secIds.length > 0) {
-        // Hacemos lo mismo con los edificios
         const { data: edis, error: errorEdis } = await supabase.from('edificios').select('*').in('seccion_id', secIds);
-        
-        // 🛡️ BLINDAJE PARA CASAS
         if (errorEdis) throw errorEdis;
-        
         setEdificios(edis || []);
       } else { 
         setEdificios([]); 
       }
     } catch (error) { 
-      // Al caer aquí, el código simplemente ignora la descarga fallida
-      // y la pantalla SE QUEDA con los datos locales que ya habíamos cargado arriba.
       console.error("Error al descargar de Supabase. Conservando datos locales.", error); 
     } finally { 
       setCargandoTerritorios(false); 
@@ -254,8 +242,12 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     if (!confirmado || !navigator.onLine) return;
 
     setCargandoTerritorios(true);
+
+    // Actualización local inmediata
+    setSecciones(prev => prev.map(s => s.id === id ? { ...s, estado: 'pendiente' } : s));
+    setEdificios(prev => prev.map(e => (e.seccion_id === id && e.estado !== 'no_responde') ? { ...e, estado: 'pendiente' } : e));
+
     await supabase.from('secciones').update({ estado: 'pendiente' }).eq('id', id);
-    
     await supabase.from('edificios')
       .update({ estado: 'pendiente' })
       .eq('seccion_id', id)
@@ -274,14 +266,23 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     if (!confirmado || !navigator.onLine) return;
 
     setCargandoTerritorios(true);
+
+    // Actualización local inmediata
+    setSecciones(prev => prev.map(s => s.id === id ? { ...s, estado: 'completado' } : s));
+    setEdificios(prev => prev.map(e => (e.seccion_id === id && e.estado !== 'no_responde') ? { ...e, estado: 'completado' } : e));
+
     await supabase.from('secciones').update({ estado: 'completado' }).eq('id', id);
-    
     await supabase.from('edificios')
       .update({ estado: 'completado' })
       .eq('seccion_id', id)
       .neq('estado', 'no_responde');
       
     setCargandoTerritorios(false);
+  };
+
+  const cambiarEstadoTerritorioBD = async (id, nuevoEstado) => {
+    setSecciones(prev => prev.map(s => s.id === id ? { ...s, estado: nuevoEstado } : s));
+    if (navigator.onLine) await supabase.from('secciones').update({ estado: nuevoEstado }).eq('id', id);
   };
 
   const actualizarNotasSeccionEnBD = async (id, notas) => {
@@ -295,16 +296,38 @@ export default function useGestorTerritorios(targetCongId, esSimulacion, onCentr
     }
   };
 
-  const crearSeccionBD = async (data) => { if(navigator.onLine) await supabase.from('secciones').insert([data]); }
-  const crearEdificioBD = async (data) => { if(navigator.onLine) await supabase.from('edificios').insert([data]); }
-  const actualizarEdificioBD = async (id, data) => { if(navigator.onLine) await supabase.from('edificios').update(data).eq('id', id); }
-  const eliminarEdificioBD = async (id) => { if(navigator.onLine) await supabase.from('edificios').delete().eq('id', id); }
+  const crearSeccionBD = async (data) => { 
+    if(navigator.onLine) await supabase.from('secciones').insert([data]); 
+  };
+
+  const crearEdificioBD = async (data) => { 
+    if(navigator.onLine) {
+      const { data: nuevo } = await supabase.from('edificios').insert([data]).select();
+      if (nuevo && nuevo[0]) {
+        setEdificios(prev => [...prev, nuevo[0]]);
+      }
+    } 
+  };
+
+  const actualizarEdificioBD = async (id, data) => { 
+    if(navigator.onLine) {
+      setEdificios(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));
+      await supabase.from('edificios').update(data).eq('id', id);
+    } 
+  };
+
+  const eliminarEdificioBD = async (id) => { 
+    if(navigator.onLine) {
+      setEdificios(prev => prev.filter(e => e.id !== id));
+      await supabase.from('edificios').delete().eq('id', id);
+    } 
+  };
 
   return {
     secciones, edificios, cargandoTerritorios, cargarTerritoriosYCasas,
     eliminarSeccionEnBD, asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD, completarTerritorioEntero,
     crearSeccionBD, crearEdificioBD, actualizarEdificioBD, eliminarEdificioBD, reordenarTerritorioEnBD,
-    actualizarDetallesSeccionEnBD,
+    actualizarDetallesSeccionEnBD, cambiarEstadoTerritorioBD,
     modoAhorro, reactivarTiempoReal
   };
 }

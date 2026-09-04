@@ -155,15 +155,50 @@ export default function useEstadoGlobal() {
     if (error) {
       await mostrarAlerta(
         "Error de eliminación", 
-        `No se pudo eliminar al usuario. Es posible que las políticas de seguridad (RLS) de Supabase estén bloqueando la acción.\n\nDetalle técnico: ${error.message}`, 
+        `No se pudo eliminar al usuario. Es posible que las políticas de seguridad (RLS) estén bloqueando la acción.\n\nDetalle: ${error.message}`, 
         "danger"
       );
-      console.error("Error al eliminar usuario:", error);
     } else {
       await refrescarDatosCongregacion();
     }
     
     setCargandoGlobal(false);
+  };
+
+  // ★ NUEVA FUNCIÓN PARA ACTUALIZAR PERMISOS INDIVIDUALES (Perfiles)
+  const actualizarPermisoMiembroBD = async (idMiembro, campo, valor) => {
+    if (!navigator.onLine) {
+      await mostrarAlerta("Sin conexión", "Necesitas internet para cambiar permisos.", "warning");
+      return;
+    }
+
+    // Actualización optimista
+    setUsuariosEquipo(prev => prev.map(u => u.id === idMiembro ? { ...u, [campo]: valor } : u));
+    
+    const { error } = await supabase.from('perfiles').update({ [campo]: valor }).eq('id', idMiembro);
+    
+    if (error) {
+      console.error("Error al actualizar permiso:", error);
+      await refrescarDatosCongregacion(); // Revertir si falla
+    }
+  };
+
+  // ★ NUEVA FUNCIÓN PARA ACTUALIZAR PERMISOS GENERALES (Congregación)
+  const actualizarPermisoCongregacionBD = async (campo, valor) => {
+    if (!navigator.onLine || !congregacionActiva) {
+      await mostrarAlerta("Sin conexión", "Necesitas internet para cambiar permisos.", "warning");
+      return;
+    }
+
+    // Actualización optimista
+    setCongregacionActiva(prev => ({ ...prev, [campo]: valor }));
+
+    const { error } = await supabase.from('congregaciones').update({ [campo]: valor }).eq('id', congregacionActiva.id);
+    
+    if (error) {
+      console.error("Error al actualizar permiso general:", error);
+      await refrescarDatosCongregacion(); // Revertir si falla
+    }
   };
 
   const crearLinkInvitacion = (rolDestino, esNuevaCongregacion = false) => {
@@ -175,7 +210,6 @@ export default function useEstadoGlobal() {
       const enlaceCorto = congregacionActiva?.enlace_corto || 'central-demo';
       const payloadCifrado = btoa(encodeURIComponent(JSON.stringify({ v: enlaceCorto })));
       const linkPublico = `${urlBase}/v/${payloadCifrado}`;
-      // ★ Mensaje directo y breve para publicadores
       return `https://api.whatsapp.com/send?text=${encodeURIComponent(`Territorios de congregación${nombreCong}:\n\n${linkPublico}`)}`;
     }
     
@@ -183,7 +217,6 @@ export default function useEstadoGlobal() {
       r: rolDestino, nc: esNuevaCongregacion ? 1 : 0, c: esNuevaCongregacion ? null : targetCongId
     })));
     
-    // ★ Mensaje directo para otros roles (Capitán, Admin, etc.)
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(`Invitación para ${rolDestino} - Congregación${nombreCong}:\n\n${urlBase}/registro?key=${payloadCifrado}`)}`;
   };
 
@@ -191,6 +224,8 @@ export default function useEstadoGlobal() {
     perfilUsuario, listaCongregaciones, congregacionContextoId, setCongregacionContextoId,
     congregacionActiva, usuariosEquipo, cargandoGlobal, targetCongId,
     guardarNombreCongregacionBD, eliminarCongregacionMasterBD, eliminarMiembroEquipo, crearLinkInvitacion,
-    actualizarNombrePerfilBD
+    actualizarNombrePerfilBD, 
+    actualizarPermisoMiembroBD, // Exportado
+    actualizarPermisoCongregacionBD // Exportado
   };
 }
