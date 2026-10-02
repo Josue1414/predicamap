@@ -23,10 +23,13 @@ import useGestorS13 from '../hooks/modulos/useGestorS13';
 import CelebracionMeta from '../componentes/CelebracionMeta';
 
 import VistaArca from '../componentes/VistaArca';
+import MotorJuego from '../juego/MotorJuego';
 import useGestorProgreso from '../hooks/modulos/useGestorProgreso';
+import SeccionRegistroS13 from '../componentes/menu-lateral/SeccionRegistroS13';
 
 import { useModoMapa, MODOS_MAPA } from '../context/ContextoModoMapa';
 import { useAlertas } from '../context/ContextoAlertas'; 
+import useEnfoqueCompartido from '../hooks/useEnfoqueCompartido';
 
 const verificarConexionReal = async () => {
   if (!navigator.onLine) return false;
@@ -46,6 +49,8 @@ export default function VistaDashboard() {
   const [menuAbierto, setMenuAbierto] = useState(false);
   
   const [mostrandoArca, setMostrandoArca] = useState(false);
+  const [mostrandoMinijuego, setMostrandoMinijuego] = useState(false); 
+  const [mostrandoS13, setMostrandoS13] = useState(false);
   const [mostrandoInforme, setMostrandoInforme] = useState(false);
   
   const [nombreCongregacionUI, setNombreCongregacionUI] = useState('Cargando...');
@@ -77,7 +82,7 @@ export default function VistaDashboard() {
     asignarTerritorioEnBD, reiniciarTerritorioEnBD, actualizarNotasSeccionEnBD,
     eliminarCongregacionMasterBD, targetCongId, actualizarNombrePerfilBD, reordenarTerritorioEnBD,
     modoAhorro, reactivarTiempoReal, actualizarDetallesSeccionEnBD, estiloMapa, alCambiarEstiloMapa,
-    actualizarPermisoMiembroBD, actualizarPermisoCongregacionBD // ★ Agregados aquí
+    actualizarPermisoMiembroBD, actualizarPermisoCongregacionBD
   } = useMapa();
 
   const { tachuelas, agregarTachuelaBD, eliminarTachuelaBD, editarTachuelaBD } = useGestorTachuelas(targetCongId);
@@ -368,8 +373,11 @@ export default function VistaDashboard() {
   const mostrarModalBienvenida = congregacionActiva?.nombre === 'Nueva Congregación';
 
   const manejarBotonAtras = useCallback(async (hayModalesAbiertos = false) => {
-    if (mostrandoArca) {
+    if (mostrandoArca || mostrandoMinijuego || mostrandoS13 || mostrandoInforme) {
       setMostrandoArca(false);
+      setMostrandoMinijuego(false);
+      setMostrandoS13(false);
+      setMostrandoInforme(false);
       return false;
     }
 
@@ -420,13 +428,26 @@ export default function VistaDashboard() {
     return confirmarSalir;
     
   }, [
-    mostrandoArca, 
+    mostrandoArca, mostrandoMinijuego, mostrandoS13, mostrandoInforme,
     menuAbierto, territorioSeleccionado, edificioSeleccionado, tachuelaLeida, revisitaLectura, revisitaEditando, revisitaExpandida,
     enModoTrazado, enModoEdificios, enModoTachuela, enModoRevisita, tachuelaTemporal, marcadorRevisitaTemporal,
     cancelarTrazadoYSalir, limpiarModo, mostrarConfirmacion
   ]);
 
   useBotonAtrasCelular(manejarBotonAtras);
+
+  if (congregacionActiva?.enlace_corto) {
+    localStorage.setItem('pm_enlace_corto', congregacionActiva.enlace_corto);
+  }
+
+  useEnfoqueCompartido({
+    secciones,
+    tachuelas, // Aquí le pasamos "tachuelas" tal cual (nombre del hook)
+    alVolarATerritorio: volarATerritorio,
+    alSeleccionarTachuela: setTachuelaLeida,
+    setCoordenadasActuales,
+    setZoomActual
+  });
 
   return (
     <div className="w-screen h-[100dvh] overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
@@ -435,6 +456,20 @@ export default function VistaDashboard() {
         <VistaArca 
           animalesDesbloqueados={animalesDesbloqueados} 
           alCerrar={() => setMostrandoArca(false)} 
+        />
+      )}
+
+      {mostrandoMinijuego && (
+        <MotorJuego 
+          alCerrar={() => setMostrandoMinijuego(false)} 
+        />
+      )}
+
+      {mostrandoS13 && (
+        <SeccionRegistroS13
+          congregacionId={targetCongId}
+          territoriosGuardados={secciones}
+          alCerrar={() => setMostrandoS13(false)}
         />
       )}
 
@@ -503,6 +538,10 @@ export default function VistaDashboard() {
           setMenuAbierto(false); 
           setTimeout(() => setMostrandoArca(true), 300); 
         }}
+        alAbrirS13={() => {
+          setMenuAbierto(false);
+          setTimeout(() => setMostrandoS13(true), 300);
+        }}
         alAbrirInforme={() => {
           setMenuAbierto(false);
           setTimeout(() => setMostrandoInforme(true), 300);
@@ -533,7 +572,9 @@ export default function VistaDashboard() {
         alCerrar={() => setTerritorioSeleccionado(null)} 
         alCompletar={manejarCompletarTerritorio} 
         alReiniciar={manejarReiniciarTerritorio} 
-        alGuardarNotas={actualizarNotasSeccionEnBD} 
+        alGuardarNotas={actualizarNotasSeccionEnBD}
+        nombreCongregacion={congregacionActiva?.nombre}
+        enlaceCorto={congregacionActiva?.enlace_corto}
       />
 
       {enModoTrazado && !mostrarModalBienvenida && <ControlesTrazado puntosContados={puntosTrazadoActual.length} alDeshacer={deshacerUltimoPunto} alLimpiar={limpiarTrazadoCompleto} alCancelar={cancelarTrazadoYSalir} alGuardar={guardarNuevaSeccionEnBD} />}
@@ -609,7 +650,18 @@ export default function VistaDashboard() {
       </main>
 
       {tachuelaTemporal && <ModalFormularioTachuela alGuardar={manejarGuardarTachuela} alCancelar={() => { setTachuelaTemporal(null); limpiarModo(); }} />}
-      {tachuelaLeida && <ModalInfoTachuela tachuela={tachuelaLeida} puedeEliminar={puedeCrearTachuela} alEliminar={() => manejarEliminarTachuela(tachuelaLeida.id, tachuelaLeida.titulo)} alEditar={manejarEditarTachuela} alCerrar={() => setTachuelaLeida(null)} />}
+      
+      {tachuelaLeida && (
+        <ModalInfoTachuela 
+          tachuela={tachuelaLeida} 
+          puedeEliminar={puedeCrearTachuela} 
+          alEliminar={() => manejarEliminarTachuela(tachuelaLeida.id, tachuelaLeida.titulo)} 
+          alEditar={manejarEditarTachuela} 
+          alCerrar={() => setTachuelaLeida(null)} 
+          nombreCongregacion={congregacionActiva?.nombre}
+          enlaceCorto={congregacionActiva?.enlace_corto}
+        />
+      )}
 
       {(marcadorRevisitaTemporal || revisitaEditando) && (
         <ModalFormularioRevisita marcadorEditando={revisitaEditando}

@@ -1,6 +1,6 @@
 // src/componentes/menu-lateral/index.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Settings, ArrowLeft, Edit2, Save, Sun, Moon, Download, CheckCircle, FileText, ChevronRight } from 'lucide-react';
+import { X, Settings, ArrowLeft, Edit2, Save, Sun, Moon, Download, CheckCircle, FileText, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '../../utilidades/clienteSupabase';
 import { useAlertas } from '../../context/ContextoAlertas'; 
 
@@ -12,7 +12,6 @@ import SeccionTerritorios from './SeccionTerritorios';
 import SeccionDibujarTerritorio from './SeccionDibujarTerritorio';
 import SeccionSembrarCasas from './SeccionSembrarCasas';
 import SeccionDirectorio from './SeccionDirectorio';
-import SeccionRegistroS13 from './SeccionRegistroS13';
 import SeccionMiPerfil from './SeccionMiPerfil';
 import SeccionHistorial from './SeccionHistorial';
 import SeccionMiProgreso from './SeccionMiProgreso';
@@ -48,6 +47,7 @@ export default function MenuLateral({
   alCambiarEstiloMapa,
   alAbrirArca, 
   alAbrirInforme,
+  alAbrirS13, // NUEVO PROP PARA ABRIR S13
   congregacionActiva,
   alActualizarPermisoMiembro,
   alActualizarPermisoCongregacion
@@ -137,8 +137,6 @@ export default function MenuLateral({
   const esAdminOperativo = perfilUsuario?.rol === 'Administrador' || (esAdminMayor && congregacionContextoId);
   const esCapitanYSuperior = esAdminOperativo || perfilUsuario?.rol === 'Capitán';
   const esPrecursorYSuperior = esCapitanYSuperior || perfilUsuario?.rol === 'Precursor';
-
-  // ★ LÓGICA DE PERMISO PARA CAPITANES: ¿Pueden sembrar casas?
   const puedeSembrar = esAdminOperativo || (perfilUsuario?.rol === 'Capitán' && congregacionActiva?.permiso_capitanes_sembrar !== false);
 
   const territoriosOrdenados = seccionesGuardadas || [];
@@ -199,7 +197,6 @@ export default function MenuLateral({
               )}
 
               <div className="mt-3 flex items-center justify-between gap-2">
-                
                 {(!esAdminMayor || (esAdminMayor && congregacionContextoId)) && (
                   <div className="flex-1 overflow-hidden">
                     {editandoCong && esAdminOperativo ? (
@@ -238,7 +235,6 @@ export default function MenuLateral({
                 </button>
                 
               </div>
-
             </div>
             
             <button onClick={alCerrar} className="p-1.5 shrink-0 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500"><X size={20} /></button>
@@ -308,7 +304,6 @@ export default function MenuLateral({
                 alCambiarNotas={alCambiarNotas} alEmpezarATrazar={alEmpezarATrazar}
                 acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar}
               />
-              {/* ★ Aquí se aplica el permiso de siembra a los capitanes */}
               <SeccionSembrarCasas visible={puedeSembrar} alActivarModoEdificios={alActivarModoEdificios} acordeonActivo={acordeonActivo} alternarAcordeon={alternarAcordeon} alCerrar={alCerrar} />
             </>
           )}
@@ -317,7 +312,6 @@ export default function MenuLateral({
             <>
               <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 mt-6 px-1">Administración Local</div>
               
-              {/* ★ Aquí se pasan las variables a SeccionDirectorio */}
               <SeccionDirectorio 
                 visible={esPrecursorYSuperior} esAdminOperativo={esAdminOperativo} usuariosEquipo={usuariosEquipo}
                 perfilUsuario={perfilUsuario} alEliminarMiembro={alEliminarMiembro} alCrearLinkInvitacion={alCrearLinkInvitacion}
@@ -327,15 +321,19 @@ export default function MenuLateral({
                 alActualizarPermisoCongregacion={alActualizarPermisoCongregacion}
               />
 
+              {/* NUEVO BOTON PARA S-13 EN PANTALLA COMPLETA */}
               {esAdminOperativo && (
-                <SeccionRegistroS13 
-                  acordeonActivo={acordeonActivo} 
-                  alternarAcordeon={alternarAcordeon} 
-                  congregacionId={targetCongId} 
-                  territoriosGuardados={territoriosOrdenados}
-                />
+                <button
+                  onClick={alAbrirS13}
+                  className="w-full mt-2 p-3 flex justify-between items-center rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 shadow-sm transition-colors"
+                >
+                  <span className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                    <FileSpreadsheet size={16} className="text-emerald-500"/> Registro S-13
+                  </span>
+                  <ChevronRight size={16} className="text-slate-400" />
+                </button>
               )}
-              {/* ACCESO A INFORMES INDIVIDUAL O ADMIN */}
+
               {(esAdminOperativo || perfilUsuario?.permiso_informes === true) && (
                 <button
                   onClick={alAbrirInforme}

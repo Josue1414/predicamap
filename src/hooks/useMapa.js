@@ -1,3 +1,4 @@
+// src/hooks/useMapa.js
 import useEstadoGlobal from './modulos/useEstadoGlobal';
 import useControlesUI from './modulos/useControlesUI';
 import useGestorTerritorios from './modulos/useGestorTerritorios';
@@ -37,8 +38,14 @@ export default function useMapa() {
     global.targetCongId, 
     !!global.congregacionContextoId, 
     (coordenadas) => {
-      ui.setCoordenadasActuales(coordenadas);
-      ui.setZoomActual(15); 
+      // Leemos la URL en el instante exacto en que los territorios terminan de cargar
+      const urlParams = new URLSearchParams(window.location.search);
+      
+      // Solo hace el zoom automático si NO hay un enlace de compartir activo
+      if (!urlParams.has('t') && !urlParams.has('pin')) {
+        ui.setCoordenadasActuales(coordenadas);
+        ui.setZoomActual(15); 
+      }
     }
   );
   

@@ -14,6 +14,7 @@ export const useInformes = () => {
 
   const [alertaEliminar, setAlertaEliminar] = useState(null);
   const [alertaHoras, setAlertaHoras] = useState(false);
+  const [alertaReiniciar, setAlertaReiniciar] = useState(false); // NUEVO
   const [horasTemporales, setHorasTemporales] = useState('');
 
   const [editandoId, setEditandoId] = useState(null);
@@ -169,7 +170,51 @@ export const useInformes = () => {
     await localforage.setItem('pm_informes_servicio', nuevos);
   };
 
-  // Motor central de cálculos
+  // NUEVO: Preparar para el siguiente mes (Poner horas y estudios en cero)
+  const prepararNuevoMes = async () => {
+    const nuevosInformes = informes.map(i => ({
+      ...i,
+      horas: i.tipo !== 'Publicador' ? '' : 'N/A',
+      participo: false,
+      estudios: 0
+    }));
+    setInformes(nuevosInformes);
+    await localforage.setItem('pm_informes_servicio', nuevosInformes);
+    setAlertaReiniciar(false);
+  };
+
+  // NUEVO: Exportar Backup JSON
+  const exportarBackup = () => {
+    const dataStr = JSON.stringify(informes);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Backup_Publicadores_${new Date().toLocaleDateString()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // NUEVO: Importar Backup JSON
+  const importarBackup = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (Array.isArray(data)) {
+          setInformes(data);
+          await localforage.setItem('pm_informes_servicio', data);
+        }
+      } catch (err) {
+        console.error("Error al leer el archivo de backup.");
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = null; // Reset input
+  };
+
   const procesarDatos = () => {
     let totalHoras = 0, totalEstudios = 0, participaron = 0;
     let prCount = 0, prHoras = 0, prEstudios = 0;
@@ -218,7 +263,6 @@ export const useInformes = () => {
     sheet.getCell('A1').font = { size: 16, bold: true, color: { argb: 'FF4338CA' } };
     sheet.mergeCells('A1:F1');
 
-    // Panel 1: Congregación
     sheet.getCell('A3').value = 'Total de la Congregación';
     sheet.getCell('A3').font = { bold: true };
     sheet.getCell('A4').value = 'Publicadores listados:'; sheet.getCell('B4').value = stats.informesProcesados.length;
@@ -228,7 +272,6 @@ export const useInformes = () => {
     sheet.getCell('A7').value = 'Total Horas:'; sheet.getCell('B7').value = stats.totalHoras;
     sheet.getCell('A8').value = 'Total Estudios:'; sheet.getCell('B8').value = stats.totalEstudios;
 
-    // Panel 2: Precursores
     sheet.getCell('D3').value = 'Precursores';
     sheet.getCell('D3').font = { bold: true };
     sheet.getCell('D4').value = 'Regulares (PR):'; sheet.getCell('E4').value = stats.prCount;
@@ -240,13 +283,11 @@ export const useInformes = () => {
     sheet.getCell('D10').value = 'Total Horas (PR+PA):'; sheet.getCell('E10').value = stats.totalHorasPrecursores;
     sheet.getCell('E10').font = { bold: true };
 
-    // Panel 3: Publicadores
     sheet.getCell('G3').value = 'Publicadores';
     sheet.getCell('G3').font = { bold: true };
     sheet.getCell('G4').value = 'Publicadores:'; sheet.getCell('H4').value = stats.pubCount;
     sheet.getCell('G5').value = 'Estudios Pub:'; sheet.getCell('H5').value = stats.pubEstudios;
 
-    // Tabla de Registros
     sheet.getRow(12).values = ['Nombre', 'Tipo', 'Meta (Hrs)', 'Horas', 'Participó', 'Estudios'];
     sheet.getRow(12).font = { bold: true };
     sheet.getRow(12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
@@ -256,7 +297,6 @@ export const useInformes = () => {
       const row = sheet.getRow(currentRow);
       row.values = [i.nombre, i.tipoCorto, i.meta, i.horas, i.participoReal ? 'Sí' : 'No', i.estudios];
 
-      // Fondo rojo suave para inactivos
       if (!i.participoReal) {
         row.eachCell(cell => {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
@@ -264,19 +304,18 @@ export const useInformes = () => {
         });
       }
 
-      // Estilo de celda "Tipo" (Simulando la pastilla)
       const tipoCell = row.getCell(2);
       if (i.tipoCorto === 'REGULAR') {
-        tipoCell.font = { color: { argb: 'FFA16207' }, bold: true }; // Texto Oro/Café
+        tipoCell.font = { color: { argb: 'FFA16207' }, bold: true };
       } else if (i.tipoCorto === 'AUXILIAR') {
-        tipoCell.font = { color: { argb: 'FF475569' }, bold: true }; // Texto Plata
+        tipoCell.font = { color: { argb: 'FF475569' }, bold: true };
       }
 
       currentRow++;
     });
 
     sheet.columns.forEach(col => { col.width = 16; });
-    sheet.getColumn(1).width = 35; // Expandir columna de nombre
+    sheet.getColumn(1).width = 35; 
 
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `${tituloMes || 'Informes_Servicio'}.xlsx`);
@@ -286,18 +325,14 @@ export const useInformes = () => {
     const stats = procesarDatos();
     const doc = new jsPDF();
 
-    // 1. Título principal
     doc.setFontSize(18);
-    doc.setTextColor(67, 56, 202); // Azul indigo
+    doc.setTextColor(67, 56, 202); 
     doc.setFont("helvetica", "bold");
     doc.text(tituloMes || 'Informes de Servicio', 14, 20);
 
-    // ==========================================
-    // 2. CAJAS DE RESUMEN SÓLIDAS
-    // ==========================================
     const drawBox = (x, y, w, h, title) => {
-      doc.setDrawColor(203, 213, 225); // Borde
-      doc.setFillColor(248, 250, 252); // Fondo
+      doc.setDrawColor(203, 213, 225); 
+      doc.setFillColor(248, 250, 252); 
       doc.roundedRect(x, y, w, h, 2, 2, 'FD');
       
       doc.setFontSize(11);
@@ -320,15 +355,13 @@ export const useInformes = () => {
       doc.text(`${value}`, x + 54, y, { align: 'right' });
     };
 
-    // CAJA 1: Congregación
     drawBox(14, 28, 58, 38, "Total Congregación");
     drawLine("Publicadores listados:", stats.informesProcesados.length, 14, 42);
     drawLine("Participaron:", stats.participaron, 14, 47);
-    drawLine("No Participaron:", stats.noParticiparon, 14, 52, [225, 29, 72]); // Rojo
+    drawLine("No Participaron:", stats.noParticiparon, 14, 52, [225, 29, 72]); 
     drawLine("Total Horas:", stats.totalHoras, 14, 57);
     drawLine("Total Estudios:", stats.totalEstudios, 14, 62);
 
-    // CAJA 2: Precursores
     drawBox(76, 28, 58, 48, "Precursores");
     drawLine("Regulares (PR):", stats.prCount, 76, 42);
     drawLine("Horas PR:", stats.prHoras, 76, 47);
@@ -338,14 +371,10 @@ export const useInformes = () => {
     drawLine("Estudios PA:", stats.paEstudios, 76, 69);
     drawLine("Total Horas (PR+PA):", stats.totalHorasPrecursores, 76, 74, [67, 56, 202]);
 
-    // CAJA 3: Publicadores
     drawBox(138, 28, 58, 23, "Publicadores");
     drawLine("Publicadores:", stats.pubCount, 138, 42);
     drawLine("Estudios Pub:", stats.pubEstudios, 138, 47);
 
-    // ==========================================
-    // 3. TABLA PRINCIPAL
-    // ==========================================
     const tableData = stats.informesProcesados.map(i => [
       i.nombre,
       i.tipoCorto,
@@ -366,20 +395,18 @@ export const useInformes = () => {
         const rowData = stats.informesProcesados[data.row.index];
         if (!rowData) return;
 
-        // Fila en rojo tenue si NO participó
         if (!rowData.participoReal && data.section === 'body') {
           data.cell.styles.fillColor = [254, 242, 242]; 
           data.cell.styles.textColor = [225, 29, 72]; 
           data.cell.styles.fontStyle = 'bold';
         }
 
-        // Ajustar color de texto para las pastillas
         if (data.column.index === 1 && data.section === 'body') {
           if (rowData.tipoCorto === 'REGULAR') {
-            data.cell.styles.textColor = [161, 98, 7]; // Café/Dorado oscuro
+            data.cell.styles.textColor = [161, 98, 7]; 
             data.cell.styles.fontStyle = 'bold';
           } else if (rowData.tipoCorto === 'AUXILIAR') {
-            data.cell.styles.textColor = [71, 85, 105]; // Plateado
+            data.cell.styles.textColor = [71, 85, 105]; 
             data.cell.styles.fontStyle = 'bold';
           }
         }
@@ -388,14 +415,13 @@ export const useInformes = () => {
         const rowData = stats.informesProcesados[data.row.index];
         if (!rowData) return;
         
-        // Dibujar el borde exacto de la pastilla REGULAR/AUXILIAR
         if (data.column.index === 1 && data.section === 'body') {
           if (rowData.tipoCorto === 'REGULAR') {
-            doc.setDrawColor(234, 179, 8); // Borde Dorado
+            doc.setDrawColor(234, 179, 8); 
             doc.setLineWidth(0.3);
             doc.roundedRect(data.cell.x + 2, data.cell.y + 1.5, doc.getTextWidth('REGULAR') + 2, data.cell.height - 3, 1, 1);
           } else if (rowData.tipoCorto === 'AUXILIAR') {
-            doc.setDrawColor(148, 163, 184); // Borde Plateado
+            doc.setDrawColor(148, 163, 184); 
             doc.setLineWidth(0.3);
             doc.roundedRect(data.cell.x + 2, data.cell.y + 1.5, doc.getTextWidth('AUXILIAR') + 2, data.cell.height - 3, 1, 1);
           }
@@ -403,12 +429,12 @@ export const useInformes = () => {
       }
     });
 
-    // Guardado directo (Descarga directa del PDF sin abrir ventana web)
     doc.save(`${tituloMes || 'Informes_Servicio'}.pdf`);
   };
 
   return {
     informes, tituloMes, formularioRef, alertaEliminar, alertaHoras, horasTemporales,
+    alertaReiniciar, setAlertaReiniciar, // NUEVOS
     editandoId, nombre, tipo, metaAuxiliar, metaRegular, metaManual, participo,
     horas, tieneEstudios, cantidadEstudios,
     setAlertaEliminar, setAlertaHoras, setHorasTemporales, setNombre, setTipo,
@@ -416,6 +442,7 @@ export const useInformes = () => {
     setTieneEstudios, setCantidadEstudios,
     manejarCambioTitulo, validarNumero, bloquearTeclasInvalidas, limpiarFormulario,
     manejarGuardar, cargarParaEditar, confirmarEliminarDefinitivo, moverArriba,
-    moverAbajo, exportarExcel, exportarPDF
+    moverAbajo, exportarExcel, exportarPDF,
+    prepararNuevoMes, exportarBackup, importarBackup // NUEVOS
   };
 };

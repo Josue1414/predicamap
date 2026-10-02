@@ -1,6 +1,6 @@
 // src/componentes/ModalTachuela.jsx
 import React, { useState } from 'react';
-import { X, Trash2, MapPin, Loader2, Edit2, Save } from 'lucide-react'; 
+import { X, Trash2, MapPin, Loader2, Edit2, Save, Share2 } from 'lucide-react'; 
 import { useAlertas } from '../context/ContextoAlertas'; 
 
 export function ModalFormularioTachuela({ alGuardar, alCancelar }) {
@@ -87,13 +87,19 @@ export function ModalFormularioTachuela({ alGuardar, alCancelar }) {
   );
 }
 
-// ★ ACTUALIZADO PARA SOPORTAR EDICIÓN ★
-export function ModalInfoTachuela({ tachuela, puedeEliminar, alEliminar, alEditar, alCerrar }) {
+export function ModalInfoTachuela({ 
+  tachuela, 
+  puedeEliminar, 
+  alEliminar, 
+  alEditar, 
+  alCerrar, 
+  nombreCongregacion = 'Local',
+  enlaceCorto = ''
+}) {
   const [eliminando, setEliminando] = useState(false); 
-  const [editando, setEditando] = useState(false); // Estado para cambiar la vista
+  const [editando, setEditando] = useState(false); 
   const [guardando, setGuardando] = useState(false);
   
-  // Estados para los inputs de edición
   const [tituloEdit, setTituloEdit] = useState(tachuela.titulo);
   const [notasEdit, setNotasEdit] = useState(tachuela.notas || '');
 
@@ -124,12 +130,18 @@ export function ModalInfoTachuela({ tachuela, puedeEliminar, alEliminar, alEdita
     }
     setGuardando(true);
     try {
-      // Llamamos a la función que pasaremos desde el dashboard
       await alEditar(tachuela.id, { titulo: tituloEdit, notas: notasEdit });
-      setEditando(false); // Salimos del modo edición
+      setEditando(false); 
     } finally {
       setGuardando(false);
     }
+  };
+
+  const compartirWhatsApp = () => {
+    const enlace = enlaceCorto || localStorage.getItem('pm_enlace_corto') || '';
+    const linkCompartir = `${window.location.origin}/v/${enlace}?pin=${tachuela.id}`;
+    const msj = `📌 *Congregación ${nombreCongregacion}*\n\n👉 *Ir a la ubicación del aviso: ${tachuela.titulo}*\n${linkCompartir}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msj)}`, '_blank');
   };
 
   return (
@@ -189,7 +201,6 @@ export function ModalInfoTachuela({ tachuela, puedeEliminar, alEliminar, alEdita
             </>
           )}
 
-          {/* BOTONES ADAPTADOS AL MODO */}
           {editando ? (
             <div className="flex gap-2 mt-6">
               <button 
@@ -208,29 +219,37 @@ export function ModalInfoTachuela({ tachuela, puedeEliminar, alEliminar, alEdita
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2 mt-6">
+            <div className="flex flex-col gap-2 mt-6">
+              <button 
+                onClick={compartirWhatsApp}
+                className="w-full py-3.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] font-bold rounded-xl transition-colors flex justify-center items-center gap-2 border border-[#25D366]/30"
+              >
+                <Share2 size={16} /> Compartir por WhatsApp
+              </button>
+
               {puedeEliminar ? (
-                <>
-                  <button 
-                    onClick={() => setEditando(true)} 
-                    disabled={eliminando} 
-                    className="py-3.5 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
-                  >
-                    <Edit2 size={16} /> Editar
-                  </button>
+                <div className="flex gap-2">
                   <button 
                     onClick={manejarEliminar} 
                     disabled={eliminando} 
-                    className="py-3.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 font-bold rounded-xl transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
+                    className="px-4 py-3 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 font-bold rounded-xl transition-colors flex justify-center items-center disabled:opacity-50"
+                    title="Borrar Aviso"
                   >
-                    {eliminando ? <Loader2 size={16} className="animate-spin" /> : <><Trash2 size={16} /> Borrar</>}
+                    {eliminando ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
                   </button>
-                </>
+                  <button 
+                    onClick={() => setEditando(true)} 
+                    disabled={eliminando} 
+                    className="flex-1 py-3 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
+                  >
+                    <Edit2 size={16} /> Editar
+                  </button>
+                </div>
               ) : (
                 <button 
                   onClick={alCerrar} 
                   disabled={eliminando} 
-                  className="col-span-2 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors disabled:opacity-50"
+                  className="w-full py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors disabled:opacity-50"
                 >
                   Aceptar
                 </button>

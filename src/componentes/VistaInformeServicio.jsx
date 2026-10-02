@@ -1,11 +1,12 @@
 // src/componentes/VistaInformeServicio.jsx
-import React from 'react';
-import { X, Save, FileSpreadsheet, FileText, Trash2, Edit2, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react';
+import React, { useRef } from 'react';
+import { X, Save, FileSpreadsheet, FileText, Trash2, Edit2, AlertTriangle, ArrowUp, ArrowDown, Clock, Upload, Download, RefreshCcw } from 'lucide-react';
 import { useInformes } from '../hooks/useInformes';
 
 export default function VistaInformeServicio({ alCerrar }) {
   const {
     informes, tituloMes, formularioRef, alertaEliminar, alertaHoras, horasTemporales,
+    alertaReiniciar, setAlertaReiniciar,
     editandoId, nombre, tipo, metaAuxiliar, metaRegular, metaManual, participo,
     horas, tieneEstudios, cantidadEstudios,
     setAlertaEliminar, setAlertaHoras, setHorasTemporales, setNombre, setTipo,
@@ -13,10 +14,12 @@ export default function VistaInformeServicio({ alCerrar }) {
     setTieneEstudios, setCantidadEstudios,
     manejarCambioTitulo, validarNumero, bloquearTeclasInvalidas, limpiarFormulario,
     manejarGuardar, cargarParaEditar, confirmarEliminarDefinitivo, moverArriba,
-    moverAbajo, exportarExcel, exportarPDF
+    moverAbajo, exportarExcel, exportarPDF,
+    prepararNuevoMes, exportarBackup, importarBackup
   } = useInformes();
 
-  // Clases CSS puras para los Metales y Colores Estilizados
+  const fileInputRef = useRef(null);
+
   const claseOro = 'efecto-metalico bg-gradient-to-b from-[#e4c580] via-[#fff4cc] to-[#c2963e] text-[#4a3600] border border-[#a87b22] font-bold tracking-wide rounded-sm';
   const clasePlata = 'efecto-metalico bg-gradient-to-b from-[#c0c5cb] via-[#fdfdfd] to-[#949a9f] text-[#1e293b] border border-[#7a828a] font-bold tracking-wide rounded-sm';
 
@@ -28,12 +31,23 @@ export default function VistaInformeServicio({ alCerrar }) {
 
   const obtenerColorHoras = () => 'bg-purple-50 text-purple-700 border border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700/50 font-bold rounded-sm';
   const obtenerColorEstudios = () => 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-700/50 font-bold rounded-sm';
-  const obtenerColorMeta = () => 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/50 font-bold rounded-sm';
+  
+  const obtenerColorMetaLograda = (horasRealizadas, meta) => {
+    const h = parseInt(horasRealizadas) || 0;
+    const m = parseInt(meta) || 0;
+    if (h >= m && m > 0) {
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/50 font-bold rounded-sm';
+    }
+    return 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800/50 font-bold rounded-sm';
+  };
+
+  // Ocultar flechas numéricas (spinners) mediante clases de Tailwind
+  const inputNumeroClases = "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
   return (
     <div className="fixed inset-0 z-[5000] flex flex-col bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-2xl animate-in fade-in duration-300">
       
-      {/* Alerta Personalizada: Confirmar Eliminar */}
+      {/* Alerta: Confirmar Eliminar */}
       {alertaEliminar && (
         <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl max-w-sm w-full shadow-2xl border border-rose-200 dark:border-rose-900/50 animate-in zoom-in-95">
@@ -56,7 +70,30 @@ export default function VistaInformeServicio({ alCerrar }) {
         </div>
       )}
 
-      {/* Alerta Personalizada: Horas en Cero */}
+      {/* Alerta: Preparar Nuevo Mes */}
+      {alertaReiniciar && (
+        <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl max-w-sm w-full shadow-2xl border border-indigo-200 dark:border-indigo-900/50 animate-in zoom-in-95">
+            <div className="flex items-center gap-3 mb-3 text-indigo-600 dark:text-indigo-500">
+              <RefreshCcw size={24} />
+              <h4 className="text-lg font-black uppercase tracking-wider">Nuevo Mes</h4>
+            </div>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-6">
+              Se pondrán las horas, estudios y participación en cero para iniciar el registro del siguiente mes. Todos los publicadores y su estatus se mantendrán. ¿Deseas continuar?
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setAlertaReiniciar(false)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors">
+                Cancelar
+              </button>
+              <button onClick={prepararNuevoMes} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-colors">
+                Sí, iniciar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alerta: Horas en Cero */}
       {alertaHoras && (
         <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl max-w-sm w-full shadow-2xl border border-amber-200 dark:border-amber-900/50 animate-in zoom-in-95">
@@ -74,7 +111,7 @@ export default function VistaInformeServicio({ alCerrar }) {
               value={horasTemporales} 
               onChange={e => setHorasTemporales(validarNumero(e.target.value))} 
               placeholder="Escribe las horas..." 
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-4 text-xl font-black text-center text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-6"
+              className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-4 text-xl font-black text-center text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-6 ${inputNumeroClases}`}
             />
             <div className="flex gap-3">
               <button onClick={() => setAlertaHoras(false)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors">
@@ -91,7 +128,6 @@ export default function VistaInformeServicio({ alCerrar }) {
         </div>
       )}
       
-      {/* Cabecera Cristal */}
       <div className="relative z-20 bg-indigo-600/90 dark:bg-indigo-900/90 backdrop-blur-xl px-5 py-4 border-b border-indigo-500/30 shadow-md flex items-center justify-between shrink-0">
         <h2 className="text-white font-black uppercase tracking-widest text-sm flex items-center gap-2 drop-shadow-sm">
           <FileText size={18} /> Control de Informes
@@ -101,7 +137,6 @@ export default function VistaInformeServicio({ alCerrar }) {
         </button>
       </div>
 
-      {/* Aviso de Privacidad */}
       <div className="bg-amber-100/80 dark:bg-amber-900/50 backdrop-blur-md border-b border-amber-200/50 dark:border-amber-800/50 px-5 py-3 flex items-center justify-center gap-3 shrink-0">
         <AlertTriangle size={18} className="text-amber-700 dark:text-amber-400" />
         <span className="text-[11px] sm:text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest text-center">
@@ -111,9 +146,7 @@ export default function VistaInformeServicio({ alCerrar }) {
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:flex lg:gap-8 lg:justify-center">
         
-        {/* Formulario Estilizado Glassmorphism */}
         <div ref={formularioRef} className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-md mb-6 lg:mb-0 lg:w-1/3 h-max relative overflow-hidden">
-          
           <div className="relative z-10">
             {editandoId ? (
               <h3 className="font-serif italic text-indigo-600 dark:text-indigo-400 mb-6 text-3xl font-black tracking-wide border-b border-indigo-100 dark:border-indigo-900/50 pb-3">
@@ -166,7 +199,7 @@ export default function VistaInformeServicio({ alCerrar }) {
                     ))}
                   </div>
                   {metaAuxiliar === 'Manual' && (
-                    <input type="number" min="0" onKeyDown={bloquearTeclasInvalidas} value={metaManual} onChange={e => setMetaManual(validarNumero(e.target.value))} placeholder="Escribe la meta..." className="mt-3 w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-md p-3 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none shadow-sm" />
+                    <input type="number" min="0" onKeyDown={bloquearTeclasInvalidas} value={metaManual} onChange={e => setMetaManual(validarNumero(e.target.value))} placeholder="Escribe la meta..." className={`mt-3 w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-md p-3 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none shadow-sm ${inputNumeroClases}`} />
                   )}
                 </div>
               )}
@@ -182,7 +215,7 @@ export default function VistaInformeServicio({ alCerrar }) {
                     ))}
                   </div>
                   {metaRegular === 'Manual' && (
-                    <input type="number" min="0" onKeyDown={bloquearTeclasInvalidas} value={metaManual} onChange={e => setMetaManual(validarNumero(e.target.value))} placeholder="Escribe la meta..." className="mt-3 w-full bg-white dark:bg-slate-950 border border-yellow-300 dark:border-yellow-700 rounded-md p-3 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none shadow-sm" />
+                    <input type="number" min="0" onKeyDown={bloquearTeclasInvalidas} value={metaManual} onChange={e => setMetaManual(validarNumero(e.target.value))} placeholder="Escribe la meta..." className={`mt-3 w-full bg-white dark:bg-slate-950 border border-yellow-300 dark:border-yellow-700 rounded-md p-3 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none shadow-sm ${inputNumeroClases}`} />
                   )}
                 </div>
               )}
@@ -195,7 +228,7 @@ export default function VistaInformeServicio({ alCerrar }) {
               ) : (
                 <div>
                   <label className="block text-[10px] font-bold text-purple-500 dark:text-purple-400 uppercase tracking-widest mb-1.5">Horas realizadas</label>
-                  <input type="number" min="0" onKeyDown={bloquearTeclasInvalidas} value={horas} onChange={e => setHoras(validarNumero(e.target.value))} placeholder="Ej. 50" className="w-full bg-white dark:bg-slate-950 border border-purple-300 dark:border-purple-800/50 rounded-md p-3.5 text-lg font-black text-purple-600 dark:text-purple-400 focus:outline-none focus:border-purple-500 transition-all shadow-sm" />
+                  <input type="number" min="0" onKeyDown={bloquearTeclasInvalidas} value={horas} onChange={e => setHoras(validarNumero(e.target.value))} placeholder="Ej. 50" className={`w-full bg-white dark:bg-slate-950 border border-purple-300 dark:border-purple-800/50 rounded-md p-3.5 text-lg font-black text-purple-600 dark:text-purple-400 focus:outline-none focus:border-purple-500 transition-all shadow-sm ${inputNumeroClases}`} />
                 </div>
               )}
 
@@ -205,7 +238,7 @@ export default function VistaInformeServicio({ alCerrar }) {
                   <label htmlFor="chkEstudios" className="text-sm font-bold text-emerald-800 dark:text-emerald-400 select-none cursor-pointer">Condujo Estudios Bíblicos</label>
                 </div>
                 {tieneEstudios && (
-                  <input type="number" min="0" onKeyDown={bloquearTeclasInvalidas} value={cantidadEstudios} onChange={e => setCantidadEstudios(validarNumero(e.target.value))} placeholder="Cantidad de estudios" className="mt-4 w-full bg-white dark:bg-slate-950 border border-emerald-300 dark:border-emerald-700 rounded-md p-3 text-sm font-bold text-emerald-700 dark:text-emerald-400 outline-none shadow-sm focus:border-emerald-500" />
+                  <input type="number" min="0" onKeyDown={bloquearTeclasInvalidas} value={cantidadEstudios} onChange={e => setCantidadEstudios(validarNumero(e.target.value))} placeholder="Cantidad de estudios" className={`mt-4 w-full bg-white dark:bg-slate-950 border border-emerald-300 dark:border-emerald-700 rounded-md p-3 text-sm font-bold text-emerald-700 dark:text-emerald-400 outline-none shadow-sm focus:border-emerald-500 ${inputNumeroClases}`} />
                 )}
               </div>
 
@@ -234,7 +267,6 @@ export default function VistaInformeServicio({ alCerrar }) {
           </div>
         </div>
 
-        {/* Lista y Exportación */}
         <div className="lg:w-2/3 flex flex-col z-10">
           <div className="mb-5 shrink-0">
             <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Título del Mes / Congregación</label>
@@ -247,17 +279,29 @@ export default function VistaInformeServicio({ alCerrar }) {
             />
           </div>
 
-          <div className="flex gap-3 mb-5 shrink-0">
-            <button onClick={exportarExcel} disabled={informes.length === 0} className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs uppercase tracking-widest font-bold py-3.5 rounded-xl shadow-md active:translate-y-0.5 disabled:opacity-50 transition-all border border-emerald-500">
-              <FileSpreadsheet size={18} /> Excel
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 shrink-0">
+            <button onClick={exportarExcel} disabled={informes.length === 0} className="flex flex-col items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] uppercase tracking-widest font-bold py-3 rounded-xl shadow-md active:translate-y-0.5 disabled:opacity-50 transition-all border border-emerald-500">
+              <FileSpreadsheet size={16} /> Excel
             </button>
-            <button onClick={exportarPDF} disabled={informes.length === 0} className="flex-1 flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white text-xs uppercase tracking-widest font-bold py-3.5 rounded-xl shadow-md active:translate-y-0.5 disabled:opacity-50 transition-all border border-rose-500">
-              <FileText size={18} /> PDF
+            <button onClick={exportarPDF} disabled={informes.length === 0} className="flex flex-col items-center justify-center gap-1 bg-rose-600 hover:bg-rose-500 text-white text-[10px] uppercase tracking-widest font-bold py-3 rounded-xl shadow-md active:translate-y-0.5 disabled:opacity-50 transition-all border border-rose-500">
+              <FileText size={16} /> PDF
+            </button>
+            <button onClick={exportarBackup} disabled={informes.length === 0} className="flex flex-col items-center justify-center gap-1 bg-slate-600 hover:bg-slate-500 text-white text-[10px] uppercase tracking-widest font-bold py-3 rounded-xl shadow-md active:translate-y-0.5 disabled:opacity-50 transition-all border border-slate-500">
+              <Download size={16} /> Backup
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] uppercase tracking-widest font-bold py-3 rounded-xl shadow-md active:translate-y-0.5 transition-all border border-indigo-500">
+              <Upload size={16} /> Importar
+            </button>
+            <input type="file" accept=".json" ref={fileInputRef} onChange={importarBackup} className="hidden" />
+          </div>
+
+          <div className="mb-4">
+            <button onClick={() => setAlertaReiniciar(true)} disabled={informes.length === 0} className="w-full flex items-center justify-center gap-2 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/40 dark:hover:bg-amber-800/60 text-amber-700 dark:text-amber-400 text-xs uppercase tracking-widest font-bold py-3 rounded-xl shadow-sm active:translate-y-0.5 disabled:opacity-50 transition-all border border-amber-300 dark:border-amber-700/50">
+              <RefreshCcw size={14} className="text-amber-600 dark:text-amber-500" /> Preparar siguiente mes
             </button>
           </div>
 
           <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-md flex-1 overflow-hidden flex flex-col">
-            
             <h3 className="font-black text-slate-800 dark:text-slate-100 mb-4 uppercase tracking-widest text-sm drop-shadow-sm">
               Registros Listos ({informes.length})
             </h3>
@@ -266,69 +310,68 @@ export default function VistaInformeServicio({ alCerrar }) {
               {informes.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-slate-400/80 text-sm font-bold uppercase tracking-widest">No hay registros aún.</div>
               ) : (
-                informes.map((inf, index) => (
-                  <div key={inf.id} className="flex items-stretch bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group overflow-hidden">
-                    
-                    {/* Botones de Reordenamiento alineados a la izquierda */}
-                    <div className="flex flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shrink-0">
-                      <button onClick={() => moverArriba(index)} disabled={index === 0} className="flex-1 px-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-20 transition-colors">
-                        <ArrowUp size={16} strokeWidth={2.5} />
-                      </button>
-                      <div className="h-[1px] bg-slate-200 dark:bg-slate-800 w-full"></div>
-                      <button onClick={() => moverAbajo(index)} disabled={index === informes.length - 1} className="flex-1 px-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-20 transition-colors">
-                        <ArrowDown size={16} strokeWidth={2.5} />
-                      </button>
-                    </div>
+                informes.map((inf, index) => {
+                  const horasNum = parseInt(inf.horas) || 0;
+                  const participoReal = inf.tipo === 'Publicador' ? inf.participo : (horasNum > 0);
 
-                    <div className="flex-1 p-4 flex justify-between items-center">
-                      <div className="flex-1">
-                        <div className="font-black text-slate-800 dark:text-slate-100 text-base mb-2.5">{inf.nombre}</div>
-                        <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest">
-                          
-                          {/* Tipo de Publicador */}
-                          <span className={`px-2.5 py-1 ${obtenerColorTipo(inf.tipo)}`}>
-                            {inf.tipo}
-                          </span>
-                          
-                          {/* Meta Auxiliar / Regular */}
-                          {(inf.tipo === 'Precursor Auxiliar' || inf.tipo === 'Precursor Regular') && (
-                            <span className={`px-2.5 py-1 ${obtenerColorMeta()}`}>
-                              Meta: {inf.meta}h
-                            </span>
-                          )}
-                          
-                          {/* Horas */}
-                          {inf.tipo !== 'Publicador' && (
-                            <span className={`px-2.5 py-1 ${obtenerColorHoras()}`}>
-                              Horas: {inf.horas}
-                            </span>
-                          )}
-                          
-                          {/* Check Participó */}
-                          {inf.tipo === 'Publicador' && (
-                            <span className={`px-2.5 py-1 rounded-sm shadow-sm border ${inf.participo ? 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/40 dark:text-teal-300 dark:border-teal-700/50' : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}>
-                              {inf.participo ? 'Participó' : 'No participó'}
-                            </span>
-                          )}
-                          
-                          {/* Estudios */}
-                          {inf.estudios > 0 && (
-                            <span className={`px-2.5 py-1 ${obtenerColorEstudios()}`}>
-                              Estudios: {inf.estudios}
-                            </span>
-                          )}
-                        </div>
+                  return (
+                    <div key={inf.id} className={`flex items-stretch rounded-xl border shadow-sm hover:shadow-md transition-all group overflow-hidden ${participoReal ? 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30'}`}>
+                      
+                      <div className={`flex flex-col border-r shrink-0 ${participoReal ? 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-red-100/50 dark:bg-red-900/40 border-red-200 dark:border-red-800/30'}`}>
+                        <button onClick={() => moverArriba(index)} disabled={index === 0} className="flex-1 px-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-20 transition-colors">
+                          <ArrowUp size={16} strokeWidth={2.5} />
+                        </button>
+                        <div className={`h-[1px] w-full ${participoReal ? 'bg-slate-200 dark:bg-slate-800' : 'bg-red-200 dark:bg-red-800/30'}`}></div>
+                        <button onClick={() => moverAbajo(index)} disabled={index === informes.length - 1} className="flex-1 px-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-20 transition-colors">
+                          <ArrowDown size={16} strokeWidth={2.5} />
+                        </button>
                       </div>
-                      <button 
-                        onClick={() => cargarParaEditar(inf)} 
-                        className="ml-4 p-3 bg-slate-50 text-slate-500 border border-slate-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-500 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-indigo-600 rounded-xl transition-all shadow-sm active:scale-95"
-                        title="Editar registro"
-                      >
-                        <Edit2 size={20} strokeWidth={2.5} />
-                      </button>
+
+                      <div className="flex-1 p-4 flex justify-between items-center">
+                        <div className="flex-1">
+                          <div className="font-black text-slate-800 dark:text-slate-100 text-base mb-2.5">{inf.nombre}</div>
+                          <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest">
+                            
+                            <span className={`px-2.5 py-1 ${obtenerColorTipo(inf.tipo)}`}>
+                              {inf.tipo === 'Precursor Regular' ? 'REGULAR' : inf.tipo === 'Precursor Auxiliar' ? 'AUXILIAR' : inf.tipo}
+                            </span>
+                            
+                            {(inf.tipo === 'Precursor Auxiliar' || inf.tipo === 'Precursor Regular') && (
+                              <span className={`px-2.5 py-1 ${obtenerColorMetaLograda(inf.horas, inf.meta)}`}>
+                                Meta: {inf.meta}h
+                              </span>
+                            )}
+                            
+                            {inf.tipo !== 'Publicador' && (
+                              <span className={`px-2.5 py-1 ${obtenerColorHoras()}`}>
+                                Horas: {(!inf.horas || inf.horas === 'N/A') ? '0' : inf.horas}
+                              </span>
+                            )}
+                            
+                            {inf.tipo === 'Publicador' && (
+                              <span className={`px-2.5 py-1 rounded-sm shadow-sm border ${inf.participo ? 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/40 dark:text-teal-300 dark:border-teal-700/50' : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-800/50'}`}>
+                                {inf.participo ? 'Participó' : 'No participó'}
+                              </span>
+                            )}
+                            
+                            {inf.estudios > 0 && (
+                              <span className={`px-2.5 py-1 ${obtenerColorEstudios()}`}>
+                                Estudios: {inf.estudios}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => cargarParaEditar(inf)} 
+                          className="ml-4 p-3 bg-slate-50 text-slate-500 border border-slate-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-500 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-indigo-600 rounded-xl transition-all shadow-sm active:scale-95"
+                          title="Editar registro"
+                        >
+                          <Edit2 size={20} strokeWidth={2.5} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -336,7 +379,6 @@ export default function VistaInformeServicio({ alCerrar }) {
 
       </div>
 
-      {/* ESTILOS CSS INYECTADOS PARA LA ANIMACIÓN METÁLICA DESLIZANTE */}
       <style>{`
         @keyframes shimmer-slide {
           0% { transform: translateX(-150%) skewX(-25deg); }

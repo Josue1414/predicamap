@@ -43,11 +43,9 @@ export default function App() {
 
     // 2. Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, session) => {
-      
       if (evento === 'PASSWORD_RECOVERY') {
         window.location.href = '/recuperar';
       }
-      
       setSesion(session);
     });
 
@@ -77,10 +75,10 @@ export default function App() {
 
           <Routes>
             
-            {/* RUTA PÚBLICA (PUBLICADOR) */}
+            {/* RUTA PÚBLICA (PUBLICADOR) - SI ES CAPITÁN/ADMIN LO REDIRIGE A "/" CON LOS PARÁMETROS */}
             <Route 
               path="/v/:enlaceCorto" 
-              element={<VistaPublicador />} 
+              element={sesion ? <Navigate to={`/${window.location.search}`} replace /> : <VistaPublicador />} 
             />
 
             {/* RUTA DE LOGIN */}

@@ -4,7 +4,7 @@ import { supabase } from '../utilidades/clienteSupabase';
 import VisorMapa from '../componentes/VisorMapa';
 import MenuLateralPublicador from '../componentes/menu-lateral/MenuLateralPublicador';
 import CabeceraCongregacion from '../componentes/CabeceraCongregacion';
-import { Home, Map as MapIcon, X, BookmarkPlus } from 'lucide-react';
+import { Home, Map as MapIcon, X, BookmarkPlus, Share2 } from 'lucide-react';
 import useMarcadoresPersonales from '../hooks/modulos/useMarcadoresPersonales';
 
 import { ModalInfoTachuela } from '../componentes/ModalTachuela';
@@ -12,6 +12,7 @@ import { ModalFormularioRevisita, ModalInfoLecturaRevisita } from '../componente
 
 import useBotonAtrasCelular from '../hooks/useBotonAtrasCelular';
 import { useAlertas } from '../context/ContextoAlertas';
+import useEnfoqueCompartido from '../hooks/useEnfoqueCompartido';
 
 export default function VistaPublicador() {
   const [cargando, setCargando] = useState(true);
@@ -103,7 +104,6 @@ export default function VistaPublicador() {
 
   const manejarCambioEstiloMapa = (nuevoEstilo) => {
     setEstiloMapa(nuevoEstilo);
-    // Solo activamos las capas extra de calles/lugares si eligen satélite puro
     if (nuevoEstilo === 'satelite_puro') {
       setMostrarCalles(true);
       setMostrarLugares(true);
@@ -170,15 +170,32 @@ export default function VistaPublicador() {
         .order('orden', { ascending: true })
         .order('creado_en', { ascending: true });
 
-      // ★ AQUÍ ESTABA EL PROBLEMA: No se estaba mapeando grupo_asignado
       const formateadas = (secs || []).map(item => ({
         id: item.id, nombre: item.nombre, colorHex: item.color_hex, 
         coordenadas: item.coordenadas, notas: item.notas, estado: item.estado,
-        orden: item.orden, grupo_asignado: item.grupo_asignado // <-- AGREGADO
+        orden: item.orden, grupo_asignado: item.grupo_asignado
       }));
       
       setSecciones(formateadas);
       localStorage.setItem(`pm_pub_secciones_${congId}`, JSON.stringify(formateadas));
+
+      // Auto-enfoque general a la congregación si NO hay ningún link compartido (Igual que en Dashboard)
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has('t') && !params.has('pin') && formateadas.length > 0) {
+        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+        formateadas.forEach(sec => {
+          if (sec.coordenadas) {
+            sec.coordenadas.forEach(([lat, lng]) => {
+              if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+              if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+            });
+          }
+        });
+        if (minLat !== 90) {
+          setCoordenadasActuales([(minLat + maxLat) / 2, (minLng + maxLng) / 2]);
+          setZoomActual(15);
+        }
+      }
 
       const { data: tachs } = await supabase.from('tachuelas').select('*').eq('congregacion_id', congId);
       setTachuelasGrupales(tachs || []);
@@ -297,8 +314,22 @@ export default function VistaPublicador() {
     setZoomActual(19);
   };
 
-  if (cargando) return <div className="w-screen h-[100dvh] flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-indigo-500 font-bold">Cargando Territorios...</div>;
+  const enlaceSeguro = congregacion?.enlace_corto || window.location.pathname.split('/v/')[1] || '';
+  if (enlaceSeguro) {
+    localStorage.setItem('pm_enlace_corto', enlaceSeguro);
+  }
 
+  // ★ REGLA DE HOOKS: Siempre debe llamarse antes del "if (cargando) return"
+  useEnfoqueCompartido({
+    secciones: cargando ? [] : secciones, // Esperar a que quite la pantalla de carga
+    tachuelas: cargando ? [] : tachuelasGrupales, // Esperar a que quite la pantalla de carga
+    alVolarATerritorio: volarATerritorio,
+    alSeleccionarTachuela: setTachuelaLeida, // Se pasa esto para que abra el aviso
+    setCoordenadasActuales,
+    setZoomActual
+  });
+
+  if (cargando) return <div className="w-screen h-[100dvh] flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-indigo-500 font-bold">Cargando Territorios...</div>;
   return (
     <div className="w-screen h-[100dvh] overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col relative transition-colors duration-200">
       
@@ -356,7 +387,7 @@ export default function VistaPublicador() {
         )}
 
         <VisorMapa 
-          centroInicial={[25.6565, -100.2930]} zoomInicial={5}
+          centroInicial={coordenadasActuales} zoomInicial={zoomActual}
           centroActual={coordenadasActuales} zoomActual={zoomActual} setZoomActual={setZoomActual}
           secciones={secciones} edificios={edificios}
           alSeleccionarEdificio={setCasaLeida}
@@ -377,13 +408,16 @@ export default function VistaPublicador() {
         />
       </main>
 
-      {/* ★ AGREGAMOS EL GRUPO A LA VENTANA DE LECTURA ★ */}
       {territorioLeido && <ModalInfoLectura 
         icono={<MapIcon size={24} className="text-indigo-500" />} 
         titulo={territorioLeido.nombre} 
         notas={territorioLeido.notas} 
         grupo={territorioLeido.grupo_asignado} 
         alCerrar={() => setTerritorioLeido(null)} 
+        esTerritorio={true}
+        id={territorioLeido.id}
+        enlaceCorto={congregacion?.enlace_corto}
+        nombreCongregacion={congregacion?.nombre}
       />}
       
       {casaLeida && <ModalInfoLectura icono={<Home size={24} className="text-emerald-500" />} titulo={casaLeida.direccion} estado={casaLeida.estado} notas={casaLeida.notas} alCerrar={() => setCasaLeida(null)} />}
@@ -404,6 +438,8 @@ export default function VistaPublicador() {
           tachuela={tachuelaLeida}
           puedeEliminar={false}
           alCerrar={() => setTachuelaLeida(null)}
+          nombreCongregacion={congregacion?.nombre}
+          enlaceCorto={congregacion?.enlace_corto}
         />
       )}
 
@@ -427,8 +463,7 @@ export default function VistaPublicador() {
   );
 }
 
-// ★ ACTUALIZAMOS MODALINFOLECTURA PARA MOSTRAR EL GRUPO ★
-function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, grupo, alCerrar }) {
+function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, grupo, alCerrar, esTerritorio, id, enlaceCorto, nombreCongregacion }) {
   let color = estadoColor || 'text-slate-500';
   let textoEstado = estado || '';
   
@@ -437,6 +472,13 @@ function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, grupo, al
     if (estado === 'completado') { color = 'text-emerald-500'; textoEstado = 'Completado'; }
     if (estado === 'no_responde') { color = 'text-rose-500'; textoEstado = 'Alerta / No Visitar'; }
   }
+
+  const compartirWhatsApp = () => {
+    const enlace = enlaceCorto || localStorage.getItem('pm_enlace_corto') || '';
+    const linkCompartir = `${window.location.origin}/v/${enlace}?t=${id}`;
+    const msj = `🗺️ *Congregación ${nombreCongregacion || 'Local'}*\n\n👉 *Ir a la ubicación del territorio: ${titulo}*\n${linkCompartir}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msj)}`, '_blank');
+  };
 
   return (
     <>
@@ -449,7 +491,6 @@ function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, grupo, al
                 {icono} {titulo}
               </h3>
               
-              {/* ETIQUETA DE GRUPO */}
               {grupo && (
                 <div className="mt-2">
                   <span className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 px-2.5 py-1 rounded uppercase font-bold tracking-wider">
@@ -477,9 +518,20 @@ function ModalInfoLectura({ icono, titulo, estado, estadoColor, notas, grupo, al
             </div>
           </div>
 
-          <button onClick={alCerrar} className="w-full mt-6 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors">
-            Aceptar
-          </button>
+          <div className="mt-6 flex flex-col gap-2">
+            {esTerritorio && (
+              <button 
+                onClick={compartirWhatsApp}
+                className="w-full py-3.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] font-bold rounded-xl transition-colors flex justify-center items-center gap-2 border border-[#25D366]/30"
+              >
+                <Share2 size={16} /> Compartir por WhatsApp
+              </button>
+            )}
+
+            <button onClick={alCerrar} className="w-full py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors">
+              Aceptar
+            </button>
+          </div>
         </div>
       </div>
     </>

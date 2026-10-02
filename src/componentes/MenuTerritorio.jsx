@@ -1,6 +1,7 @@
+// src/componentes/MenuTerritorio.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utilidades/clienteSupabase';
-import { X, CheckCircle2, RefreshCcw, Save, Map, CalendarCheck, History, ChevronDown } from 'lucide-react';
+import { X, CheckCircle2, RefreshCcw, Save, Map, CalendarCheck, History, ChevronDown, Share2 } from 'lucide-react';
 
 export default function MenuTerritorio({
   territorio,
@@ -9,7 +10,9 @@ export default function MenuTerritorio({
   alCerrar,
   alCompletar,
   alReiniciar,
-  alGuardarNotas
+  alGuardarNotas,
+  nombreCongregacion = 'Local',
+  enlaceCorto = '' 
 }) {
   const [notasTemp, setNotasTemp] = useState('');
   
@@ -58,7 +61,6 @@ export default function MenuTerritorio({
 
   if (!territorio) return null;
 
-  // Ignorar los puntos en estado 'no_responde' para el cálculo
   const casasDeEstaSeccion = edificios.filter(e => e.seccion_id === territorio.id && e.estado !== 'no_responde');
   const totalCasas = casasDeEstaSeccion.length;
   const casasCompletadas = casasDeEstaSeccion.filter(e => e.estado === 'completado').length;
@@ -79,10 +81,22 @@ export default function MenuTerritorio({
     alCerrar();
   };
 
+  const compartirWhatsApp = () => {
+    const enlace = enlaceCorto || localStorage.getItem('pm_enlace_corto');
+    
+    if (!enlace) {
+      alert("⚠️ Error: No se encontró el enlace de la congregación. Verifica la configuración o recarga la página.");
+      return;
+    }
+
+    const linkCompartir = `${window.location.origin}/v/${enlace}?t=${territorio.id}`;
+    const msj = `📍 *Congregación ${nombreCongregacion}*\n\n👉 *Ir al territorio ${territorio.nombre}*\n${linkCompartir}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msj)}`, '_blank');
+  };
+
   const ultimaVez = fechasCompletado[0] || null;
   const penultimaVez = fechasCompletado[1] || null;
   const fechasAnteriores = fechasCompletado.slice(2, 8);
-
   const hace60Dias = new Date();
   hace60Dias.setDate(hace60Dias.getDate() - 60);
   const completados60Dias = fechasCompletado.filter(d => d >= hace60Dias).length;
@@ -105,7 +119,13 @@ export default function MenuTerritorio({
           <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4">
             <div className="flex-1 pr-4">
               <h3 className="font-bold text-xl text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Map size={20} className="text-indigo-500 shrink-0" /> <span className="leading-tight">{territorio.nombre}</span>
+                <Map size={20} className="text-indigo-500 shrink-0" /> 
+                <span className="leading-tight">{territorio.nombre}</span>
+                
+                {/* BOTÓN DE COMPARTIR DISCRETO AL LADO DEL TÍTULO */}
+                <button onClick={compartirWhatsApp} className="p-1.5 ml-1 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors" title="Compartir Territorio">
+                  <Share2 size={16} />
+                </button>
               </h3>
               <div className="mt-2 flex items-center gap-2">
                 <div className="flex-1 bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -125,9 +145,7 @@ export default function MenuTerritorio({
                 <div className="mt-2.5 inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-md border border-emerald-100 dark:border-emerald-800/50">
                   <CalendarCheck size={12} />
                   <span className="text-[9px] font-bold uppercase tracking-wider">
-                    Terminado: {ultimaVez 
-                      ? ultimaVez.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) 
-                      : 'Hoy'}
+                    Terminado: {ultimaVez ? ultimaVez.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Hoy'}
                   </span>
                 </div>
               )}
@@ -138,10 +156,7 @@ export default function MenuTerritorio({
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <button 
-              onClick={() => setHistorialAbierto(!historialAbierto)}
-              className="w-full p-4 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
-            >
+            <button onClick={() => setHistorialAbierto(!historialAbierto)} className="w-full p-4 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors">
               <h4 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <History size={14} className="text-indigo-500" /> Historial de Cobertura
               </h4>
@@ -164,7 +179,6 @@ export default function MenuTerritorio({
                         <p className="text-sm font-black text-slate-700 dark:text-slate-200">{formatearFecha(penultimaVez)}</p>
                       </div>
                     </div>
-
                     {fechasAnteriores.length > 0 && (
                       <div className="pt-1">
                         <p className="text-[9px] text-slate-400 uppercase font-bold mb-1.5 px-1">Registros Anteriores</p>
@@ -177,7 +191,6 @@ export default function MenuTerritorio({
                         </div>
                       </div>
                     )}
-                    
                     <div className="bg-indigo-50 dark:bg-indigo-900/20 p-2.5 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
                       <p className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">
                         En los últimos 60 días se ha completado <span className="font-black">{completados60Dias} {completados60Dias === 1 ? 'vez' : 'veces'}</span>.
@@ -215,10 +228,7 @@ export default function MenuTerritorio({
               className="flex justify-center items-center gap-1.5 py-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold text-sm hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-emerald-200 dark:border-emerald-800"
             >
               <CheckCircle2 size={16} /> 
-              {estaTerminadoOficialmente 
-                ? 'Territorio Terminado' 
-                : 'Marcar TODO Completado'
-              }
+              {estaTerminadoOficialmente ? 'Territorio Terminado' : 'Marcar TODO Completado'}
             </button>
 
             {esCapitanYSuperior && (porcentaje > 0 || territorio.estado === 'completado') && (
